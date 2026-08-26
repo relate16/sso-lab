@@ -1,0 +1,16 @@
+SSO Lab - Phase 1 Developer Setup
+
+1. Install Java 21 (the Gradle Wrapper downloads no application secrets).
+2. Install Node.js 24 LTS with npm.
+3. Install Docker Engine/Desktop with Docker Compose v2 for infrastructure tests.
+4. Copy .env.example to .env only on your local/VM environment.
+5. Replace every CHANGE_ME placeholder; never commit .env or secrets/.
+6. Run backend checks: gradlew.bat clean test build (Windows)
+7. In each frontend/*-web directory run: npm ci && npm run build
+8. Validate Compose: docker compose --env-file .env config
+9. Start Phase 1: docker compose --env-file .env up -d --build
+10. Check containers: docker compose ps
+
+Phase 1 does not implement signup, OTP, TOTP, OIDC, Admin, or Caddy/TLS yet.
+The VM repository path is /opt/sso-lab. Prefer DuckDNS hostnames and never hardcode
+the VM's current DHCP public IPv4 address.

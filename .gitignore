@@ -13,10 +13,14 @@ secrets/
 # Backend
 build/
 .gradle/
+.gradle-user-home/
+.gradle-codex/
+.tooling/
 
 # Frontend
 node_modules/
 dist/
+.pnpm-store/
 
 # IDE
 .idea/
@@ -33,3 +37,6 @@ logs/
 # Temporary
 tmp/
 temp/
+
+# Local infrastructure data
+backups/

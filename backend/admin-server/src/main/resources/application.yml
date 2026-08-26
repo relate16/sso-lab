@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: admin-server
+
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
+  tomcat:
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXY_CIDRS:127.0.0.1/32}
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      host-header: X-Forwarded-Host
+      port-header: X-Forwarded-Port
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+
+sso:
+  oidc-client:
+    registration-id: ${ADMIN_CLIENT_ID:admin-client}
+    client-id: ${ADMIN_CLIENT_ID:admin-client}
+    client-secret: ${ADMIN_CLIENT_SECRET:}
+    client-secret-file: ${ADMIN_CLIENT_SECRET_FILE:}
+    issuer: ${AUTH_PUBLIC_URL:http://localhost:8080}
+    authorization-uri: ${AUTH_PUBLIC_URL:http://localhost:8080}/oauth2/authorize
+    token-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/oauth2/token
+    jwk-set-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/oauth2/jwks
+    user-info-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/userinfo
+    redirect-uri: ${ADMIN_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+    post-logout-redirect-uri: ${ADMIN_POST_LOGOUT_REDIRECT_URI:http://localhost:8083/}
+  internal-admin:
+    base-uri: ${ADMIN_INTERNAL_URL:http://localhost:8080/internal/admin/v1}
+    client-id: ${ADMIN_INTERNAL_CLIENT_ID:admin-server}
+    service-secret: ${ADMIN_INTERNAL_API_SECRET:}
+    service-secret-file: ${ADMIN_INTERNAL_API_SECRET_FILE:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

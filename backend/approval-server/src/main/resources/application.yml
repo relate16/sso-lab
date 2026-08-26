@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: approval-server
+
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
+  tomcat:
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXY_CIDRS:127.0.0.1/32}
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      host-header: X-Forwarded-Host
+      port-header: X-Forwarded-Port
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+
+sso:
+  oidc-client:
+    registration-id: ${APPROVAL_CLIENT_ID:approval-client}
+    client-id: ${APPROVAL_CLIENT_ID:approval-client}
+    client-secret: ${APPROVAL_CLIENT_SECRET:}
+    client-secret-file: ${APPROVAL_CLIENT_SECRET_FILE:}
+    issuer: ${AUTH_PUBLIC_URL:http://localhost:8080}
+    authorization-uri: ${AUTH_PUBLIC_URL:http://localhost:8080}/oauth2/authorize
+    token-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/oauth2/token
+    jwk-set-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/oauth2/jwks
+    user-info-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/userinfo
+    redirect-uri: ${APPROVAL_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+    post-logout-redirect-uri: ${APPROVAL_POST_LOGOUT_REDIRECT_URI:http://localhost:8082/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

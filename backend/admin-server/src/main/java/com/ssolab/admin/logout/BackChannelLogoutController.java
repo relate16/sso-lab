@@ -1,0 +1,3 @@
+package com.ssolab.admin.logout;
+import java.util.Map;import org.springframework.http.ResponseEntity;import org.springframework.security.oauth2.jwt.JwtException;import org.springframework.web.bind.annotation.*;
+@RestController public class BackChannelLogoutController {private final BackChannelLogoutService service;public BackChannelLogoutController(BackChannelLogoutService s){service=s;}@PostMapping(path="/internal/oidc/backchannel-logout",consumes="application/x-www-form-urlencoded") ResponseEntity<?> logout(@RequestParam("logout_token") String token){try{service.logout(token);return ResponseEntity.ok(Map.of("loggedOut",true));}catch(JwtException e){return ResponseEntity.badRequest().body(Map.of("error","invalid_logout_token"));}}}

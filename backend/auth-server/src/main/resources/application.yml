@@ -1,0 +1,166 @@
+spring:
+  application:
+    name: auth-server
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:5432/sso_lab}
+    username: ${POSTGRES_USER:sso_lab}
+    password: ${POSTGRES_PASSWORD}
+    hikari:
+      # Unqualified Spring Authorization Server JDBC queries must resolve to
+      # auth. SET search_path is safe before Flyway creates the schema.
+      connection-init-sql: SET search_path TO auth, public
+  flyway:
+    enabled: true
+    create-schemas: true
+    default-schema: auth
+    schemas: auth
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: auth
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+      table-name: auth.SPRING_SESSION
+  mvc:
+    log-request-details: false
+
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
+  tomcat:
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXY_CIDRS:127.0.0.1/32}
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      host-header: X-Forwarded-Host
+      port-header: X-Forwarded-Port
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+sso:
+  security:
+    enumeration:
+      minimum-response-time: ${AUTH_ENUMERATION_MIN_RESPONSE_TIME:0ms}
+    turnstile:
+      enabled: ${TURNSTILE_ENABLED:false}
+      verification-uri: ${TURNSTILE_VERIFICATION_URI:https://challenges.cloudflare.com/turnstile/v0/siteverify}
+      secret-provider: ${TURNSTILE_SECRET_PROVIDER:ENVIRONMENT}
+      secret-reference: ${TURNSTILE_SECRET_REF:TURNSTILE_SECRET_KEY}
+  mail:
+    gmail:
+      enabled: ${GMAIL_SMTP_ENABLED:false}
+      host: ${GMAIL_SMTP_HOST:smtp.gmail.com}
+      port: ${GMAIL_SMTP_PORT:587}
+      username: ${GMAIL_SMTP_USERNAME:}
+      from: ${GMAIL_SMTP_FROM:}
+      password:
+        provider: ${GMAIL_PASSWORD_PROVIDER:ENVIRONMENT}
+        reference: ${GMAIL_PASSWORD_REF:GMAIL_APP_PASSWORD}
+      connection-timeout: ${GMAIL_SMTP_CONNECTION_TIMEOUT:5s}
+      read-timeout: ${GMAIL_SMTP_READ_TIMEOUT:10s}
+      write-timeout: ${GMAIL_SMTP_WRITE_TIMEOUT:10s}
+  bootstrap-admin:
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
+  internal-admin:
+    allowed-client-id: ${ADMIN_INTERNAL_CLIENT_ID:admin-server}
+    secret-provider: ${ADMIN_INTERNAL_SECRET_PROVIDER:ENVIRONMENT}
+    secret-reference: ${ADMIN_INTERNAL_SECRET_REF:ADMIN_INTERNAL_API_SECRET}
+  secrets:
+    docker:
+      base-path: ${DOCKER_SECRET_BASE_PATH:/run/secrets}
+  identity:
+    crypto:
+      email-encryption:
+        current-key-version: ${EMAIL_ENCRYPTION_KEY_VERSION:1}
+        keys:
+          1:
+            provider: ${EMAIL_ENCRYPTION_KEY_PROVIDER:ENVIRONMENT}
+            reference: ${EMAIL_ENCRYPTION_KEY_REF:SSO_EMAIL_ENCRYPTION_KEY}
+      email-lookup-hmac:
+        provider: ${EMAIL_LOOKUP_HMAC_KEY_PROVIDER:ENVIRONMENT}
+        reference: ${EMAIL_LOOKUP_HMAC_KEY_REF:SSO_EMAIL_LOOKUP_HMAC_KEY}
+  passwordless:
+    crypto:
+      otp-verifier:
+        provider: ${OTP_HMAC_KEY_PROVIDER:ENVIRONMENT}
+        reference: ${OTP_HMAC_KEY_REF:SSO_OTP_HMAC_KEY}
+      totp-encryption:
+        current-key-version: ${TOTP_ENCRYPTION_KEY_VERSION:1}
+        keys:
+          1:
+            provider: ${TOTP_ENCRYPTION_KEY_PROVIDER:ENVIRONMENT}
+            reference: ${TOTP_ENCRYPTION_KEY_REF:SSO_TOTP_ENCRYPTION_KEY}
+  oidc:
+    issuer: ${AUTH_PUBLIC_URL:http://localhost:8080}
+    login-page-uri: ${AUTH_LOGIN_PAGE_URI:/?login=required}
+    authorization-code-ttl: 2m
+    access-token-ttl: 5m
+    id-token-ttl: 5m
+    refresh-token-ttl: 8h
+    logout-token-ttl: 2m
+    signing:
+      key-id: ${JWT_SIGNING_KEY_ID:sso-lab-signing-v1}
+      provider: ${JWT_SIGNING_KEY_PROVIDER:ENVIRONMENT}
+      private-key-reference: ${JWT_PRIVATE_KEY_REF:SSO_JWT_PRIVATE_KEY}
+      public-key-reference: ${JWT_PUBLIC_KEY_REF:SSO_JWT_PUBLIC_KEY}
+    clients:
+      hr:
+        client-id: ${HR_CLIENT_ID:hr-client}
+        client-name: SSO Lab HR BFF
+        secret-provider: ${HR_CLIENT_SECRET_PROVIDER:ENVIRONMENT}
+        secret-reference: ${HR_CLIENT_SECRET_REF:HR_CLIENT_SECRET}
+        redirect-uri: ${HR_REDIRECT_URI:http://localhost:8081/login/oauth2/code/hr-client}
+        post-logout-redirect-uri: ${HR_POST_LOGOUT_REDIRECT_URI:http://localhost:8081/}
+        back-channel-logout-uri: ${HR_BACKCHANNEL_LOGOUT_URI:http://localhost:8081/internal/oidc/backchannel-logout}
+        scopes: [openid, profile, email]
+
+      approval:
+        client-id: ${APPROVAL_CLIENT_ID:approval-client}
+        client-name: SSO Lab Approval BFF
+        secret-provider: ${APPROVAL_CLIENT_SECRET_PROVIDER:ENVIRONMENT}
+        secret-reference: ${APPROVAL_CLIENT_SECRET_REF:APPROVAL_CLIENT_SECRET}
+        redirect-uri: ${APPROVAL_REDIRECT_URI:http://localhost:8082/login/oauth2/code/approval-client}
+        post-logout-redirect-uri: ${APPROVAL_POST_LOGOUT_REDIRECT_URI:http://localhost:8082/}
+        back-channel-logout-uri: ${APPROVAL_BACKCHANNEL_LOGOUT_URI:http://localhost:8082/internal/oidc/backchannel-logout}
+        scopes: [openid, profile, email]
+      admin:
+        client-id: ${ADMIN_CLIENT_ID:admin-client}
+        client-name: SSO Lab Admin BFF
+        secret-provider: ${ADMIN_CLIENT_SECRET_PROVIDER:ENVIRONMENT}
+        secret-reference: ${ADMIN_CLIENT_SECRET_REF:ADMIN_CLIENT_SECRET}
+        redirect-uri: ${ADMIN_REDIRECT_URI:http://localhost:8083/login/oauth2/code/admin-client}
+        post-logout-redirect-uri: ${ADMIN_POST_LOGOUT_REDIRECT_URI:http://localhost:8083/}
+        back-channel-logout-uri: ${ADMIN_BACKCHANNEL_LOGOUT_URI:http://localhost:8083/internal/oidc/backchannel-logout}
+        scopes: [openid, profile, email]
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO

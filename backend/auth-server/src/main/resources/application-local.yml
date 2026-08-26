@@ -1,0 +1,4 @@
+sso:
+  security:
+    turnstile:
+      enabled: ${TURNSTILE_ENABLED:false}

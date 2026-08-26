@@ -1,0 +1,173 @@
+services:
+  auth-server:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-auth-server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      # Ensure obsolete inline values from a local .env cannot enter the
+      # production container when Docker Secret providers are selected.
+      SSO_EMAIL_ENCRYPTION_KEY: ""
+      SSO_EMAIL_LOOKUP_HMAC_KEY: ""
+      SSO_OTP_HMAC_KEY: ""
+      SSO_TOTP_ENCRYPTION_KEY: ""
+      SSO_JWT_PRIVATE_KEY: ""
+      SSO_JWT_PUBLIC_KEY: ""
+      HR_CLIENT_SECRET: ""
+      APPROVAL_CLIENT_SECRET: ""
+      ADMIN_CLIENT_SECRET: ""
+      ADMIN_INTERNAL_API_SECRET: ""
+      TURNSTILE_SECRET_KEY: ""
+      GMAIL_APP_PASSWORD: ""
+      EMAIL_ENCRYPTION_KEY_PROVIDER: DOCKER_SECRET
+      EMAIL_ENCRYPTION_KEY_REF: email-encryption-key
+      EMAIL_LOOKUP_HMAC_KEY_PROVIDER: DOCKER_SECRET
+      EMAIL_LOOKUP_HMAC_KEY_REF: email-lookup-hmac-key
+      OTP_HMAC_KEY_PROVIDER: DOCKER_SECRET
+      OTP_HMAC_KEY_REF: otp-hmac-key
+      TOTP_ENCRYPTION_KEY_PROVIDER: DOCKER_SECRET
+      TOTP_ENCRYPTION_KEY_REF: totp-encryption-key
+      JWT_SIGNING_KEY_PROVIDER: DOCKER_SECRET
+      JWT_PRIVATE_KEY_REF: oidc-private-key
+      JWT_PUBLIC_KEY_REF: oidc-public-key
+      HR_CLIENT_SECRET_PROVIDER: DOCKER_SECRET
+      HR_CLIENT_SECRET_REF: hr-client-secret
+      APPROVAL_CLIENT_SECRET_PROVIDER: DOCKER_SECRET
+      APPROVAL_CLIENT_SECRET_REF: approval-client-secret
+      ADMIN_CLIENT_SECRET_PROVIDER: DOCKER_SECRET
+      ADMIN_CLIENT_SECRET_REF: admin-client-secret
+      ADMIN_INTERNAL_SECRET_PROVIDER: DOCKER_SECRET
+      ADMIN_INTERNAL_SECRET_REF: admin-internal-api-secret
+      TURNSTILE_SECRET_PROVIDER: DOCKER_SECRET
+      TURNSTILE_SECRET_REF: turnstile-secret
+      GMAIL_PASSWORD_PROVIDER: DOCKER_SECRET
+      GMAIL_PASSWORD_REF: gmail-app-password
+      GMAIL_SMTP_ENABLED: "true"
+    secrets:
+      - email-encryption-key
+      - email-lookup-hmac-key
+      - otp-hmac-key
+      - totp-encryption-key
+      - oidc-private-key
+      - oidc-public-key
+      - hr-client-secret
+      - approval-client-secret
+      - admin-client-secret
+      - admin-internal-api-secret
+      - turnstile-secret
+      - gmail-app-password
+
+  admin-server:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-admin-server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      ADMIN_CLIENT_SECRET: ""
+      ADMIN_CLIENT_SECRET_FILE: /run/secrets/ADMIN_CLIENT_SECRET
+      ADMIN_INTERNAL_API_SECRET: ""
+      ADMIN_INTERNAL_API_SECRET_FILE: /run/secrets/ADMIN_INTERNAL_API_SECRET
+    secrets:
+      - source: admin-client-secret
+        target: ADMIN_CLIENT_SECRET
+      - source: admin-internal-api-secret
+        target: ADMIN_INTERNAL_API_SECRET
+
+  hr-server:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-hr-server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      HR_CLIENT_SECRET: ""
+      HR_CLIENT_SECRET_FILE: /run/secrets/HR_CLIENT_SECRET
+    secrets:
+      - source: hr-client-secret
+        target: HR_CLIENT_SECRET
+
+  approval-server:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-approval-server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      APPROVAL_CLIENT_SECRET: ""
+      APPROVAL_CLIENT_SECRET_FILE: /run/secrets/APPROVAL_CLIENT_SECRET
+    secrets:
+      - source: approval-client-secret
+        target: APPROVAL_CLIENT_SECRET
+
+  auth-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-auth-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+
+  admin-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-admin-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+
+  hr-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-hr-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+
+  approval-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-approval-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set}
+      AUTH_HOSTNAME: ${AUTH_HOSTNAME:?AUTH_HOSTNAME must be set}
+      ADMIN_HOSTNAME: ${ADMIN_HOSTNAME:?ADMIN_HOSTNAME must be set}
+      HR_HOSTNAME: ${HR_HOSTNAME:?HR_HOSTNAME must be set}
+      APPROVAL_HOSTNAME: ${APPROVAL_HOSTNAME:?APPROVAL_HOSTNAME must be set}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/caddy/sites.caddy:/etc/caddy/sites.caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      public-network:
+        ipv4_address: ${CADDY_IPV4_ADDRESS:-172.30.10.254}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      admin-server:
+        condition: service_healthy
+      hr-server:
+        condition: service_healthy
+      approval-server:
+        condition: service_healthy
+      auth-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+      hr-web:
+        condition: service_healthy
+      approval-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+secrets:
+  email-encryption-key:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/email-encryption-key
+  email-lookup-hmac-key:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/email-lookup-hmac-key
+  otp-hmac-key:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/otp-hmac-key
+  totp-encryption-key:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/totp-encryption-key
+  oidc-private-key:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/oidc-private-key
+  oidc-public-key:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/oidc-public-key
+  hr-client-secret:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/hr-client-secret
+  approval-client-secret:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/approval-client-secret
+  admin-client-secret:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/admin-client-secret
+  admin-internal-api-secret:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/admin-internal-api-secret
+  turnstile-secret:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/turnstile-secret
+  gmail-app-password:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/gmail-app-password
+
+volumes:
+  caddy-data:
+  caddy-config:

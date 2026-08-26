@@ -1,0 +1,170 @@
+name: Release images and deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Immutable image tag (vMAJOR.MINOR.PATCH); blank uses sha-<commit>
+        required: false
+        default: ''
+        type: string
+      deploy_production:
+        description: Deploy this immutable commit to the protected production environment
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      image_tag: ${{ steps.release.outputs.image_tag }}
+    steps:
+      - name: Resolve and validate immutable image tag
+        id: release
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.image_tag }}
+        run: |
+          image_tag=${REQUESTED_TAG:-sha-${GITHUB_SHA}}
+          if [[ ! "$image_tag" =~ ^(sha-[0-9a-f]{40}|v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?)$ ]]; then
+            echo 'image_tag must be sha-<40 lowercase hex> or an immutable vMAJOR.MINOR.PATCH tag' >&2
+            exit 1
+          fi
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: auth-server
+            kind: backend
+            service: auth-server
+          - image: admin-server
+            kind: backend
+            service: admin-server
+          - image: hr-server
+            kind: backend
+            service: hr-server
+          - image: approval-server
+            kind: backend
+            service: approval-server
+          - image: auth-web
+            kind: frontend
+            service: auth-web
+          - image: admin-web
+            kind: frontend
+            service: admin-web
+          - image: hr-web
+            kind: frontend
+            service: hr-web
+          - image: approval-web
+            kind: frontend
+            service: approval-web
+    steps:
+      - uses: actions/checkout@v4
+      - name: Normalize OCI namespace
+        shell: bash
+        run: echo "IMAGE_NAMESPACE=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Select build context
+        id: build
+        shell: bash
+        run: |
+          if [[ '${{ matrix.kind }}' == backend ]]; then
+            {
+              echo 'context=.'
+              echo 'dockerfile=infra/docker/backend.Dockerfile'
+              echo 'build_args=SERVICE_NAME=${{ matrix.service }}'
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo 'context=frontend/${{ matrix.service }}'
+              if [[ '${{ matrix.service }}' == auth-web ]]; then
+                echo 'dockerfile=infra/docker/auth-web.Dockerfile'
+              else
+                echo 'dockerfile=infra/docker/frontend.Dockerfile'
+              fi
+              echo 'build_args='
+            } >> "$GITHUB_OUTPUT"
+          fi
+      - name: Reject an existing image tag
+        shell: bash
+        run: |
+          image_ref='${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/sso-lab-${{ matrix.image }}:${{ needs.prepare.outputs.image_tag }}'
+          if docker buildx imagetools inspect "$image_ref" >/dev/null 2>&1; then
+            echo "Refusing to overwrite existing immutable image tag: $image_ref" >&2
+            exit 1
+          fi
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.build.outputs.context }}
+          file: ${{ steps.build.outputs.dockerfile }}
+          build-args: ${{ steps.build.outputs.build_args }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/sso-lab-${{ matrix.image }}:${{ needs.prepare.outputs.image_tag }}
+          provenance: true
+          sbom: true
+
+  deploy:
+    if: ${{ inputs.deploy_production }}
+    needs: [prepare, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Validate deployment inputs
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+        run: |
+          test "$DEPLOY_HOST" = 'today-sso.duckdns.org'
+          test -n "$DEPLOY_USER"
+          test "$DEPLOY_PATH" = '/opt/sso-lab'
+      - name: Install pinned SSH identity and host key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: Deploy immutable images
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.image_tag }}
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
+            "$DEPLOY_PATH" "$RELEASE_TAG" <<'REMOTE_DEPLOY'
+          set -eu
+          deploy_path=$1
+          image_tag=$2
+          test "$deploy_path" = '/opt/sso-lab'
+          cd "$deploy_path"
+          IMAGE_TAG="$image_tag" docker compose --env-file .env \
+            -f docker-compose.yml -f docker-compose.prod.yml pull
+          IMAGE_TAG="$image_tag" docker compose --env-file .env \
+            -f docker-compose.yml -f docker-compose.prod.yml \
+            up -d --wait --no-build
+          REMOTE_DEPLOY

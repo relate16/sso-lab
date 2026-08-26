@@ -1,0 +1,12 @@
+sso:
+  security:
+    enumeration:
+      minimum-response-time: ${AUTH_ENUMERATION_MIN_RESPONSE_TIME:150ms}
+    turnstile:
+      enabled: ${TURNSTILE_ENABLED:true}
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: ${SESSION_COOKIE_SECURE:true}

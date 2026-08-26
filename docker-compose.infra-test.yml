@@ -1,0 +1,48 @@
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:443:443/udp"
+    environment:
+      AUTH_HOSTNAME: ${AUTH_HOSTNAME:-auth.sso-lab.test}
+      ADMIN_HOSTNAME: ${ADMIN_HOSTNAME:-admin.sso-lab.test}
+      HR_HOSTNAME: ${HR_HOSTNAME:-hr.sso-lab.test}
+      APPROVAL_HOSTNAME: ${APPROVAL_HOSTNAME:-approval.sso-lab.test}
+    volumes:
+      - ./infra/caddy/Caddyfile.test:/etc/caddy/Caddyfile:ro
+      - ./infra/caddy/sites.caddy:/etc/caddy/sites.caddy:ro
+      - caddy-test-data:/data
+      - caddy-test-config:/config
+    networks:
+      public-network:
+        ipv4_address: ${CADDY_IPV4_ADDRESS:-172.30.80.254}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      admin-server:
+        condition: service_healthy
+      hr-server:
+        condition: service_healthy
+      approval-server:
+        condition: service_healthy
+      auth-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+      hr-web:
+        condition: service_healthy
+      approval-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  caddy-test-data:
+  caddy-test-config:

@@ -1,0 +1,241 @@
+name: ${COMPOSE_PROJECT_NAME:-sso-lab}
+
+x-backend-environment: &backend-environment
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+  SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-native}
+  TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDR:-172.30.10.254/32}
+
+x-backend-common: &backend-common
+  restart: unless-stopped
+  expose:
+    - "8080"
+  healthcheck:
+    test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/actuator/health"]
+    interval: 15s
+    timeout: 5s
+    retries: 10
+    start_period: 30s
+
+x-frontend-common: &frontend-common
+  restart: unless-stopped
+  expose:
+    - "8080"
+  healthcheck:
+    test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+    interval: 15s
+    timeout: 5s
+    retries: 5
+    start_period: 10s
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - db-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  auth-server:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        SERVICE_NAME: auth-server
+    environment:
+      <<: *backend-environment
+      AUTH_DB_URL: ${AUTH_DB_URL:-jdbc:postgresql://postgres:5432/sso_lab}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      EMAIL_ENCRYPTION_KEY_PROVIDER: ${EMAIL_ENCRYPTION_KEY_PROVIDER:-ENVIRONMENT}
+      EMAIL_ENCRYPTION_KEY_REF: ${EMAIL_ENCRYPTION_KEY_REF:-SSO_EMAIL_ENCRYPTION_KEY}
+      EMAIL_ENCRYPTION_KEY_VERSION: ${EMAIL_ENCRYPTION_KEY_VERSION:-1}
+      SSO_EMAIL_ENCRYPTION_KEY: ${SSO_EMAIL_ENCRYPTION_KEY:-}
+      EMAIL_LOOKUP_HMAC_KEY_PROVIDER: ${EMAIL_LOOKUP_HMAC_KEY_PROVIDER:-ENVIRONMENT}
+      EMAIL_LOOKUP_HMAC_KEY_REF: ${EMAIL_LOOKUP_HMAC_KEY_REF:-SSO_EMAIL_LOOKUP_HMAC_KEY}
+      SSO_EMAIL_LOOKUP_HMAC_KEY: ${SSO_EMAIL_LOOKUP_HMAC_KEY:-}
+      OTP_HMAC_KEY_PROVIDER: ${OTP_HMAC_KEY_PROVIDER:-ENVIRONMENT}
+      OTP_HMAC_KEY_REF: ${OTP_HMAC_KEY_REF:-SSO_OTP_HMAC_KEY}
+      SSO_OTP_HMAC_KEY: ${SSO_OTP_HMAC_KEY:-}
+      TOTP_ENCRYPTION_KEY_PROVIDER: ${TOTP_ENCRYPTION_KEY_PROVIDER:-ENVIRONMENT}
+      TOTP_ENCRYPTION_KEY_REF: ${TOTP_ENCRYPTION_KEY_REF:-SSO_TOTP_ENCRYPTION_KEY}
+      TOTP_ENCRYPTION_KEY_VERSION: ${TOTP_ENCRYPTION_KEY_VERSION:-1}
+      SSO_TOTP_ENCRYPTION_KEY: ${SSO_TOTP_ENCRYPTION_KEY:-}
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:?AUTH_PUBLIC_URL must be set}
+      AUTH_LOGIN_PAGE_URI: ${AUTH_LOGIN_PAGE_URI:-/?login=required}
+      JWT_SIGNING_KEY_ID: ${JWT_SIGNING_KEY_ID:-sso-lab-signing-v1}
+      JWT_SIGNING_KEY_PROVIDER: ${JWT_SIGNING_KEY_PROVIDER:-ENVIRONMENT}
+      JWT_PRIVATE_KEY_REF: ${JWT_PRIVATE_KEY_REF:-SSO_JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY_REF: ${JWT_PUBLIC_KEY_REF:-SSO_JWT_PUBLIC_KEY}
+      SSO_JWT_PRIVATE_KEY: ${SSO_JWT_PRIVATE_KEY:-}
+      SSO_JWT_PUBLIC_KEY: ${SSO_JWT_PUBLIC_KEY:-}
+      HR_CLIENT_ID: ${HR_CLIENT_ID:-hr-client}
+      HR_CLIENT_SECRET_PROVIDER: ${HR_CLIENT_SECRET_PROVIDER:-ENVIRONMENT}
+      HR_CLIENT_SECRET_REF: ${HR_CLIENT_SECRET_REF:-HR_CLIENT_SECRET}
+      HR_CLIENT_SECRET: ${HR_CLIENT_SECRET:-}
+      HR_REDIRECT_URI: ${HR_REDIRECT_URI:?HR_REDIRECT_URI must be set}
+      HR_POST_LOGOUT_REDIRECT_URI: ${HR_POST_LOGOUT_REDIRECT_URI:?HR_POST_LOGOUT_REDIRECT_URI must be set}
+      HR_BACKCHANNEL_LOGOUT_URI: http://hr-server:8080/internal/oidc/backchannel-logout
+      APPROVAL_CLIENT_ID: ${APPROVAL_CLIENT_ID:-approval-client}
+      APPROVAL_CLIENT_SECRET_PROVIDER: ${APPROVAL_CLIENT_SECRET_PROVIDER:-ENVIRONMENT}
+      APPROVAL_CLIENT_SECRET_REF: ${APPROVAL_CLIENT_SECRET_REF:-APPROVAL_CLIENT_SECRET}
+      APPROVAL_CLIENT_SECRET: ${APPROVAL_CLIENT_SECRET:-}
+      APPROVAL_REDIRECT_URI: ${APPROVAL_REDIRECT_URI:?APPROVAL_REDIRECT_URI must be set}
+      APPROVAL_POST_LOGOUT_REDIRECT_URI: ${APPROVAL_POST_LOGOUT_REDIRECT_URI:?APPROVAL_POST_LOGOUT_REDIRECT_URI must be set}
+      APPROVAL_BACKCHANNEL_LOGOUT_URI: http://approval-server:8080/internal/oidc/backchannel-logout
+      ADMIN_CLIENT_ID: ${ADMIN_CLIENT_ID:-admin-client}
+      ADMIN_CLIENT_SECRET_PROVIDER: ${ADMIN_CLIENT_SECRET_PROVIDER:-ENVIRONMENT}
+      ADMIN_CLIENT_SECRET_REF: ${ADMIN_CLIENT_SECRET_REF:-ADMIN_CLIENT_SECRET}
+      ADMIN_CLIENT_SECRET: ${ADMIN_CLIENT_SECRET:-}
+      ADMIN_REDIRECT_URI: ${ADMIN_REDIRECT_URI:?ADMIN_REDIRECT_URI must be set}
+      ADMIN_POST_LOGOUT_REDIRECT_URI: ${ADMIN_POST_LOGOUT_REDIRECT_URI:?ADMIN_POST_LOGOUT_REDIRECT_URI must be set}
+      ADMIN_BACKCHANNEL_LOGOUT_URI: http://admin-server:8080/internal/oidc/backchannel-logout
+      ADMIN_INTERNAL_CLIENT_ID: ${ADMIN_INTERNAL_CLIENT_ID:-admin-server}
+      ADMIN_INTERNAL_SECRET_PROVIDER: ${ADMIN_INTERNAL_SECRET_PROVIDER:-ENVIRONMENT}
+      ADMIN_INTERNAL_SECRET_REF: ${ADMIN_INTERNAL_SECRET_REF:-ADMIN_INTERNAL_API_SECRET}
+      ADMIN_INTERNAL_API_SECRET: ${ADMIN_INTERNAL_API_SECRET:-}
+      TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-true}
+      TURNSTILE_SECRET_PROVIDER: ${TURNSTILE_SECRET_PROVIDER:-ENVIRONMENT}
+      TURNSTILE_SECRET_REF: ${TURNSTILE_SECRET_REF:-TURNSTILE_SECRET_KEY}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      GMAIL_SMTP_ENABLED: ${GMAIL_SMTP_ENABLED:-false}
+      GMAIL_SMTP_HOST: ${GMAIL_SMTP_HOST:-smtp.gmail.com}
+      GMAIL_SMTP_PORT: ${GMAIL_SMTP_PORT:-587}
+      GMAIL_SMTP_USERNAME: ${GMAIL_SMTP_USERNAME:-}
+      GMAIL_SMTP_FROM: ${GMAIL_SMTP_FROM:-}
+      GMAIL_PASSWORD_PROVIDER: ${GMAIL_PASSWORD_PROVIDER:-ENVIRONMENT}
+      GMAIL_PASSWORD_REF: ${GMAIL_PASSWORD_REF:-GMAIL_APP_PASSWORD}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      BOOTSTRAP_ADMIN_ENABLED: ${BOOTSTRAP_ADMIN_ENABLED:-false}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - public-network
+      - internal-network
+      - db-network
+
+  admin-server:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        SERVICE_NAME: admin-server
+    environment:
+      <<: *backend-environment
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:?AUTH_PUBLIC_URL must be set}
+      AUTH_INTERNAL_URL: http://auth-server:8080
+      ADMIN_CLIENT_ID: ${ADMIN_CLIENT_ID:-admin-client}
+      ADMIN_CLIENT_SECRET: ${ADMIN_CLIENT_SECRET:-}
+      ADMIN_CLIENT_SECRET_FILE: ${ADMIN_CLIENT_SECRET_FILE:-}
+      ADMIN_REDIRECT_URI: ${ADMIN_REDIRECT_URI:?ADMIN_REDIRECT_URI must be set}
+      ADMIN_POST_LOGOUT_REDIRECT_URI: ${ADMIN_POST_LOGOUT_REDIRECT_URI:?ADMIN_POST_LOGOUT_REDIRECT_URI must be set}
+      ADMIN_INTERNAL_URL: http://auth-server:8080/internal/admin/v1
+      ADMIN_INTERNAL_CLIENT_ID: ${ADMIN_INTERNAL_CLIENT_ID:-admin-server}
+      ADMIN_INTERNAL_API_SECRET: ${ADMIN_INTERNAL_API_SECRET:-}
+      ADMIN_INTERNAL_API_SECRET_FILE: ${ADMIN_INTERNAL_API_SECRET_FILE:-}
+    networks:
+      - public-network
+      - internal-network
+
+  hr-server:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        SERVICE_NAME: hr-server
+    environment:
+      <<: *backend-environment
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:?AUTH_PUBLIC_URL must be set}
+      AUTH_INTERNAL_URL: http://auth-server:8080
+      HR_CLIENT_ID: ${HR_CLIENT_ID:-hr-client}
+      HR_CLIENT_SECRET: ${HR_CLIENT_SECRET:-}
+      HR_CLIENT_SECRET_FILE: ${HR_CLIENT_SECRET_FILE:-}
+      HR_REDIRECT_URI: ${HR_REDIRECT_URI:?HR_REDIRECT_URI must be set}
+      HR_POST_LOGOUT_REDIRECT_URI: ${HR_POST_LOGOUT_REDIRECT_URI:?HR_POST_LOGOUT_REDIRECT_URI must be set}
+    networks:
+      - public-network
+
+  approval-server:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        SERVICE_NAME: approval-server
+    environment:
+      <<: *backend-environment
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:?AUTH_PUBLIC_URL must be set}
+      AUTH_INTERNAL_URL: http://auth-server:8080
+      APPROVAL_CLIENT_ID: ${APPROVAL_CLIENT_ID:-approval-client}
+      APPROVAL_CLIENT_SECRET: ${APPROVAL_CLIENT_SECRET:-}
+      APPROVAL_CLIENT_SECRET_FILE: ${APPROVAL_CLIENT_SECRET_FILE:-}
+      APPROVAL_REDIRECT_URI: ${APPROVAL_REDIRECT_URI:?APPROVAL_REDIRECT_URI must be set}
+      APPROVAL_POST_LOGOUT_REDIRECT_URI: ${APPROVAL_POST_LOGOUT_REDIRECT_URI:?APPROVAL_POST_LOGOUT_REDIRECT_URI must be set}
+    networks:
+      - public-network
+
+  auth-web:
+    <<: *frontend-common
+    build:
+      context: frontend/auth-web
+      dockerfile: ../../infra/docker/auth-web.Dockerfile
+    environment:
+      TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-true}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+    networks:
+      - public-network
+
+  admin-web:
+    <<: *frontend-common
+    build:
+      context: frontend/admin-web
+      dockerfile: ../../infra/docker/frontend.Dockerfile
+    networks:
+      - public-network
+
+  hr-web:
+    <<: *frontend-common
+    build:
+      context: frontend/hr-web
+      dockerfile: ../../infra/docker/frontend.Dockerfile
+    networks:
+      - public-network
+
+  approval-web:
+    <<: *frontend-common
+    build:
+      context: frontend/approval-web
+      dockerfile: ../../infra/docker/frontend.Dockerfile
+    networks:
+      - public-network
+
+networks:
+  public-network:
+    ipam:
+      config:
+        - subnet: ${PUBLIC_NETWORK_SUBNET:-172.30.10.0/24}
+  internal-network:
+    internal: true
+  db-network:
+    internal: true
+
+volumes:
+  postgres-data:

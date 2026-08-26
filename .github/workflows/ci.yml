@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and test all backend services
+        run: ./gradlew --no-daemon clean build
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [auth-web, admin-web, hr-web, approval-web]
+    defaults:
+      run:
+        working-directory: frontend/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate base and production Compose models
+        run: |
+          docker compose --env-file infra/test/phase8-prod-config.env config --quiet
+          docker compose --env-file infra/test/phase8-prod-config.env \
+            -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+      - name: Build all application images
+        run: docker compose --env-file infra/test/phase8-prod-config.env build
+      - name: Verify production Auth Web Turnstile runtime configuration
+        run: sh scripts/test/verify-phase8-turnstile-runtime.sh
