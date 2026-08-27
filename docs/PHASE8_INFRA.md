@@ -150,28 +150,40 @@ Secret은 테스트에 사용하지 않는다.
 
 - `.github/workflows/ci.yml`: Java 21 전체 Gradle Build/Test, Node 24 네 Frontend
   lint/build, Compose model 검증, 전체 image build를 수행한다.
-- `.github/workflows/release-deploy.yml`: 수동 실행 시 기본 `sha-<commit>` 또는
+- `.github/workflows/release-images.yml`: 수동 실행 시 기본 `sha-<commit>` 또는
   검증된 `vMAJOR.MINOR.PATCH` tag로 서비스별 image를 GHCR에 publish한다. 이미
-  존재하는 tag는 덮어쓰지 않고 실패시켜 immutable release 규칙을 지킨다.
-- 운영 deploy는 workflow input과 GitHub의 protected `production` environment
-  승인을 모두 통과해야 실행된다.
+  존재하는 tag는 덮어쓰지 않고 실패시켜 immutable release 규칙을 지키며 deploy는
+  수행하지 않는다.
+- `.github/workflows/deploy-existing-release.yml`: 입력된 기존 immutable tag의 8개
+  manifest와 digest를 먼저 검증한다. build/push 단계 없이 40자리 source commit을
+  exact checkout하고 GitHub의 protected `production` environment 승인을 통과한
+  경우에만 운영 Compose를 실행한다. `latest`는 거부한다.
 - deploy SSH host는 `today-sso.duckdns.org`, path는 `/opt/sso-lab`인지 workflow가
   검증한다. Host key는 `ssh-keyscan`으로 즉석 신뢰하지 않고
   `DEPLOY_KNOWN_HOSTS` secret의 pinned entry를 사용한다.
 
 필요한 GitHub production environment 값:
 
-- Variables: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH`
+- Variables: `DEPLOY_HOST=today-sso.duckdns.org`, `DEPLOY_USER=today`,
+  `DEPLOY_PATH=/opt/sso-lab`,
+  `DEPLOY_STATE_PATH=/home/today/.local/state/sso-lab`,
+  `TEST_CADDY_CONTAINER=sso-lab-test-caddy-1`
 - Secrets: `DEPLOY_SSH_PRIVATE_KEY`, `DEPLOY_KNOWN_HOSTS`
 - Required reviewers: 운영 변경을 승인할 관리자
 
-Workflow는 운영 서버의 Compose/Secret 파일을 생성하지 않는다. 승인된 방식으로
-운영 경로에 Phase 8 config가 먼저 배치되어 있어야 한다.
+Workflow는 운영 서버의 `.env` 또는 Secret 파일을 생성·복사·출력하지 않으며 기존
+서버 파일을 그대로 사용한다. 실행 전후 checksum만 서버의 권한 제한 state 경로에
+보존한다. manifest 확인에는 workflow 기본 `GITHUB_TOKEN`의 `packages: read` 권한을
+사용하므로 deploy SSH Secret과 GHCR credential의 책임도 분리된다.
 
 ## 9. Rollback
 
-배포 전에 현재 image tag와 컨테이너 상태를 기록한다. 애플리케이션 rollback은
-직전 immutable tag로 동일 Compose를 다시 실행한다.
+배포 전에 현재 source commit, image/container, volume/network 상태를 Git repository
+밖의 `DEPLOY_STATE_PATH/<run-id>`에 보존한다. 실패 로그 역시 GitHub log가 아닌 이
+권한 제한 경로에 남긴다. PostgreSQL 및 Caddy volume은 삭제하지 않는다.
+
+애플리케이션 rollback은 직전 immutable tag와 source commit으로 deploy-only
+workflow를 다시 실행한다.
 
 ```sh
 IMAGE_TAG=sha-<PREVIOUS_COMMIT> docker compose --env-file .env \

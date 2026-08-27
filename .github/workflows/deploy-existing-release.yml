@@ -1,0 +1,258 @@
+name: Deploy existing release
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Existing immutable GHCR tag (vMAJOR.MINOR.PATCH or sha-<commit>)
+        required: true
+        type: string
+      source_commit:
+        description: Full 40-character source commit used to build the release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  verify-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      image_tag: ${{ steps.release.outputs.image_tag }}
+      source_commit: ${{ steps.release.outputs.source_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate immutable release inputs
+        id: release
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.image_tag }}
+          REQUESTED_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo 'Production deployment must be dispatched from the main branch' >&2
+            exit 1
+          fi
+          if [[ "$REQUESTED_TAG" == latest ]]; then
+            echo 'latest is not an allowed production image tag' >&2
+            exit 1
+          fi
+          if [[ ! "$REQUESTED_TAG" =~ ^(sha-[0-9a-f]{40}|v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?)$ ]]; then
+            echo 'image_tag must be sha-<40 lowercase hex> or an immutable vMAJOR.MINOR.PATCH tag' >&2
+            exit 1
+          fi
+          if [[ ! "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'source_commit must be a full 40-character lowercase commit SHA' >&2
+            exit 1
+          fi
+          git cat-file -e "${REQUESTED_COMMIT}^{commit}"
+          git fetch --quiet origin main
+          git merge-base --is-ancestor "$REQUESTED_COMMIT" origin/main
+          {
+            echo "image_tag=$REQUESTED_TAG"
+            echo "source_commit=$REQUESTED_COMMIT"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify all release image manifests
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.image_tag }}
+        run: |
+          namespace=${GITHUB_REPOSITORY_OWNER,,}
+          images=(
+            auth-server admin-server hr-server approval-server
+            auth-web admin-web hr-web approval-web
+          )
+          {
+            echo '### Verified production image manifests'
+            echo
+            echo '| Image | Manifest digest |'
+            echo '|---|---|'
+          } >> "$GITHUB_STEP_SUMMARY"
+          for image in "${images[@]}"; do
+            image_ref="$REGISTRY/$namespace/sso-lab-$image:$RELEASE_TAG"
+            manifest=$(docker buildx imagetools inspect "$image_ref")
+            digest=$(awk '/^Digest:/ { print $2; exit }' <<< "$manifest")
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Unable to verify manifest digest for $image_ref" >&2
+              exit 1
+            fi
+            echo "| \`$image_ref\` | \`$digest\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  deploy-production:
+    needs: verify-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: production
+    steps:
+      - name: Validate protected deployment configuration
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_STATE_PATH: ${{ vars.DEPLOY_STATE_PATH }}
+          TEST_CADDY_CONTAINER: ${{ vars.TEST_CADDY_CONTAINER }}
+        run: |
+          test "$DEPLOY_HOST" = 'today-sso.duckdns.org'
+          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          test "$DEPLOY_PATH" = '/opt/sso-lab'
+          test "$DEPLOY_STATE_PATH" = "/home/$DEPLOY_USER/.local/state/sso-lab"
+          test "$TEST_CADDY_CONTAINER" = 'sso-lab-test-caddy-1'
+      - name: Install pinned SSH identity and host key
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: Deploy verified immutable release
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_STATE_PATH: ${{ vars.DEPLOY_STATE_PATH }}
+          TEST_CADDY_CONTAINER: ${{ vars.TEST_CADDY_CONTAINER }}
+          RELEASE_TAG: ${{ needs.verify-release.outputs.image_tag }}
+          SOURCE_COMMIT: ${{ needs.verify-release.outputs.source_commit }}
+        run: |
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
+            "$DEPLOY_PATH" "$RELEASE_TAG" "$SOURCE_COMMIT" \
+            "$DEPLOY_STATE_PATH" "$TEST_CADDY_CONTAINER" "$GITHUB_RUN_ID" <<'REMOTE_DEPLOY'
+          set -eu
+          umask 077
+
+          deploy_path=$1
+          image_tag=$2
+          source_commit=$3
+          state_root=$4
+          test_caddy_container=$5
+          run_id=$6
+
+          test "$deploy_path" = '/opt/sso-lab'
+          test "$test_caddy_container" = 'sso-lab-test-caddy-1'
+          case "$state_root" in
+            /home/*/.local/state/sso-lab) ;;
+            *) echo 'Invalid deployment state path' >&2; exit 1 ;;
+          esac
+          case "$image_tag" in
+            latest|'') echo 'Invalid deployment image tag' >&2; exit 1 ;;
+          esac
+          echo "$source_commit" | grep -Eq '^[0-9a-f]{40}$'
+
+          cd "$deploy_path"
+          test -f .env
+          test -d secrets
+          test -d .git
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+          install -d -m 700 "$state_root"
+          state_dir="$state_root/$run_id"
+          test ! -e "$state_dir"
+          install -d -m 700 "$state_dir"
+
+          previous_head=$(git rev-parse HEAD)
+          printf '%s\n' "$previous_head" > "$state_dir/previous-source-commit"
+          printf '%s\n' "$source_commit" > "$state_dir/requested-source-commit"
+          printf '%s\n' "$image_tag" > "$state_dir/requested-image-tag"
+          docker ps --format '{{.Names}} {{.Image}} {{.Status}}' > "$state_dir/docker-before.txt"
+          docker volume ls --format '{{.Name}}' > "$state_dir/volumes-before.txt"
+          docker network ls --format '{{.Name}}' > "$state_dir/networks-before.txt"
+          sha256sum .env > "$state_dir/env.sha256"
+          find secrets -maxdepth 1 -type f -print0 | sort -z | xargs -0 -r sha256sum \
+            > "$state_dir/secrets.sha256"
+
+          compose() {
+            IMAGE_TAG="$image_tag" docker compose --env-file .env \
+              -f docker-compose.yml -f docker-compose.prod.yml "$@"
+          }
+
+          test_caddy_was_running=false
+          rollback() {
+            exit_code=$?
+            trap - EXIT
+            set +e
+            printf 'failed (%s)\n' "$exit_code" > "$state_dir/status"
+            compose ps --all > "$state_dir/compose-failed.txt" 2>&1
+            compose logs --no-color > "$state_dir/compose-failed.log" 2>&1
+            if test "$test_caddy_was_running" = true; then
+              compose down > "$state_dir/compose-rollback.log" 2>&1
+              docker start "$test_caddy_container" > "$state_dir/test-caddy-restore.log" 2>&1
+            fi
+            git switch --detach "$previous_head" > "$state_dir/source-rollback.log" 2>&1
+            exit "$exit_code"
+          }
+          trap rollback EXIT
+
+          git fetch --quiet origin main
+          git cat-file -e "${source_commit}^{commit}"
+          git merge-base --is-ancestor "$source_commit" origin/main
+          git switch --detach "$source_commit"
+          test "$(git rev-parse HEAD)" = "$source_commit"
+          sha256sum --check --status "$state_dir/env.sha256"
+          if test -s "$state_dir/secrets.sha256"; then
+            sha256sum --check --status "$state_dir/secrets.sha256"
+          fi
+
+          compose config --quiet
+          compose config --images > "$state_dir/compose-images.txt"
+          for image in \
+            auth-server admin-server hr-server approval-server \
+            auth-web admin-web hr-web approval-web; do
+            expected="ghcr.io/relate16/sso-lab-$image:$image_tag"
+            grep -Fxq "$expected" "$state_dir/compose-images.txt"
+          done
+
+          compose pull > "$state_dir/pull.log" 2>&1
+
+          if test "$(docker inspect -f '{{.State.Running}}' "$test_caddy_container" 2>/dev/null || true)" = true; then
+            test_caddy_was_running=true
+            docker inspect "$test_caddy_container" > "$state_dir/test-caddy-before.json"
+            docker stop "$test_caddy_container" > "$state_dir/test-caddy-stop.log"
+          fi
+
+          compose up -d --wait --no-build > "$state_dir/up.log" 2>&1
+          compose ps --all > "$state_dir/compose-after.txt"
+          docker volume ls --format '{{.Name}}' > "$state_dir/volumes-after.txt"
+          printf 'succeeded\n' > "$state_dir/status"
+          trap - EXIT
+          REMOTE_DEPLOY
+      - name: Record deployment result
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.verify-release.outputs.image_tag }}
+          SOURCE_COMMIT: ${{ needs.verify-release.outputs.source_commit }}
+        run: |
+          {
+            echo '### Production deployment completed'
+            echo
+            echo "- Image tag: \`$RELEASE_TAG\`"
+            echo "- Source commit: \`$SOURCE_COMMIT\`"
+            echo "- Deployment state: retained on the server under the protected state path"
+          } >> "$GITHUB_STEP_SUMMARY"

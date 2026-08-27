@@ -311,3 +311,27 @@ source/config 배포와 최초 Compose 적용 단계에서 처리할 항목이�
 
 Phase 8 상태는 계속 `구현/테스트 완료, 운영 적용 승인 대기`이며 Phase 9는 시작하지
 않았다.
+
+## Deploy-only workflow 보완
+
+기존 `.github/workflows/release-deploy.yml`의 publish와 deploy 책임을 다음 두
+workflow로 분리했다.
+
+```text
+.github/workflows/release-images.yml
+.github/workflows/deploy-existing-release.yml
+```
+
+- `release-images.yml`: 새 immutable image의 build/publish만 담당하며 기존 tag는
+  계속 overwrite하지 않는다.
+- `deploy-existing-release.yml`: 기존 tag와 source commit을 입력받아 8개 GHCR
+  manifest/digest를 검증한 뒤 protected `production` environment 승인 후에만
+  `/opt/sso-lab`을 배포한다. image build/push 단계는 없다.
+- 운영 `.env`와 `secrets/`는 서버에 유지하고 GitHub로 전송하거나 출력하지 않는다.
+- 배포 전 상태는 repository 밖의 권한 제한 state 경로에 남긴다. 실패 시 source와
+  실행 중이던 테스트 Caddy를 복원하며 Production Compose를 내릴 때 volume을
+  삭제하지 않는다.
+
+이 보완 작업에서는 workflow와 문서만 로컬에서 수정했다. `/opt/sso-lab`, 테스트
+Caddy, Production container/network/volume 및 GitHub Environment는 변경하지 않았고
+실제 deploy도 실행하지 않았다.
