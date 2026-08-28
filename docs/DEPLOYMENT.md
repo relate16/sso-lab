@@ -23,10 +23,15 @@
 - `.github/workflows/deploy-existing-release.yml`은 이미 존재하는 8개 image manifest를
   먼저 확인한 뒤 protected `production` environment 승인 후에만 배포한다. image를
   build, push 또는 overwrite하는 단계는 없다.
-- deploy 입력은 immutable `image_tag`와 그 image를 만든 40자리 `source_commit`이다.
-  `latest`는 허용하지 않는다. 운영 Compose는 workflow 입력 tag를 강제로 사용한다.
+- deploy 입력은 immutable `image_tag`와 그 image를 만든 40자리
+  `image_source_commit`이다. `latest`는 허용하지 않는다. 배포할 Compose/Caddy source는
+  workflow를 실행한 `main`의 `GITHUB_SHA`로 별도 고정하며 운영 Compose는 입력 tag를
+  강제로 사용한다.
 - 운영 `.env`와 `secrets/`는 서버에 계속 남으며 GitHub runner로 복사하거나 출력하지
   않는다.
+- deploy workflow는 운영 Caddy를 중지하기 전에 12개 Secret의 runtime UID/GID
+  접근성과 암호화 키 형식을 검사한다. `oidc-private-key`는 Base64 PKCS#8 DER,
+  `oidc-public-key`는 일치하는 Base64 X.509 DER이어야 한다.
 
 GitHub Environment에는 다음 값을 설정한다.
 
@@ -50,6 +55,8 @@ workflow secret으로 두지 않는다.
    checkout한다.
 2. `.env.example`을 참고해 Git-ignored `/opt/sso-lab/.env`를 작성한다.
 3. `/opt/sso-lab/secrets`를 `0700`, 각 Secret 파일을 `0600`으로 생성한다.
+   file-backed Compose Secret은 Host numeric ownership을 유지하므로 `.env`의
+   `BACKEND_RUNTIME_UID`/`BACKEND_RUNTIME_GID`를 Secret 파일의 `%u:%g`와 일치시킨다.
 4. DNS 네 hostname이 VM 공인 주소를 가리키는지 확인한다.
 5. 공유기 port forwarding과 VM firewall에서 외부 80/443만 Caddy로 허용한다.
 6. Compose model을 render하고 Secret/URL/port 경계를 검토한다.
@@ -80,7 +87,7 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml 
 1. 현재 source commit, image/container, volume/network 상태와 DB backup 상태를
    기록한다.
 2. CI에서 test/build/image publish가 완료된 immutable tag를 선택한다.
-3. deploy-only workflow에 image tag와 source commit을 입력하고 production
+3. deploy-only workflow에 image tag와 image source commit을 입력하고 production
    environment approval을 거쳐 `pull` 후 `up -d --wait --no-build`한다.
 4. health/Flyway/OIDC/SSO/logout smoke test를 반복한다.
 
@@ -102,7 +109,7 @@ volume/network 목록과 실패 로그를 권한 제한 상태로 보존한다. 
 실패하고 테스트 Caddy가 실행 중이었던 경우 Production stack을 volume 삭제 없이
 내리고 테스트 Caddy를 다시 시작하며 source checkout도 변경 전 commit으로 되돌린다.
 
-애플리케이션 rollback은 직전 immutable image tag와 source commit을 deploy-only
+애플리케이션 rollback은 직전 immutable image tag와 image source commit을 deploy-only
 workflow에 다시 입력한다. Flyway migration이 이전 image와 비호환이면 image만
 되돌리지 말고 검증된 DB restore/runbook을 따른다. volume 삭제는 rollback이 아니다.
 구체 명령은 `docs/PHASE8_INFRA.md`를 참조한다.

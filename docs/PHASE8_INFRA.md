@@ -90,6 +90,11 @@ Caddy 앞에 Cloudflare Proxy 또는 별도 load balancer를 추가하려면 이
 
 실제 Secret 디렉터리는 Git에서 제외된 `${PRODUCTION_SECRET_DIR}`이고 기본값은
 `./secrets`이다. 파일 권한은 디렉터리 `0700`, 파일 `0600`을 권장한다.
+Docker Compose의 file-backed Secret은 Host 파일의 numeric UID/GID를 그대로 bind
+mount한다. 따라서 Production Backend는 `.env`의 `BACKEND_RUNTIME_UID`와
+`BACKEND_RUNTIME_GID`로 실행하며 두 값은 모든 Secret 파일의 `stat -c '%u:%g'`와
+일치해야 한다. UID/GID는 0이 아닌 전용 계정 값이어야 하며 권한을 `0644` 등으로
+완화해서 해결하지 않는다.
 
 | Docker Secret 파일 | 형식/소비자 |
 |---|---|
@@ -105,6 +110,12 @@ Caddy 앞에 Cloudflare Proxy 또는 별도 load balancer를 추가하려면 이
 | `admin-internal-api-secret` | 독립 internal API secret / auth/admin server |
 | `turnstile-secret` | Cloudflare server-side secret / auth-server |
 | `gmail-app-password` | Gmail app password / auth-server |
+
+배포 전 `validate-phase8-production-secrets.py`가 Secret 원문을 출력하지 않고
+권한/소유권, 대칭키 길이, OIDC private key의 PKCS#8 DER 형식, public key의
+X.509 DER 형식 및 RSA key pair 일치를 검증한다. PKCS#1 private DER은 OpenSSL의
+일반 RSA parser로 읽히더라도 Java `PKCS8EncodedKeySpec`과 호환되지 않으므로
+배포 전에 거부한다.
 
 Auth Server는 기존 `SecretProvider`의 `DOCKER_SECRET` 구현으로 파일을 읽는다.
 BFF는 공통 `SecretFileValue`를 통해 mount된 파일만 읽으며 inline 값과 파일을
@@ -155,9 +166,10 @@ Secret은 테스트에 사용하지 않는다.
   존재하는 tag는 덮어쓰지 않고 실패시켜 immutable release 규칙을 지키며 deploy는
   수행하지 않는다.
 - `.github/workflows/deploy-existing-release.yml`: 입력된 기존 immutable tag의 8개
-  manifest와 digest를 먼저 검증한다. build/push 단계 없이 40자리 source commit을
-  exact checkout하고 GitHub의 protected `production` environment 승인을 통과한
-  경우에만 운영 Compose를 실행한다. `latest`는 거부한다.
+  manifest와 digest를 먼저 검증한다. `image_source_commit`은 기존 image provenance로
+  기록하고, 운영 Compose/Caddy는 workflow를 실행한 `main`의 `GITHUB_SHA`를 exact
+  checkout한다. build/push 단계 없이 protected `production` environment 승인을
+  통과한 경우에만 운영 Compose를 실행하며 `latest`는 거부한다.
 - deploy SSH host는 `today-sso.duckdns.org`, path는 `/opt/sso-lab`인지 workflow가
   검증한다. Host key는 `ssh-keyscan`으로 즉석 신뢰하지 않고
   `DEPLOY_KNOWN_HOSTS` secret의 pinned entry를 사용한다.
@@ -182,7 +194,7 @@ Workflow는 운영 서버의 `.env` 또는 Secret 파일을 생성·복사·출�
 밖의 `DEPLOY_STATE_PATH/<run-id>`에 보존한다. 실패 로그 역시 GitHub log가 아닌 이
 권한 제한 경로에 남긴다. PostgreSQL 및 Caddy volume은 삭제하지 않는다.
 
-애플리케이션 rollback은 직전 immutable tag와 source commit으로 deploy-only
+애플리케이션 rollback은 직전 immutable tag와 image source commit으로 deploy-only
 workflow를 다시 실행한다.
 
 ```sh

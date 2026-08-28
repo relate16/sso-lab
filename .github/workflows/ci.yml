@@ -53,7 +53,13 @@ jobs:
           docker compose --env-file infra/test/phase8-prod-config.env config --quiet
           docker compose --env-file infra/test/phase8-prod-config.env \
             -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+      - name: Verify production Secret format preflight
+        run: sh scripts/test/verify-phase8-production-secret-formats.sh
       - name: Build all application images
         run: docker compose --env-file infra/test/phase8-prod-config.env build
+      - name: Verify production backend Secret mounts
+        run: sh scripts/test/verify-phase8-production-secret-mounts.sh
+      - name: Verify production backend health with file-backed Secrets
+        run: sh scripts/test/verify-phase8-production-backend-health.sh
       - name: Verify production Auth Web Turnstile runtime configuration
         run: sh scripts/test/verify-phase8-turnstile-runtime.sh

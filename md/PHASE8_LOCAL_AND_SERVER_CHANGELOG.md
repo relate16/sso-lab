@@ -6,6 +6,18 @@
 
 Ubuntu VM 테스트 경로: `/opt/sso-lab-test`
 
+## 2026-08-27 최초 Production 배포 실패 후속 조치
+
+- Compose의 Secret source/target 이름은 정확했으나 file-backed Secret bind mount가
+  Host의 `today:today` (`1000:1000`) 소유권을 유지하고, 기존 Backend image는 Alpine
+  `ssolab` (`100:101`)로 실행되어 mode `600` 파일을 읽을 수 없었다. Production
+  Compose가 `BACKEND_RUNTIME_UID:GID`의 non-root 사용자로 Backend를 실행하도록
+  보강했다.
+- 운영 OIDC private key는 값을 노출하지 않고 확인한 결과 Base64 PKCS#1 DER이었다.
+  Java loader가 요구하는 형식은 Base64 PKCS#8 DER이다. 테스트 Caddy 중지 전에 이
+  불일치를 차단하는 배포 preflight를 추가했다.
+- 이 수정 과정에서 운영 `.env`, Secret, 컨테이너 및 volume은 변경하지 않았다.
+
 이 문서는 Phase 8 구현 중 로컬 저장소와 테스트 전용 Ubuntu VM에서 변경하거나
 검증한 내용을 추적한다. 실제 배포 경로 `/opt/sso-lab`, 운영 `.env`, 운영
 `secrets/`, UFW, DDNS, SSH 및 VM 네트워크 설정은 변경하지 않았다.
@@ -335,3 +347,20 @@ workflow로 분리했다.
 이 보완 작업에서는 workflow와 문서만 로컬에서 수정했다. `/opt/sso-lab`, 테스트
 Caddy, Production container/network/volume 및 GitHub Environment는 변경하지 않았고
 실제 deploy도 실행하지 않았다.
+
+## 최초 Production deploy Secret mount 실패 보완
+
+최초 deploy에서 BFF 세 서비스가 Secret file unavailable로 종료됐다. Docker inspect와
+격리 one-off container로 확인한 결과 source/target 이름은 정확했으나 file-backed
+Compose Secret이 Host UID/GID `1000:1000`, mode `0600`을 유지한 반면 Backend image는
+UID/GID `100:101`의 `ssolab`으로 실행되어 읽기 권한이 없었다. auth-server의 12개
+Secret에도 동일한 잠재 문제가 확인됐다.
+
+Production Compose는 네 Backend를 `BACKEND_RUNTIME_UID:BACKEND_RUNTIME_GID`의
+비-root identity로 실행하도록 보완했다. Secret 권한은 `0600`으로 유지한다. 정적
+Compose 검증에 runtime identity와 BFF target 검사를 추가했고, 실제 dummy file-backed
+Secret을 네 Backend에 mount하여 읽기 가능 여부를 검사하는 CI 테스트를 추가했다.
+
+기존 `v1.0.0` image는 변경하지 않는다. deploy-only workflow는 기존 image를 만든
+`image_source_commit`과 Compose/Caddy를 가져오는 workflow `GITHUB_SHA`를 분리하여
+Compose-only 수정이 image provenance를 흐리지 않도록 보완했다.

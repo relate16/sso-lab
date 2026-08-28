@@ -30,6 +30,9 @@ for service in application_services:
     expected = f"ghcr.io/relate16/sso-lab-{service}:v1.0.0"
     assert services[service]["image"] == expected, (service, services[service]["image"])
 
+for service in ("auth-server", "admin-server", "hr-server", "approval-server"):
+    assert services[service].get("user") == "1000:1000", service
+
 for service in ("postgres",) + application_services:
     assert not services[service].get("ports"), service
 
@@ -80,6 +83,35 @@ assert "gmail-app-password" in auth_secrets
 for service in application_services[1:]:
     assert "turnstile-secret" not in secret_sources(service)
 
+expected_bff_secret_targets = {
+    "admin-server": {
+        "admin-client-secret": "ADMIN_CLIENT_SECRET",
+        "admin-internal-api-secret": "ADMIN_INTERNAL_API_SECRET",
+    },
+    "hr-server": {"hr-client-secret": "HR_CLIENT_SECRET"},
+    "approval-server": {"approval-client-secret": "APPROVAL_CLIENT_SECRET"},
+}
+for service, expected_targets in expected_bff_secret_targets.items():
+    actual_targets = {
+        item["source"]: item.get("target", item["source"])
+        for item in services[service].get("secrets", [])
+    }
+    assert actual_targets == expected_targets, (service, actual_targets)
+
+expected_secret_files = {
+    name: f"/tmp/sso-lab-phase8-secrets/{name}"
+    for name in (
+        "email-encryption-key", "email-lookup-hmac-key", "otp-hmac-key",
+        "totp-encryption-key", "oidc-private-key", "oidc-public-key",
+        "hr-client-secret", "approval-client-secret", "admin-client-secret",
+        "admin-internal-api-secret", "turnstile-secret", "gmail-app-password",
+    )
+}
+actual_secret_files = {
+    name: definition.get("file") for name, definition in model.get("secrets", {}).items()
+}
+assert actual_secret_files == expected_secret_files, actual_secret_files
+
 auth_environment = services["auth-server"].get("environment", {})
 expected_urls = {
     "AUTH_PUBLIC_URL": "https://auth.example.invalid",
@@ -102,6 +134,8 @@ print("production_port_boundary|pass")
 print("production_network_boundary|pass")
 print("production_postgres_volume_contract|pass")
 print("production_turnstile_secret_boundary|pass")
+print("production_backend_secret_runtime_identity|pass")
+print("production_bff_secret_mount_targets|pass")
 print("production_exact_https_oidc_urls|pass")
 PY
 

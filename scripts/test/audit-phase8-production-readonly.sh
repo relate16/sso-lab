@@ -103,9 +103,25 @@ for key in COMPOSE_PROJECT_NAME PRODUCTION_SECRET_DIR PUBLIC_NETWORK_SUBNET \
   CADDY_IPV4_ADDRESS TRUSTED_PROXY_CIDR SERVER_FORWARD_HEADERS_STRATEGY \
   SPRING_PROFILES_ACTIVE SESSION_COOKIE_SECURE AUTH_LOGIN_PAGE_URI \
   JWT_SIGNING_KEY_ID HR_CLIENT_ID APPROVAL_CLIENT_ID ADMIN_CLIENT_ID \
-  ADMIN_INTERNAL_CLIENT_ID EMAIL_ENCRYPTION_KEY_VERSION TOTP_ENCRYPTION_KEY_VERSION; do
+  ADMIN_INTERNAL_CLIENT_ID EMAIL_ENCRYPTION_KEY_VERSION TOTP_ENCRYPTION_KEY_VERSION \
+  BACKEND_RUNTIME_UID BACKEND_RUNTIME_GID; do
   presence "$key"
 done
+
+backend_runtime_uid=$(value_of BACKEND_RUNTIME_UID)
+backend_runtime_gid=$(value_of BACKEND_RUNTIME_GID)
+case "$backend_runtime_uid:$backend_runtime_gid" in
+  0:*|*:0|*[!0-9:]*|:|*:|:*)
+    printf 'env|BACKEND_RUNTIME_IDENTITY|invalid_or_root\n'
+    ;;
+  *)
+    printf 'env|BACKEND_RUNTIME_IDENTITY|non_root_numeric\n'
+    ;;
+esac
+
+secret_dir_mode=$(stat -c '%a' "$secret_dir")
+secret_dir_owner=$(stat -c '%U:%G' "$secret_dir")
+printf 'secret_dir|present|mode=%s|owner=%s\n' "$secret_dir_mode" "$secret_dir_owner"
 
 for name in email-encryption-key email-lookup-hmac-key otp-hmac-key \
   totp-encryption-key oidc-private-key oidc-public-key hr-client-secret \
@@ -115,7 +131,15 @@ for name in email-encryption-key email-lookup-hmac-key otp-hmac-key \
   if [ -f "$path" ]; then
     mode=$(stat -c '%a' "$path")
     owner=$(stat -c '%U:%G' "$path")
-    printf 'secret|%s|present|mode=%s|owner=%s\n' "$name" "$mode" "$owner"
+    uid=$(stat -c '%u' "$path")
+    gid=$(stat -c '%g' "$path")
+    if [ "$uid" = "$backend_runtime_uid" ] && [ "$gid" = "$backend_runtime_gid" ]; then
+      identity_match=true
+    else
+      identity_match=false
+    fi
+    printf 'secret|%s|present|mode=%s|owner=%s|runtime_identity_match=%s\n' \
+      "$name" "$mode" "$owner" "$identity_match"
   else
     printf 'secret|%s|missing\n' "$name"
   fi
@@ -131,6 +155,13 @@ for name in jwt-private-key.pem jwt-public-key.pem; do
     printf 'legacy_secret|%s|absent\n' "$name"
   fi
 done
+
+if python3 "$production_dir/scripts/test/validate-phase8-production-secrets.py" \
+  "$production_dir"; then
+  printf 'secret_format_preflight|pass\n'
+else
+  printf 'secret_format_preflight|fail\n'
+fi
 
 for file in docker-compose.yml docker-compose.prod.yml infra/caddy/Caddyfile infra/caddy/sites.caddy; do
   path="$production_dir/$file"

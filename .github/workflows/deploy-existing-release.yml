@@ -7,8 +7,8 @@ on:
         description: Existing immutable GHCR tag (vMAJOR.MINOR.PATCH or sha-<commit>)
         required: true
         type: string
-      source_commit:
-        description: Full 40-character source commit used to build the release
+      image_source_commit:
+        description: Full 40-character source commit used to build the existing images
         required: true
         type: string
 
@@ -29,7 +29,8 @@ jobs:
     timeout-minutes: 15
     outputs:
       image_tag: ${{ steps.release.outputs.image_tag }}
-      source_commit: ${{ steps.release.outputs.source_commit }}
+      image_source_commit: ${{ steps.release.outputs.image_source_commit }}
+      deployment_source_commit: ${{ steps.release.outputs.deployment_source_commit }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +40,7 @@ jobs:
         shell: bash
         env:
           REQUESTED_TAG: ${{ inputs.image_tag }}
-          REQUESTED_COMMIT: ${{ inputs.source_commit }}
+          REQUESTED_IMAGE_COMMIT: ${{ inputs.image_source_commit }}
         run: |
           if [[ "$GITHUB_REF" != refs/heads/main ]]; then
             echo 'Production deployment must be dispatched from the main branch' >&2
@@ -53,16 +54,23 @@ jobs:
             echo 'image_tag must be sha-<40 lowercase hex> or an immutable vMAJOR.MINOR.PATCH tag' >&2
             exit 1
           fi
-          if [[ ! "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
-            echo 'source_commit must be a full 40-character lowercase commit SHA' >&2
+          if [[ ! "$REQUESTED_IMAGE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'image_source_commit must be a full 40-character lowercase commit SHA' >&2
             exit 1
           fi
-          git cat-file -e "${REQUESTED_COMMIT}^{commit}"
+          if [[ "$REQUESTED_TAG" == sha-* && "$REQUESTED_TAG" != "sha-$REQUESTED_IMAGE_COMMIT" ]]; then
+            echo 'sha image_tag must match image_source_commit' >&2
+            exit 1
+          fi
           git fetch --quiet origin main
-          git merge-base --is-ancestor "$REQUESTED_COMMIT" origin/main
+          git cat-file -e "${REQUESTED_IMAGE_COMMIT}^{commit}"
+          git merge-base --is-ancestor "$REQUESTED_IMAGE_COMMIT" origin/main
+          git cat-file -e "${GITHUB_SHA}^{commit}"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
           {
             echo "image_tag=$REQUESTED_TAG"
-            echo "source_commit=$REQUESTED_COMMIT"
+            echo "image_source_commit=$REQUESTED_IMAGE_COMMIT"
+            echo "deployment_source_commit=$GITHUB_SHA"
           } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -139,21 +147,24 @@ jobs:
           DEPLOY_STATE_PATH: ${{ vars.DEPLOY_STATE_PATH }}
           TEST_CADDY_CONTAINER: ${{ vars.TEST_CADDY_CONTAINER }}
           RELEASE_TAG: ${{ needs.verify-release.outputs.image_tag }}
-          SOURCE_COMMIT: ${{ needs.verify-release.outputs.source_commit }}
+          IMAGE_SOURCE_COMMIT: ${{ needs.verify-release.outputs.image_source_commit }}
+          DEPLOYMENT_SOURCE_COMMIT: ${{ needs.verify-release.outputs.deployment_source_commit }}
         run: |
           ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
-            "$DEPLOY_PATH" "$RELEASE_TAG" "$SOURCE_COMMIT" \
+            "$DEPLOY_PATH" "$RELEASE_TAG" "$IMAGE_SOURCE_COMMIT" \
+            "$DEPLOYMENT_SOURCE_COMMIT" \
             "$DEPLOY_STATE_PATH" "$TEST_CADDY_CONTAINER" "$GITHUB_RUN_ID" <<'REMOTE_DEPLOY'
           set -eu
           umask 077
 
           deploy_path=$1
           image_tag=$2
-          source_commit=$3
-          state_root=$4
-          test_caddy_container=$5
-          run_id=$6
+          image_source_commit=$3
+          deployment_source_commit=$4
+          state_root=$5
+          test_caddy_container=$6
+          run_id=$7
 
           test "$deploy_path" = '/opt/sso-lab'
           test "$test_caddy_container" = 'sso-lab-test-caddy-1'
@@ -164,7 +175,8 @@ jobs:
           case "$image_tag" in
             latest|'') echo 'Invalid deployment image tag' >&2; exit 1 ;;
           esac
-          echo "$source_commit" | grep -Eq '^[0-9a-f]{40}$'
+          echo "$image_source_commit" | grep -Eq '^[0-9a-f]{40}$'
+          echo "$deployment_source_commit" | grep -Eq '^[0-9a-f]{40}$'
 
           cd "$deploy_path"
           test -f .env
@@ -179,7 +191,8 @@ jobs:
 
           previous_head=$(git rev-parse HEAD)
           printf '%s\n' "$previous_head" > "$state_dir/previous-source-commit"
-          printf '%s\n' "$source_commit" > "$state_dir/requested-source-commit"
+          printf '%s\n' "$image_source_commit" > "$state_dir/image-source-commit"
+          printf '%s\n' "$deployment_source_commit" > "$state_dir/requested-deployment-source-commit"
           printf '%s\n' "$image_tag" > "$state_dir/requested-image-tag"
           docker ps --format '{{.Names}} {{.Image}} {{.Status}}' > "$state_dir/docker-before.txt"
           docker volume ls --format '{{.Name}}' > "$state_dir/volumes-before.txt"
@@ -211,14 +224,19 @@ jobs:
           trap rollback EXIT
 
           git fetch --quiet origin main
-          git cat-file -e "${source_commit}^{commit}"
-          git merge-base --is-ancestor "$source_commit" origin/main
-          git switch --detach "$source_commit"
-          test "$(git rev-parse HEAD)" = "$source_commit"
+          git cat-file -e "${image_source_commit}^{commit}"
+          git merge-base --is-ancestor "$image_source_commit" origin/main
+          git cat-file -e "${deployment_source_commit}^{commit}"
+          git merge-base --is-ancestor "$deployment_source_commit" origin/main
+          git switch --detach "$deployment_source_commit"
+          test "$(git rev-parse HEAD)" = "$deployment_source_commit"
           sha256sum --check --status "$state_dir/env.sha256"
           if test -s "$state_dir/secrets.sha256"; then
             sha256sum --check --status "$state_dir/secrets.sha256"
           fi
+
+          python3 scripts/test/validate-phase8-production-secrets.py "$deploy_path" \
+            > "$state_dir/secret-preflight.txt"
 
           compose config --quiet
           compose config --images > "$state_dir/compose-images.txt"
@@ -247,12 +265,14 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ needs.verify-release.outputs.image_tag }}
-          SOURCE_COMMIT: ${{ needs.verify-release.outputs.source_commit }}
+          IMAGE_SOURCE_COMMIT: ${{ needs.verify-release.outputs.image_source_commit }}
+          DEPLOYMENT_SOURCE_COMMIT: ${{ needs.verify-release.outputs.deployment_source_commit }}
         run: |
           {
             echo '### Production deployment completed'
             echo
             echo "- Image tag: \`$RELEASE_TAG\`"
-            echo "- Source commit: \`$SOURCE_COMMIT\`"
+            echo "- Image source commit: \`$IMAGE_SOURCE_COMMIT\`"
+            echo "- Deployment source commit: \`$DEPLOYMENT_SOURCE_COMMIT\`"
             echo "- Deployment state: retained on the server under the protected state path"
           } >> "$GITHUB_STEP_SUMMARY"
