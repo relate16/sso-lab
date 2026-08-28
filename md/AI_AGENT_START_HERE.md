@@ -405,9 +405,16 @@ Phase 7은 보안 요구사항을 처음 적용하는 시점을 뜻하지 않는
 ```
 
 현재 Phase 8의 코드, 테스트 전용 Caddy/Compose, CI/CD 및 운영 절차 문서는
-구현되었고 `/opt/sso-lab-test` 검증을 완료했다. 실제 서비스별 hostname 확정,
-공개 DNS/80/443, public CA TLS 및 `/opt/sso-lab` 적용은 운영 변경 승인 전이므로
-미적용 상태이다. 승인 전에는 Phase 8을 최종 완료로 표시하지 않는다.
+구현되었고 `/opt/sso-lab-test` 검증을 완료했다. 이후 승인된 deploy-only workflow로
+`/opt/sso-lab` Production 배포를 완료했으며 네 DuckDNS hostname, Caddy 공개
+80/443, Let's Encrypt TLS, OIDC HTTPS endpoint, Docker network/volume 및 전체
+container health를 실제 환경에서 검증했다. Phase 8은 완료 상태이다.
+
+Production Docker Compose의 file-backed Secret은 Host 파일의 numeric UID/GID를
+유지하므로 네 Backend는 Host Secret 소유자와 일치하는 non-root `1000:1000`으로
+실행한다. OIDC private key는 Base64 PKCS#8 RSA DER이어야 하며 PKCS#1 DER은 배포 전
+preflight에서 거부한다. 이 보완은 Compose/deploy source 변경이므로 기존
+`v1.0.0` application image 8개를 재생성하지 않고 그대로 재사용했다.
 
 ## Phase 9 — Test / Docs
 
@@ -433,8 +440,8 @@ Phase 9는 전체 시스템 수준의 최종 검증과 문서 완성을 위한 P
 | Phase 5 — Admin | 완료 |
 | Phase 6 — Logout | 완료 |
 | Phase 7 — Security | 완료 |
-| Phase 8 — Infra | 구현/테스트 완료, 운영 적용 승인 대기 |
-| Phase 9 — Test / Docs | 미착수 |
+| Phase 8 — Infra | 완료 |
+| Phase 9 — Test / Docs | 미착수 — 계획 검토 및 승인 대기 |
 
 ---
 

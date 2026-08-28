@@ -19,17 +19,18 @@ Ubuntu VM 테스트 경로: `/opt/sso-lab-test`
 - 이 수정 과정에서 운영 `.env`, Secret, 컨테이너 및 volume은 변경하지 않았다.
 
 이 문서는 Phase 8 구현 중 로컬 저장소와 테스트 전용 Ubuntu VM에서 변경하거나
-검증한 내용을 추적한다. 실제 배포 경로 `/opt/sso-lab`, 운영 `.env`, 운영
-`secrets/`, UFW, DDNS, SSH 및 VM 네트워크 설정은 변경하지 않았다.
+검증한 내용과, 이후 별도 승인으로 수행한 Production 배포 결과를 추적한다. 초기
+구현/테스트 단계에서는 `/opt/sso-lab`을 변경하지 않았고, 운영 적용은 승인된
+deploy-only workflow로만 수행했다. 운영 `.env`와 Secret 값은 문서에 기록하지 않는다.
 
 ## 1. 현재 상태
 
 - Phase 1~7: 완료
-- Phase 8: 코드/테스트 환경 검증 완료, 운영 적용 승인 대기
-- Phase 9: 미착수
+- Phase 8: Production 배포 및 검증 완료
+- Phase 9: 미착수 — 계획 검토 및 승인 대기
 
-실제 서비스별 hostname, public DNS, 외부 80/443, Let's Encrypt certificate 및
-운영 Compose 적용은 승인 전이므로 미적용/미검증 상태다.
+실제 서비스별 hostname, public DNS, 외부 80/443, Let's Encrypt certificate,
+운영 Compose 및 전체 health를 Production에서 검증했다.
 
 ## 2. 로컬 변경 파일과 내용
 
@@ -134,8 +135,9 @@ md/AI_AGENT_START_HERE.md
 .gitignore
 ```
 
-START_HERE의 Phase 8 상태는 운영 적용 전이므로 완료가 아니라
-`구현/테스트 완료, 운영 적용 승인 대기`로 기록했다. Phase 9는 시작하지 않았다.
+당시 START_HERE의 Phase 8 상태는 운영 적용 전이므로
+`구현/테스트 완료, 운영 적용 승인 대기`로 기록했다. 이후 승인된 Production 배포와
+검증이 완료되어 현재 상태는 `완료`로 갱신했다. Phase 9는 시작하지 않았다.
 
 ## 3. 로컬 검증 결과
 
@@ -207,7 +209,7 @@ VM의 `127.0.0.1`에만 bind되어 외부에 공개되지 않았다.
 4. Ubuntu Host에 Java가 없었다. Host 패키지를 설치하지 않고 Java 21 build container와
    Docker socket으로 전체 Testcontainers 검증을 수행했다.
 
-## 7. 변경하지 않은 운영 항목
+## 7. 구현/테스트 단계에서 변경하지 않았던 운영 항목
 
 ```text
 /opt/sso-lab
@@ -220,7 +222,7 @@ SSH 설정
 운영 Docker Compose/container/volume
 ```
 
-## 8. 남은 승인 및 미검증
+## 8. 운영 적용 전 당시 남아 있던 승인 및 미검증
 
 - 실제 네 서비스 hostname 결정/등록
 - DNS가 현재 VM 공인 주소를 가리키는지 확인
@@ -231,7 +233,10 @@ SSH 설정
 - 실제 Gmail SMTP, 실제 Turnstile production key 검증
 - GitHub production environment/registry/SSH Secret 설정 및 실제 deploy/rollback
 
-위 항목은 운영 변경 승인을 받은 뒤에만 수행한다.
+위 목록은 운영 적용 전 시점의 기록이다. 이후 hostname/DNS, `/opt/sso-lab` 배포,
+public TLS, GitHub production environment 및 deploy/rollback 경계는 승인 후 완료했다.
+실제 Gmail 발송과 실제 Turnstile challenge의 최종 Browser E2E는 Phase 9 계획에서
+별도 취급한다.
 
 ## 9. 2026-08-26 운영 사전검증 보완
 
@@ -321,8 +326,8 @@ redirect/post-logout 및 Bootstrap 설정은 아직 누락되어 있다. 또한 
 않았으며 `sso-lab_postgres-data` 운영 volume도 생성되지 않았다. 이는 운영 승인 후
 source/config 배포와 최초 Compose 적용 단계에서 처리할 항목이다.
 
-Phase 8 상태는 계속 `구현/테스트 완료, 운영 적용 승인 대기`이며 Phase 9는 시작하지
-않았다.
+이 항목은 2026-08-26 사전검증 당시의 snapshot이다. 이후 디스크 확장, 운영 설정 준비,
+release/deploy workflow 적용과 Production 검증을 완료했다. Phase 9는 시작하지 않았다.
 
 ## Deploy-only workflow 보완
 
@@ -364,3 +369,49 @@ Secret을 네 Backend에 mount하여 읽기 가능 여부를 검사하는 CI 테
 기존 `v1.0.0` image는 변경하지 않는다. deploy-only workflow는 기존 image를 만든
 `image_source_commit`과 Compose/Caddy를 가져오는 workflow `GITHUB_SHA`를 분리하여
 Compose-only 수정이 image provenance를 흐리지 않도록 보완했다.
+
+## Production 재배포 및 Phase 8 완료
+
+최초 Production 배포 실패 후 다음 두 원인을 분리해 해결했다.
+
+1. file-backed Compose Secret은 Host UID/GID를 유지하지만 기존 image 내부 기본
+   사용자는 `100:101`이어서 mode `0600` Secret을 읽을 수 없었다.
+2. 운영 OIDC private key가 Base64 PKCS#1 DER이었으나 Java
+   `PKCS8EncodedKeySpec`은 Base64 PKCS#8 DER을 요구했다.
+
+Production Compose는 네 Backend를 non-root `1000:1000`으로 실행한다. 기존 RSA key
+pair를 재생성하지 않고 private key 형식만 PKCS#8 DER로 변환했으며, 원본은 권한 제한
+경로에 checksum과 함께 백업했다. 배포 전 preflight와 CI에서 runtime owner/mode,
+mount readability, PKCS#8/X.509 형식 및 key pair 일치를 검증한다.
+
+Phase 8 보완 commit과 성공 배포 provenance:
+
+```text
+deployment source: fad354887baf9a80ec7b7798e3dd1fe9f1835a4c
+image source:      f7e6f4a590a5d76b248c7954bb5938cb8d3dfec2
+image tag:         v1.0.0
+deployment state:  33136044357 (succeeded)
+```
+
+수정이 Compose/workflow/preflight 범위였으므로 기존 `v1.0.0` application image 8개는
+rebuild/republish/overwrite하지 않고 재사용했다.
+
+Production 배포 후 읽기 전용 검증 결과:
+
+- PostgreSQL, Caddy, Auth/Admin/HR/Approval Backend와 네 Frontend를 포함한 10개
+  container가 모두 `running/healthy`
+- Production Caddy만 Host 80/tcp, 443/tcp, 443/udp 사용
+- Backend 8080, PostgreSQL 5432, Caddy Admin 2019 Host 비공개
+- 테스트 Caddy 종료 상태로 Production과 포트 충돌 없음
+- 네 DuckDNS hostname HTTPS 200 및 HTTP 308 HTTPS 전환
+- Let's Encrypt TLS chain, hostname SAN, 유효기간 검증 성공
+- OIDC discovery/JWKS/authorization 및 invalid credential 오류 경로 정상
+- Auth Server 12개와 BFF Secret mount 모두 read-only/readable
+- Backend 로그의 Secret/PII/credential 원문과 심각 오류 0건
+- `/opt/sso-lab` worktree clean, deployment source commit exact match
+- `.env` 및 Production Secret checksum 불변, Git ignore 유지
+- 최초 실패 배포에서 보존한 PostgreSQL/Caddy volume을 성공 배포가 정상 재사용
+
+Master Specification의 Caddy, Domain, TLS, CI/CD, PC VM deploy 완료 조건을 모두
+충족했으므로 Phase 8 — Infra를 완료로 기록한다. Phase 9 — Test / Docs는 계획 승인
+전까지 시작하지 않는다.

@@ -1,8 +1,8 @@
 # Phase 8 Infrastructure
 
-이 문서는 Phase 8에서 구현한 운영 인프라 구조와 운영 적용 전 준비사항을
-정리한다. 실제 `/opt/sso-lab`, DNS, 방화벽 또는 운영 Secret에는 이 Phase의
-테스트 과정만으로 변경을 가하지 않는다.
+이 문서는 Phase 8에서 구현하고 Production에 적용한 운영 인프라 구조, 배포 절차와
+검증 결과를 정리한다. 실제 Secret 값은 기록하지 않으며 운영 변경은 승인된
+deploy-only workflow를 통해서만 수행한다.
 
 ## 1. 공개 경계
 
@@ -33,17 +33,20 @@ admin-server -> auth-server internal API
 
 ## 2. Domain과 URL
 
-운영은 다음 네 개의 서로 다른 DNS hostname을 요구한다. 실제 DuckDNS 이름은
-현재 프로젝트 문서에 확정되어 있지 않으므로 임의로 생성하지 않았다.
+운영은 다음 네 개의 서로 다른 DuckDNS hostname을 사용한다.
 
-| 환경 변수 | 역할 |
-|---|---|
-| `AUTH_HOSTNAME` | Auth Web, Passwordless API, OIDC Provider |
-| `ADMIN_HOSTNAME` | Admin Web/BFF |
-| `HR_HOSTNAME` | HR Web/BFF |
-| `APPROVAL_HOSTNAME` | Approval Web/BFF |
+| 환경 변수 | Production 값 | 역할 |
+|---|---|---|
+| `AUTH_HOSTNAME` | `today-sso-auth.duckdns.org` | Auth Web, Passwordless API, OIDC Provider |
+| `ADMIN_HOSTNAME` | `today-sso-admin.duckdns.org` | Admin Web/BFF |
+| `HR_HOSTNAME` | `today-sso-hr.duckdns.org` | HR Web/BFF |
+| `APPROVAL_HOSTNAME` | `today-sso-approval.duckdns.org` | Approval Web/BFF |
 
-각 hostname의 A/AAAA 레코드가 VM을 가리킨 뒤 다음 URL을 정확히 맞춘다.
+`today-sso.duckdns.org`는 SSH/서버 접근용이며 애플리케이션 service hostname으로
+사용하지 않는다. 공인 IPv4는 DHCP로 변경될 수 있으므로 설정과 문서에서 IP를
+서비스 식별자로 하드코딩하지 않는다.
+
+Production URL은 다음 관계를 정확히 유지한다.
 
 - `AUTH_PUBLIC_URL=https://${AUTH_HOSTNAME}`
 - `ADMIN_PUBLIC_URL=https://${ADMIN_HOSTNAME}`
@@ -60,9 +63,9 @@ redirect URI 및 post logout redirect URI가 모두 위 HTTPS URL과 정확히
 ## 3. TLS
 
 운영 Caddyfile은 명시적인 self-signed 인증서나 검증 우회를 사용하지 않는다.
-DNS와 외부 80/443 접근이 준비되면 Caddy의 Automatic HTTPS/ACME가 인증서를
-발급하고 HTTP를 HTTPS로 전환한다. 인증서와 Caddy 상태는 named volume
-`caddy-data`, `caddy-config`에 보존한다.
+Caddy Automatic HTTPS/ACME로 네 hostname의 Let's Encrypt 인증서를 발급했고 HTTP를
+HTTPS로 전환한다. 인증서 chain과 hostname SAN을 실제 외부 경로에서 검증했다.
+인증서와 Caddy 상태는 named volume `caddy-data`, `caddy-config`에 보존한다.
 
 테스트용 `Caddyfile.test`만 `local_certs`를 사용한다. 또한 테스트 Compose는
 80/443을 `127.0.0.1`에만 bind하므로 VM 외부에 테스트 인증서를 공개하지 않는다.
@@ -208,3 +211,74 @@ Caddy/TLS만 되돌릴 경우 Phase 8 적용 전 Compose 파일로 돌아가 Cad
 중지하고 기존 서비스 상태를 복원한다. PostgreSQL volume은 삭제하지 않는다.
 `docker compose down -v`, Secret 삭제, 방화벽/DNS 변경은 rollback 명령에
 포함하지 않는다.
+
+## 10. Phase 8 Production 완료 기록
+
+검증일: 2026-08-28
+
+Master Specification의 Phase 8 완료 범위인 Caddy, Domain, TLS, CI/CD, PC VM deploy를
+다음과 같이 실제 Production에서 검증했다.
+
+| 완료 기준 | Production 검증 결과 |
+|---|---|
+| Caddy / Reverse Proxy | Production Caddy healthy, 네 Frontend/BFF/Auth routing 정상, `/internal/**` 404 |
+| Domain | Auth/Admin/HR/Approval DuckDNS hostname 네 개 모두 외부 HTTPS 200 |
+| TLS | HTTP 308 HTTPS 전환, Let's Encrypt chain/SAN 검증 성공, 인증서 만료일 2026-11-26 |
+| CI/CD | protected production environment를 사용하는 deploy-only workflow 성공 |
+| PC VM deploy | PostgreSQL, Caddy, Backend/Frontend를 포함한 10개 container 모두 healthy |
+
+Production source와 image provenance는 분리해 기록한다.
+
+```text
+deployment source: fad354887baf9a80ec7b7798e3dd1fe9f1835a4c
+image source:      f7e6f4a590a5d76b248c7954bb5938cb8d3dfec2
+image tag:         v1.0.0
+```
+
+Compose/Caddy/deploy 검증만 보완됐고 application binary는 변경되지 않았으므로 기존
+`v1.0.0` image 8개를 rebuild하거나 overwrite하지 않고 그대로 재사용했다.
+
+### 10.1 Secret runtime 계약
+
+Docker Compose의 file-backed Secret은 Docker Swarm secret과 달리 Linux Host 파일을
+read-only bind mount하고 numeric UID/GID를 그대로 유지한다. Host Secret은
+`today:today` (`1000:1000`), mode `0600`이므로 Production의 Auth/Admin/HR/Approval
+Backend도 명시적으로 non-root `1000:1000`으로 실행한다. 권한을 `0644`로 완화하지
+않는다.
+
+실제 Production inspect에서 Auth Server의 12개 Secret과 각 BFF client/internal
+Secret이 `rw=false`, `readable=true`임을 확인했다.
+
+OIDC signing key 형식은 다음을 강제한다.
+
+```text
+oidc-private-key = single-line Base64 PKCS#8 RSA private DER
+oidc-public-key  = single-line Base64 X.509 SubjectPublicKeyInfo RSA DER
+RSA key size     = 2048 bits 이상
+```
+
+기존 RSA key pair는 유지하면서 private key container만 PKCS#1 DER에서 PKCS#8 DER로
+변환했다. 배포 preflight는 private/public key pair 일치, key size, Secret owner/mode와
+대칭키 형식을 값 노출 없이 검사한다.
+
+### 10.2 배포 후 검증 결과
+
+- Production container 10개 모두 `running/healthy`
+- Auth/Admin/HR/Approval Backend와 PostgreSQL/Caddy health 성공
+- Caddy만 Host `80/tcp`, `443/tcp`, `443/udp` publish
+- Backend `8080`, PostgreSQL `5432`, Caddy Admin `2019` Host 비공개
+- 테스트 Caddy는 종료되어 Production 포트와 충돌하지 않음
+- 네 hostname HTTPS 200, HTTP 308, TLS chain/SAN 성공
+- OIDC discovery의 issuer/authorization/token/JWKS/UserInfo URL exact match
+- JWKS RSA/RS256 key 및 `kid` 확인
+- invalid client Token 요청과 invalid Bearer UserInfo 요청 401
+- Production Backend 로그에서 Secret/PII/credential 원문 및 심각 오류 0건
+- `.env`와 Production Secret checksum은 배포 전후 불변이며 Git ignore 유지
+- 최초 실패 배포에서 보존된 PostgreSQL/Caddy named volume을 성공 배포가 재사용
+
+Caddy의 정상 ACME 계정 등록 INFO 로그에는 ACME 연락처 이메일이 기록된다. 이는
+Backend 개인정보/Secret 로그 노출은 아니지만, 엄격한 운영 로그 개인정보 정책에서는
+별도 ACME 운영용 alias 사용을 고려한다.
+
+위 검증을 기준으로 Phase 8 — Infra를 완료로 판정한다. Phase 9 — Test / Docs는 별도
+계획 승인 전까지 시작하지 않는다.
