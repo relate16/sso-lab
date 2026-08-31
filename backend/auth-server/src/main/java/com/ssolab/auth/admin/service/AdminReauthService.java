@@ -1,8 +1,8 @@
 package com.ssolab.auth.admin.service;
 
-import com.ssolab.auth.admin.audit.AdminAuditEvent;
-import com.ssolab.auth.admin.audit.AdminAuditService;
-import com.ssolab.auth.admin.audit.AdminAuditSource;
+import com.ssolab.auth.audit.AuditEvent;
+import com.ssolab.auth.audit.AuditService;
+import com.ssolab.auth.audit.AuditSource;
 import com.ssolab.auth.admin.reauth.AdminReauthMethod;
 import com.ssolab.auth.admin.reauth.AdminReauthProof;
 import com.ssolab.auth.admin.reauth.AdminReauthProofService;
@@ -31,7 +31,7 @@ public class AdminReauthService {
     private final AdminReauthProofService proofService;
     private final UserIdentityRepository userRepository;
     private final UserIdentityService identityService;
-    private final AdminAuditService auditService;
+    private final AuditService auditService;
 
     public AdminReauthService(
         AdminIdentityGuard guard,
@@ -40,7 +40,7 @@ public class AdminReauthService {
         AdminReauthProofService proofService,
         UserIdentityRepository userRepository,
         UserIdentityService identityService,
-        AdminAuditService auditService
+        AuditService auditService
     ) {
         this.guard = guard;
         this.emailOtpService = emailOtpService;
@@ -94,8 +94,8 @@ public class AdminReauthService {
         }
         AdminReauthProof proof = proofService.issue(actorId, method);
         auditService.record(
-            AdminAuditEvent.ADMIN_REAUTH_SUCCESS,
-            actorId, actorId, true, AdminAuditSource.ADMIN_WEB, traceId
+            AuditEvent.ADMIN_REAUTH_SUCCESS,
+            actorId, actorId, true, AuditSource.ADMIN_WEB, traceId
         );
         return new AdminDtos.ReauthProofResponse(proof.value(), proof.expiresAt());
     }
@@ -116,8 +116,8 @@ public class AdminReauthService {
         );
         String email = identityService.decryptEmail(target);
         auditService.record(
-            AdminAuditEvent.ADMIN_EMAIL_REVEALED,
-            actorId, targetId, true, AdminAuditSource.ADMIN_WEB, traceId
+            AuditEvent.ADMIN_EMAIL_REVEALED,
+            actorId, targetId, true, AuditSource.ADMIN_WEB, traceId
         );
         return new AdminDtos.EmailRevealResponse(email);
     }
@@ -139,8 +139,8 @@ public class AdminReauthService {
 
     private void failed(UUID actorId, String traceId) {
         auditService.record(
-            AdminAuditEvent.ADMIN_REAUTH_FAILED,
-            actorId, actorId, false, AdminAuditSource.ADMIN_WEB, traceId
+            AuditEvent.ADMIN_REAUTH_FAILED,
+            actorId, actorId, false, AuditSource.ADMIN_WEB, traceId
         );
     }
 }

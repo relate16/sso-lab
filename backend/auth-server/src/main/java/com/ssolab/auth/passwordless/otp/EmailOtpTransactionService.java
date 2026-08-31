@@ -1,6 +1,9 @@
 package com.ssolab.auth.passwordless.otp;
 
 import com.ssolab.auth.admin.bootstrap.BootstrapAdminService;
+import com.ssolab.auth.audit.AuditEvent;
+import com.ssolab.auth.audit.AuditService;
+import com.ssolab.auth.audit.AuditSource;
 import com.ssolab.auth.identity.crypto.EmailCipher;
 import com.ssolab.auth.identity.crypto.EmailLookupHasher;
 import com.ssolab.auth.identity.crypto.EmailNormalizer;
@@ -16,6 +19,9 @@ import com.ssolab.auth.identity.service.UserIdentityService;
 import com.ssolab.auth.passwordless.crypto.OtpCodeGenerator;
 import com.ssolab.auth.passwordless.crypto.OtpVerifier;
 import com.ssolab.auth.passwordless.crypto.SensitiveCode;
+import com.ssolab.auth.passwordless.emailchange.EmailChangeVerificationResult;
+import com.ssolab.auth.passwordless.emailchange.PendingEmailChangeEntity;
+import com.ssolab.auth.passwordless.emailchange.PendingEmailChangeRepository;
 import com.ssolab.auth.passwordless.mail.OtpMailPurpose;
 import com.ssolab.auth.systemconfig.IdentityPolicyConfig;
 import com.ssolab.auth.systemconfig.TypedSystemConfigService;
@@ -29,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmailOtpTransactionService {
 
     private final PendingRegistrationRepository pendingRepository;
+    private final PendingEmailChangeRepository pendingEmailChanges;
     private final EmailOtpChallengeRepository challengeRepository;
     private final UserIdentityRepository userRepository;
     private final UserIdentityService userIdentityService;
@@ -40,10 +47,12 @@ public class EmailOtpTransactionService {
     private final OtpVerifier otpVerifier;
     private final TypedSystemConfigService configService;
     private final BootstrapAdminService bootstrapAdminService;
+    private final AuditService auditService;
     private final Clock clock;
 
     public EmailOtpTransactionService(
         PendingRegistrationRepository pendingRepository,
+        PendingEmailChangeRepository pendingEmailChanges,
         EmailOtpChallengeRepository challengeRepository,
         UserIdentityRepository userRepository,
         UserIdentityService userIdentityService,
@@ -55,9 +64,11 @@ public class EmailOtpTransactionService {
         OtpVerifier otpVerifier,
         TypedSystemConfigService configService,
         BootstrapAdminService bootstrapAdminService,
+        AuditService auditService,
         Clock clock
     ) {
         this.pendingRepository = pendingRepository;
+        this.pendingEmailChanges = pendingEmailChanges;
         this.challengeRepository = challengeRepository;
         this.userRepository = userRepository;
         this.userIdentityService = userIdentityService;
@@ -69,6 +80,7 @@ public class EmailOtpTransactionService {
         this.otpVerifier = otpVerifier;
         this.configService = configService;
         this.bootstrapAdminService = bootstrapAdminService;
+        this.auditService = auditService;
         this.clock = clock;
     }
 
@@ -159,6 +171,69 @@ public class EmailOtpTransactionService {
     }
 
     @Transactional
+    public OtpDelivery issueEmailChange(UUID userId, String newEmail) {
+        UserIdentityEntity user = userRepository.findLockedById(userId)
+            .filter(candidate -> candidate.getStatus() == AccountStatus.ACTIVE)
+            .orElseThrow(() -> new IllegalArgumentException("identity is unavailable"));
+        String normalizedEmail = emailNormalizer.normalize(newEmail);
+        byte[] emailHash = emailLookupHasher.hash(normalizedEmail);
+        if (java.security.MessageDigest.isEqual(user.getEmailLookupHash(), emailHash)
+            || userRepository.existsByEmailLookupHash(emailHash)) {
+            throw new IdentityConflictException("email is unavailable");
+        }
+
+        Instant now = clock.instant();
+        pendingEmailChanges.findActiveLockedByUserId(userId).forEach(pending ->
+            pending.invalidate(now)
+        );
+        challengeRepository.findByUser_IdAndPurposeAndConsumedAtIsNull(
+            userId, OtpPurpose.EMAIL_CHANGE
+        ).forEach(challenge -> challenge.consume(now));
+        pendingEmailChanges.flush();
+        challengeRepository.flush();
+
+        IdentityPolicyConfig policy = configService.identityPolicy();
+        Instant expiresAt = now.plus(policy.emailOtpTtl());
+        PendingEmailChangeEntity pending = PendingEmailChangeEntity.create(
+            UUID.randomUUID(),
+            user,
+            emailCipher.encrypt(normalizedEmail),
+            emailHash,
+            now,
+            expiresAt
+        );
+        pendingEmailChanges.saveAndFlush(pending);
+
+        UUID challengeId = UUID.randomUUID();
+        try (SensitiveCode code = codeGenerator.generate()) {
+            char[] codeValue = code.copy();
+            try {
+                EmailOtpChallengeEntity challenge = EmailOtpChallengeEntity.emailChange(
+                    challengeId,
+                    user,
+                    pending,
+                    otpVerifier.hash(challengeId, OtpPurpose.EMAIL_CHANGE.name(), codeValue),
+                    policy.emailOtpMaxAttempts(),
+                    now,
+                    expiresAt,
+                    now.plus(policy.emailOtpResendInterval())
+                );
+                challengeRepository.saveAndFlush(challenge);
+                return new OtpDelivery(
+                    challengeId,
+                    OtpMailPurpose.EMAIL_CHANGE,
+                    normalizedEmail,
+                    SensitiveCode.of(codeValue),
+                    expiresAt,
+                    challenge.getResendAvailableAt()
+                );
+            } finally {
+                java.util.Arrays.fill(codeValue, '\0');
+            }
+        }
+    }
+
+    @Transactional
     public OtpDelivery issueAdminReauth(UUID actorId) {
         UserIdentityEntity actor = userRepository.findById(actorId)
             .filter(candidate -> candidate.getStatus() == AccountStatus.ACTIVE)
@@ -233,14 +308,15 @@ public class EmailOtpTransactionService {
                 if (challenge.getPendingRegistration() != null) {
                     challenge.getPendingRegistration().extendExpiry(expiresAt);
                 }
+                if (challenge.getPendingEmailChange() != null) {
+                    challenge.getPendingEmailChange().extendExpiry(expiresAt);
+                }
                 challengeRepository.saveAndFlush(challenge);
                 OtpMailPurpose mailPurpose = switch (expectedPurpose) {
                     case SIGNUP -> OtpMailPurpose.SIGNUP;
                     case LOGIN -> OtpMailPurpose.LOGIN;
                     case ADMIN_REAUTH -> OtpMailPurpose.ADMIN_REAUTH;
-                    case EMAIL_CHANGE -> throw new IllegalArgumentException(
-                        "email change resend is not implemented"
-                    );
+                    case EMAIL_CHANGE -> OtpMailPurpose.EMAIL_CHANGE;
                 };
                 return new OtpDelivery(
                     challengeId,
@@ -254,6 +330,19 @@ public class EmailOtpTransactionService {
                 java.util.Arrays.fill(codeValue, '\0');
             }
         }
+    }
+
+    @Transactional
+    public OtpDelivery resendEmailChange(UUID userId, UUID challengeId) {
+        EmailOtpChallengeEntity challenge = challengeRepository.findLockedById(challengeId)
+            .orElse(null);
+        if (challenge == null
+            || challenge.getPurpose() != OtpPurpose.EMAIL_CHANGE
+            || challenge.getUser() == null
+            || !challenge.getUser().getId().equals(userId)) {
+            return null;
+        }
+        return resend(challengeId, OtpPurpose.EMAIL_CHANGE);
     }
 
     @Transactional
@@ -330,6 +419,62 @@ public class EmailOtpTransactionService {
         return new LoginVerificationResult(OtpVerificationStatus.SUCCESS, user.getId());
     }
 
+    @Transactional
+    public EmailChangeVerificationResult verifyEmailChange(
+        UUID userId,
+        UUID challengeId,
+        char[] candidate,
+        String traceId
+    ) {
+        EmailOtpChallengeEntity challenge = challengeRepository.findLockedById(challengeId)
+            .orElse(null);
+        OtpVerificationStatus status = verify(challenge, OtpPurpose.EMAIL_CHANGE, candidate);
+        if (status != OtpVerificationStatus.SUCCESS) {
+            return EmailChangeVerificationResult.failed(status);
+        }
+        PendingEmailChangeEntity pending = challenge.getPendingEmailChange();
+        Instant now = clock.instant();
+        if (challenge.getUser() == null
+            || !challenge.getUser().getId().equals(userId)
+            || pending == null
+            || !pending.getUser().getId().equals(userId)
+            || !pending.isUsableAt(now)) {
+            challenge.recordFailure(now);
+            challengeRepository.saveAndFlush(challenge);
+            return EmailChangeVerificationResult.failed(OtpVerificationStatus.ACCOUNT_UNAVAILABLE);
+        }
+
+        UserIdentityEntity user = userRepository.findLockedById(userId)
+            .filter(candidateUser -> candidateUser.getStatus() == AccountStatus.ACTIVE)
+            .orElse(null);
+        if (user == null) {
+            return EmailChangeVerificationResult.failed(OtpVerificationStatus.ACCOUNT_UNAVAILABLE);
+        }
+        byte[] lookupHash = pending.getEmailLookupHash();
+        if (userRepository.existsByEmailLookupHash(lookupHash)) {
+            throw new IdentityConflictException("email is unavailable");
+        }
+        user.changeEmail(pending.encryptedEmail(), lookupHash, now);
+        challenge.consume(now);
+        pending.consume(now);
+        try {
+            userRepository.saveAndFlush(user);
+            challengeRepository.saveAndFlush(challenge);
+            pendingEmailChanges.saveAndFlush(pending);
+        } catch (org.springframework.dao.DataIntegrityViolationException exception) {
+            throw new IdentityConflictException("email is unavailable", exception);
+        }
+        auditService.recordWithinTransaction(
+            AuditEvent.EMAIL_CHANGED,
+            userId,
+            userId,
+            true,
+            AuditSource.AUTH_WEB,
+            traceId
+        );
+        return new EmailChangeVerificationResult(OtpVerificationStatus.SUCCESS, userId);
+    }
+
     private OtpVerificationStatus verify(
         EmailOtpChallengeEntity challenge,
         OtpPurpose expectedPurpose,
@@ -363,6 +508,11 @@ public class EmailOtpTransactionService {
     private String recipient(EmailOtpChallengeEntity challenge) {
         if (challenge.getPendingRegistration() != null) {
             return emailCipher.decrypt(challenge.getPendingRegistration().encryptedEmail());
+        }
+        if (challenge.getPendingEmailChange() != null) {
+            return challenge.getPendingEmailChange().isUsableAt(clock.instant())
+                ? emailCipher.decrypt(challenge.getPendingEmailChange().encryptedEmail())
+                : null;
         }
         UserIdentityEntity user = challenge.getUser();
         if (user == null || user.getStatus() != AccountStatus.ACTIVE) {

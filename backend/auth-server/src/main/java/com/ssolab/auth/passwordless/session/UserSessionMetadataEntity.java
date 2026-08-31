@@ -89,6 +89,11 @@ public class UserSessionMetadataEntity {
         invalidatedAt = Objects.requireNonNull(now);
     }
 
+    public void markReauthenticated(Instant now) {
+        reauthenticatedAt = Objects.requireNonNull(now);
+        lastAccessedAt = now;
+    }
+
     public String getSessionId() {
         return sessionId;
     }

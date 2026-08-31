@@ -44,6 +44,7 @@ public class GmailSmtpVerificationMailSender implements VerificationMailSender {
         return switch (purpose) {
             case SIGNUP -> "[SSO Lab] 회원가입 인증 코드";
             case LOGIN -> "[SSO Lab] 로그인 인증 코드";
+            case EMAIL_CHANGE -> "[SSO Lab] 이메일 변경 인증 코드";
             case ADMIN_REAUTH -> "[SSO Lab] 관리자 재인증 코드";
         };
     }

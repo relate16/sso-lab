@@ -1,7 +1,18 @@
 package com.ssolab.auth.oidc.logout;
 
+import com.ssolab.auth.admin.bootstrap.BootstrapAdminStateRepository;
+import com.ssolab.auth.audit.AuditEvent;
+import com.ssolab.auth.audit.AuditService;
+import com.ssolab.auth.audit.AuditSource;
+import com.ssolab.auth.identity.model.AccountStatus;
+import com.ssolab.auth.identity.model.RoleName;
+import com.ssolab.auth.identity.repository.UserIdentityRepository;
+import com.ssolab.auth.identity.service.IdentityConflictException;
+import com.ssolab.auth.identity.service.IdentityNotFoundException;
+import com.ssolab.auth.passwordless.otp.PendingRegistrationRepository;
 import com.ssolab.auth.passwordless.session.UserSessionMetadataRepository;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
@@ -14,12 +25,26 @@ class LogoutStateService {
     private final UserSessionMetadataRepository sessions;
     private final OidcClientSessionRepository clientSessions;
     private final JdbcTemplate jdbc;
+    private final UserIdentityRepository users;
+    private final PendingRegistrationRepository pendingRegistrations;
+    private final BootstrapAdminStateRepository bootstrapState;
+    private final AuditService audit;
     private final Clock clock;
 
     LogoutStateService(UserSessionMetadataRepository sessions,
-        OidcClientSessionRepository clientSessions, JdbcTemplate jdbc, Clock clock) {
+        OidcClientSessionRepository clientSessions,
+        JdbcTemplate jdbc,
+        UserIdentityRepository users,
+        PendingRegistrationRepository pendingRegistrations,
+        BootstrapAdminStateRepository bootstrapState,
+        AuditService audit,
+        Clock clock) {
         this.sessions = sessions; this.clientSessions = clientSessions;
-        this.jdbc = jdbc; this.clock = clock;
+        this.jdbc = jdbc; this.users = users;
+        this.pendingRegistrations = pendingRegistrations;
+        this.bootstrapState = bootstrapState;
+        this.audit = audit;
+        this.clock = clock;
     }
 
     @Transactional
@@ -63,6 +88,80 @@ class LogoutStateService {
             userId.toString());
         clientSessions.deleteAllInBatch(links);
         return batch(active.stream().map(value -> value.getSessionId()).toList(), links, userId);
+    }
+
+    @Transactional
+    LogoutBatch revokeForEmailChange(UUID userId, String currentSessionId) {
+        var otherSessions = sessions.findByUser_IdAndInvalidatedAtIsNull(userId).stream()
+            .filter(value -> !value.getSessionId().equals(currentSessionId))
+            .toList();
+        otherSessions.forEach(value -> value.invalidate(clock.instant()));
+        sessions.saveAllAndFlush(otherSessions);
+        List<OidcClientSessionEntity> links = clientSessions.findByUserId(userId);
+        jdbc.update("DELETE FROM auth.oauth2_authorization WHERE principal_name=?",
+            userId.toString());
+        clientSessions.deleteAllInBatch(links);
+        return batch(
+            otherSessions.stream().map(value -> value.getSessionId()).toList(),
+            links,
+            userId
+        );
+    }
+
+    @Transactional
+    LogoutBatch hardDelete(UUID userId, String traceId) {
+        var user = users.findLockedById(userId)
+            .filter(candidate -> candidate.getStatus() == AccountStatus.ACTIVE)
+            .orElseThrow(() -> new IdentityNotFoundException("identity is unavailable"));
+        if (user.hasRole(RoleName.ADMIN)
+            && users.countByRoleAndStatus(RoleName.ADMIN, AccountStatus.ACTIVE) <= 1) {
+            throw new IdentityConflictException("the last active ADMIN cannot be deleted");
+        }
+
+        var ownedSessions = sessions.findByUser_Id(userId);
+        List<OidcClientSessionEntity> links = clientSessions.findByUserId(userId);
+        LogoutBatch batch = batch(
+            ownedSessions.stream().map(value -> value.getSessionId()).toList(),
+            links,
+            userId
+        );
+
+        jdbc.update("DELETE FROM auth.oauth2_authorization WHERE principal_name=?",
+            userId.toString());
+        jdbc.update("DELETE FROM auth.oauth2_authorization_consent WHERE principal_name=?",
+            userId.toString());
+        pendingRegistrations.deletePersonalData(
+            user.getNormalizedUserId(), user.getEmailLookupHash()
+        );
+
+        bootstrapState.findLocked()
+            .filter(state -> userId.equals(state.getClaimedBy()))
+            .ifPresent(state -> {
+                byte[] tombstone = new byte[32];
+                new SecureRandom().nextBytes(tombstone);
+                try {
+                    state.unlinkDeletedClaim(tombstone, clock.instant());
+                    bootstrapState.saveAndFlush(state);
+                } finally {
+                    java.util.Arrays.fill(tombstone, (byte) 0);
+                }
+            });
+
+        audit.recordWithinTransaction(
+            AuditEvent.ACCOUNT_DELETED,
+            userId,
+            userId,
+            true,
+            AuditSource.AUTH_WEB,
+            traceId
+        );
+        jdbc.update("DELETE FROM auth.oidc_client_sessions WHERE user_id=?", userId);
+        jdbc.update("DELETE FROM auth.user_session_metadata WHERE user_id=?", userId);
+        int deleted = jdbc.update("DELETE FROM auth.users WHERE id=?", userId);
+        if (deleted != 1) {
+            throw new IdentityNotFoundException("identity is unavailable");
+        }
+        return batch;
     }
 
     private LogoutBatch batch(List<String> ids, List<OidcClientSessionEntity> links, UUID userId) {

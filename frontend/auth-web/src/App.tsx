@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
+import ProfilePanel from './ProfilePanel'
 
 declare global {
   interface Window {
@@ -130,6 +131,7 @@ function App() {
       <ul>{sessions.map(item => <li key={item.id}><strong>{item.device}{item.current ? ' · 현재' : ''}</strong><br />로그인 {new Date(item.loginAt).toLocaleString()} · 최근 활동 {new Date(item.lastActivityAt).toLocaleString()} · 만료 {new Date(item.expiresAt).toLocaleString()} <button type="button" disabled={busy} onClick={() => void sessionMutation(`/api/v1/me/sessions/${item.id}`, 'DELETE')}>종료</button></li>)}</ul>
       <button type="button" disabled={busy} onClick={() => void sessionMutation('/api/v1/me/logout-all', 'POST')}>모든 기기에서 로그아웃</button>
     </section>}
+    <ProfilePanel />
   </section></main>
 }
 

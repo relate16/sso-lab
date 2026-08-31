@@ -1,8 +1,8 @@
 package com.ssolab.auth.admin.bootstrap;
 
-import com.ssolab.auth.admin.audit.AdminAuditEvent;
-import com.ssolab.auth.admin.audit.AdminAuditService;
-import com.ssolab.auth.admin.audit.AdminAuditSource;
+import com.ssolab.auth.audit.AuditEvent;
+import com.ssolab.auth.audit.AuditService;
+import com.ssolab.auth.audit.AuditSource;
 import com.ssolab.auth.identity.crypto.EmailLookupHasher;
 import com.ssolab.auth.identity.crypto.EmailNormalizer;
 import com.ssolab.auth.identity.model.RoleEntity;
@@ -26,7 +26,7 @@ public class BootstrapAdminService {
     private final RoleRepository roleRepository;
     private final EmailNormalizer emailNormalizer;
     private final EmailLookupHasher emailLookupHasher;
-    private final AdminAuditService auditService;
+    private final AuditService auditService;
     private final Clock clock;
 
     public BootstrapAdminService(
@@ -35,7 +35,7 @@ public class BootstrapAdminService {
         RoleRepository roleRepository,
         EmailNormalizer emailNormalizer,
         EmailLookupHasher emailLookupHasher,
-        AdminAuditService auditService,
+        AuditService auditService,
         Clock clock
     ) {
         this.properties = properties;
@@ -61,6 +61,9 @@ public class BootstrapAdminService {
                 stateRepository.saveAndFlush(
                     BootstrapAdminStateEntity.pending(configuredHash, clock.instant())
                 );
+                return;
+            }
+            if (existing.isClaimed()) {
                 return;
             }
             if (!MessageDigest.isEqual(existing.getEmailLookupHash(), configuredHash)) {
@@ -93,8 +96,8 @@ public class BootstrapAdminService {
         state.claim(user.getId(), now);
         stateRepository.saveAndFlush(state);
         auditService.record(
-            AdminAuditEvent.BOOTSTRAP_ADMIN_CLAIMED,
-            user.getId(), user.getId(), true, AdminAuditSource.BOOTSTRAP, null
+            AuditEvent.BOOTSTRAP_ADMIN_CLAIMED,
+            user.getId(), user.getId(), true, AuditSource.BOOTSTRAP, null
         );
         return true;
     }

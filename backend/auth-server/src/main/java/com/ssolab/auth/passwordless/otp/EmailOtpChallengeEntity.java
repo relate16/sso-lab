@@ -1,6 +1,7 @@
 package com.ssolab.auth.passwordless.otp;
 
 import com.ssolab.auth.identity.model.UserIdentityEntity;
+import com.ssolab.auth.passwordless.emailchange.PendingEmailChangeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -32,6 +33,10 @@ public class EmailOtpChallengeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pending_registration_id")
     private PendingRegistrationEntity pendingRegistration;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pending_email_change_id")
+    private PendingEmailChangeEntity pendingEmailChange;
 
     @Column(name = "verifier_hash", nullable = false, columnDefinition = "bytea")
     private byte[] verifierHash;
@@ -70,7 +75,7 @@ public class EmailOtpChallengeEntity {
         Instant resendAvailableAt
     ) {
         return create(
-            id, OtpPurpose.SIGNUP, null, Objects.requireNonNull(pending), verifierHash,
+            id, OtpPurpose.SIGNUP, null, Objects.requireNonNull(pending), null, verifierHash,
             maxAttempts, now, expiresAt, resendAvailableAt
         );
     }
@@ -85,7 +90,7 @@ public class EmailOtpChallengeEntity {
         Instant resendAvailableAt
     ) {
         return create(
-            id, OtpPurpose.LOGIN, user, null, verifierHash,
+            id, OtpPurpose.LOGIN, user, null, null, verifierHash,
             maxAttempts, now, expiresAt, resendAvailableAt
         );
     }
@@ -100,8 +105,32 @@ public class EmailOtpChallengeEntity {
         Instant resendAvailableAt
     ) {
         return create(
-            id, OtpPurpose.ADMIN_REAUTH, Objects.requireNonNull(user), null, verifierHash,
+            id, OtpPurpose.ADMIN_REAUTH, Objects.requireNonNull(user), null, null, verifierHash,
             maxAttempts, now, expiresAt, resendAvailableAt
+        );
+    }
+
+    public static EmailOtpChallengeEntity emailChange(
+        UUID id,
+        UserIdentityEntity user,
+        PendingEmailChangeEntity pending,
+        byte[] verifierHash,
+        int maxAttempts,
+        Instant now,
+        Instant expiresAt,
+        Instant resendAvailableAt
+    ) {
+        return create(
+            id,
+            OtpPurpose.EMAIL_CHANGE,
+            Objects.requireNonNull(user),
+            null,
+            Objects.requireNonNull(pending),
+            verifierHash,
+            maxAttempts,
+            now,
+            expiresAt,
+            resendAvailableAt
         );
     }
 
@@ -110,6 +139,7 @@ public class EmailOtpChallengeEntity {
         OtpPurpose purpose,
         UserIdentityEntity user,
         PendingRegistrationEntity pending,
+        PendingEmailChangeEntity pendingEmailChange,
         byte[] verifierHash,
         int maxAttempts,
         Instant now,
@@ -121,6 +151,7 @@ public class EmailOtpChallengeEntity {
         challenge.purpose = Objects.requireNonNull(purpose);
         challenge.user = user;
         challenge.pendingRegistration = pending;
+        challenge.pendingEmailChange = pendingEmailChange;
         challenge.verifierHash = verifierHash.clone();
         challenge.failedAttempts = 0;
         challenge.maxAttempts = maxAttempts;
@@ -169,6 +200,10 @@ public class EmailOtpChallengeEntity {
 
     public PendingRegistrationEntity getPendingRegistration() {
         return pendingRegistration;
+    }
+
+    public PendingEmailChangeEntity getPendingEmailChange() {
+        return pendingEmailChange;
     }
 
     public byte[] getVerifierHash() {

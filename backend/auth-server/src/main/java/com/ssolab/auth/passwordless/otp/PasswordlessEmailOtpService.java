@@ -3,6 +3,7 @@ package com.ssolab.auth.passwordless.otp;
 import com.ssolab.auth.identity.service.CreateUserIdentityCommand;
 import com.ssolab.auth.passwordless.mail.OtpMailMessage;
 import com.ssolab.auth.passwordless.mail.VerificationMailSender;
+import com.ssolab.auth.passwordless.emailchange.EmailChangeVerificationResult;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -37,6 +38,27 @@ public class PasswordlessEmailOtpService {
 
     public OtpRequestResult resendLogin(UUID challengeId) {
         return resend(challengeId, OtpPurpose.LOGIN);
+    }
+
+    public OtpRequestResult startEmailChange(UUID userId, String newEmail) {
+        return dispatch(transactionService.issueEmailChange(userId, newEmail));
+    }
+
+    public OtpRequestResult resendEmailChange(UUID userId, UUID challengeId) {
+        OtpDelivery delivery = transactionService.resendEmailChange(userId, challengeId);
+        if (delivery == null) {
+            return OtpRequestResult.failed(OtpVerificationStatus.RESEND_TOO_SOON, challengeId);
+        }
+        return dispatch(delivery);
+    }
+
+    public EmailChangeVerificationResult verifyEmailChange(
+        UUID userId,
+        UUID challengeId,
+        char[] candidate,
+        String traceId
+    ) {
+        return transactionService.verifyEmailChange(userId, challengeId, candidate, traceId);
     }
 
     public SignupVerificationResult verifySignup(UUID challengeId, char[] candidate) {

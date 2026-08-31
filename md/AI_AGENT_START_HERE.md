@@ -441,7 +441,7 @@ Phase 9는 전체 시스템 수준의 최종 검증과 문서 완성을 위한 P
 | Phase 6 — Logout | 완료 |
 | Phase 7 — Security | 완료 |
 | Phase 8 — Infra | 완료 |
-| Phase 9 — Test / Docs | 미착수 — 계획 검토 및 승인 대기 |
+| Phase 9 — Test / Docs | 진행 중 — 선행 기능 결손 보완 검증 완료, 본 작업 재개 승인 대기 |
 
 ---
 

@@ -130,6 +130,24 @@ public class UserIdentityEntity {
         updatedAt = Objects.requireNonNull(now);
     }
 
+    public void changeUsername(String username, Instant now) {
+        this.username = Objects.requireNonNull(username);
+        updatedAt = Objects.requireNonNull(now);
+    }
+
+    public void changeEmail(
+        EncryptedEmail encryptedEmail,
+        byte[] emailLookupHash,
+        Instant now
+    ) {
+        Objects.requireNonNull(encryptedEmail);
+        emailCiphertext = encryptedEmail.ciphertext();
+        emailIv = encryptedEmail.iv();
+        emailKeyVersion = encryptedEmail.keyVersion();
+        this.emailLookupHash = Objects.requireNonNull(emailLookupHash).clone();
+        updatedAt = Objects.requireNonNull(now);
+    }
+
     public EncryptedEmail encryptedEmail() {
         return new EncryptedEmail(emailCiphertext, emailIv, emailKeyVersion);
     }

@@ -1,8 +1,8 @@
 package com.ssolab.auth.admin.service;
 
-import com.ssolab.auth.admin.audit.AdminAuditEvent;
-import com.ssolab.auth.admin.audit.AdminAuditService;
-import com.ssolab.auth.admin.audit.AdminAuditSource;
+import com.ssolab.auth.audit.AuditEvent;
+import com.ssolab.auth.audit.AuditService;
+import com.ssolab.auth.audit.AuditSource;
 import com.ssolab.auth.identity.model.AccountStatus;
 import com.ssolab.auth.identity.model.IdentityGroupEntity;
 import com.ssolab.auth.identity.model.RoleEntity;
@@ -31,7 +31,7 @@ public class AdminManagementService {
     private final IdentityGroupRepository groupRepository;
     private final GroupHierarchyService groupHierarchyService;
     private final AdminCredentialRevocationService revocationService;
-    private final AdminAuditService auditService;
+    private final AuditService auditService;
     private final Clock clock;
 
     public AdminManagementService(
@@ -41,7 +41,7 @@ public class AdminManagementService {
         IdentityGroupRepository groupRepository,
         GroupHierarchyService groupHierarchyService,
         AdminCredentialRevocationService revocationService,
-        AdminAuditService auditService,
+        AuditService auditService,
         Clock clock
     ) {
         this.guard = guard;
@@ -68,7 +68,7 @@ public class AdminManagementService {
         target.suspend(clock.instant());
         userRepository.saveAndFlush(target);
         revocationService.revokeAll(targetId);
-        audit(AdminAuditEvent.ACCOUNT_SUSPENDED, actorId, targetId, traceId);
+        audit(AuditEvent.ACCOUNT_SUSPENDED, actorId, targetId, traceId);
     }
 
     @Transactional
@@ -80,7 +80,7 @@ public class AdminManagementService {
         }
         target.activate(clock.instant());
         userRepository.saveAndFlush(target);
-        audit(AdminAuditEvent.ACCOUNT_RESUMED, actorId, targetId, traceId);
+        audit(AuditEvent.ACCOUNT_RESUMED, actorId, targetId, traceId);
     }
 
     @Transactional
@@ -110,11 +110,11 @@ public class AdminManagementService {
 
         for (RoleName removed : difference(current, desired)) {
             target.removeRole(requireRole(removed));
-            audit(AdminAuditEvent.ROLE_REMOVED, actorId, targetId, traceId);
+            audit(AuditEvent.ROLE_REMOVED, actorId, targetId, traceId);
         }
         for (RoleName added : difference(desired, current)) {
             target.addRole(requireRole(added));
-            audit(AdminAuditEvent.ROLE_ASSIGNED, actorId, targetId, traceId);
+            audit(AuditEvent.ROLE_ASSIGNED, actorId, targetId, traceId);
         }
         userRepository.saveAndFlush(target);
         revocationService.revokeAll(targetId);
@@ -136,11 +136,11 @@ public class AdminManagementService {
         Set<IdentityGroupEntity> current = new HashSet<>(target.getGroups());
         current.stream().filter(group -> !desired.contains(group)).forEach(group -> {
             target.removeGroup(group);
-            audit(AdminAuditEvent.GROUP_REMOVED, actorId, targetId, traceId);
+            audit(AuditEvent.GROUP_REMOVED, actorId, targetId, traceId);
         });
         desired.stream().filter(group -> !current.contains(group)).forEach(group -> {
             target.addGroup(group);
-            audit(AdminAuditEvent.GROUP_ASSIGNED, actorId, targetId, traceId);
+            audit(AuditEvent.GROUP_ASSIGNED, actorId, targetId, traceId);
         });
         userRepository.saveAndFlush(target);
     }
@@ -154,7 +154,7 @@ public class AdminManagementService {
     ) {
         guard.requireActiveAdmin(actorId);
         IdentityGroupEntity group = groupHierarchyService.createGroup(name, parentId);
-        audit(AdminAuditEvent.GROUP_CREATED, actorId, group.getId(), traceId);
+        audit(AuditEvent.GROUP_CREATED, actorId, group.getId(), traceId);
         return group.getId();
     }
 
@@ -162,21 +162,21 @@ public class AdminManagementService {
     public void renameGroup(UUID actorId, UUID groupId, String name, String traceId) {
         guard.requireActiveAdmin(actorId);
         groupHierarchyService.renameGroup(groupId, name);
-        audit(AdminAuditEvent.GROUP_UPDATED, actorId, groupId, traceId);
+        audit(AuditEvent.GROUP_UPDATED, actorId, groupId, traceId);
     }
 
     @Transactional
     public void moveGroup(UUID actorId, UUID groupId, UUID parentId, String traceId) {
         guard.requireActiveAdmin(actorId);
         groupHierarchyService.moveGroup(groupId, parentId);
-        audit(AdminAuditEvent.GROUP_MOVED, actorId, groupId, traceId);
+        audit(AuditEvent.GROUP_MOVED, actorId, groupId, traceId);
     }
 
     @Transactional
     public void deleteGroup(UUID actorId, UUID groupId, String traceId) {
         guard.requireActiveAdmin(actorId);
         groupHierarchyService.deleteGroup(groupId);
-        audit(AdminAuditEvent.GROUP_DELETED, actorId, groupId, traceId);
+        audit(AuditEvent.GROUP_DELETED, actorId, groupId, traceId);
     }
 
     private UserIdentityEntity requireLockedUser(UUID userId) {
@@ -208,13 +208,13 @@ public class AdminManagementService {
     }
 
     private void audit(
-        AdminAuditEvent event,
+        AuditEvent event,
         UUID actorId,
         UUID targetId,
         String traceId
     ) {
         auditService.record(
-            event, actorId, targetId, true, AdminAuditSource.ADMIN_WEB, traceId
+            event, actorId, targetId, true, AuditSource.ADMIN_WEB, traceId
         );
     }
 }

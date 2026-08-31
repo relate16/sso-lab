@@ -17,4 +17,6 @@ public interface UserSessionMetadataRepository
     Optional<UserSessionMetadataEntity> findLockedByPublicIdAndUser_Id(UUID publicId, UUID userId);
 
     List<UserSessionMetadataEntity> findByUser_IdAndInvalidatedAtIsNull(UUID userId);
+
+    List<UserSessionMetadataEntity> findByUser_Id(UUID userId);
 }

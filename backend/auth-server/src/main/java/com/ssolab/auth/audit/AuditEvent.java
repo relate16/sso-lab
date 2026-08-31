@@ -1,9 +1,10 @@
-package com.ssolab.auth.admin.audit;
+package com.ssolab.auth.audit;
 
-public enum AdminAuditEvent {
+public enum AuditEvent {
     BOOTSTRAP_ADMIN_CLAIMED,
     ACCOUNT_SUSPENDED,
     ACCOUNT_RESUMED,
+    ACCOUNT_DELETED,
     GROUP_CREATED,
     GROUP_UPDATED,
     GROUP_MOVED,
@@ -12,6 +13,8 @@ public enum AdminAuditEvent {
     GROUP_REMOVED,
     ROLE_ASSIGNED,
     ROLE_REMOVED,
+    USERNAME_CHANGED,
+    EMAIL_CHANGED,
     ADMIN_REAUTH_SUCCESS,
     ADMIN_REAUTH_FAILED,
     ADMIN_EMAIL_REVEALED

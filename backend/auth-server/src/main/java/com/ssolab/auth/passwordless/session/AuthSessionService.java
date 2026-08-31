@@ -133,6 +133,20 @@ public class AuthSessionService {
         repository.saveAllAndFlush(sessions);
     }
 
+    @Transactional
+    public Instant markReauthenticated(String sessionId, UUID userId) {
+        UserSessionMetadataEntity metadata = repository.findLockedBySessionId(sessionId)
+            .filter(candidate -> candidate.getUser().getId().equals(userId))
+            .filter(candidate -> candidate.getInvalidatedAt() == null)
+            .filter(candidate -> candidate.getScope() == SessionScope.NORMAL)
+            .filter(candidate -> candidate.getUser().getStatus() == AccountStatus.ACTIVE)
+            .orElseThrow(() -> new IllegalArgumentException("session is unavailable"));
+        Instant now = clock.instant();
+        metadata.markReauthenticated(now);
+        repository.saveAndFlush(metadata);
+        return now.plus(configService.identityPolicy().adminReauthTtl());
+    }
+
     @Transactional(readOnly = true)
     public boolean hasFreshReauthentication(String sessionId, UUID userId) {
         return repository.findById(sessionId)

@@ -54,6 +54,14 @@ public class BootstrapAdminStateEntity {
         updatedAt = now;
     }
 
+    public void unlinkDeletedClaim(byte[] tombstoneHash, Instant now) {
+        if (!isClaimed()) {
+            throw new IllegalStateException("unclaimed bootstrap state cannot be unlinked");
+        }
+        emailLookupHash = Objects.requireNonNull(tombstoneHash).clone();
+        updatedAt = Objects.requireNonNull(now);
+    }
+
     public byte[] getEmailLookupHash() { return emailLookupHash.clone(); }
     public UUID getClaimedBy() { return claimedBy; }
     public Instant getClaimedAt() { return claimedAt; }

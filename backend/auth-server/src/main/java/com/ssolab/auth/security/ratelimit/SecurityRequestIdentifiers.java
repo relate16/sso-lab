@@ -45,4 +45,13 @@ public class SecurityRequestIdentifiers {
             return normalizedUserId + ":invalid-email";
         }
     }
+
+    public String email(String email) {
+        try {
+            byte[] lookupHash = emailLookupHasher.hash(emailNormalizer.normalize(email));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(lookupHash);
+        } catch (IllegalArgumentException exception) {
+            return "invalid-email";
+        }
+    }
 }

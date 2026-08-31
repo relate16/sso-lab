@@ -1,7 +1,7 @@
 package com.ssolab.auth.admin.service;
 
-import com.ssolab.auth.admin.audit.AdminAuditEntity;
-import com.ssolab.auth.admin.audit.AdminAuditService;
+import com.ssolab.auth.audit.AuditEntity;
+import com.ssolab.auth.audit.AuditService;
 import com.ssolab.auth.identity.model.IdentityGroupEntity;
 import com.ssolab.auth.identity.model.UserIdentityEntity;
 import com.ssolab.auth.identity.repository.IdentityGroupRepository;
@@ -26,7 +26,7 @@ public class AdminQueryService {
     private final IdentityGroupRepository groupRepository;
     private final UserIdentityService identityService;
     private final AdminEmailMasker emailMasker;
-    private final AdminAuditService auditService;
+    private final AuditService auditService;
 
     public AdminQueryService(
         AdminIdentityGuard guard,
@@ -34,7 +34,7 @@ public class AdminQueryService {
         IdentityGroupRepository groupRepository,
         UserIdentityService identityService,
         AdminEmailMasker emailMasker,
-        AdminAuditService auditService
+        AuditService auditService
     ) {
         this.guard = guard;
         this.userRepository = userRepository;
@@ -88,7 +88,7 @@ public class AdminQueryService {
         int size
     ) {
         guard.requireActiveAdmin(actorId);
-        Page<AdminAuditEntity> audits = auditService.findRecent(page, size);
+        Page<AuditEntity> audits = auditService.findRecent(page, size);
         return new AdminDtos.PageResponse<>(
             audits.stream().map(this::auditView).toList(),
             audits.getNumber(), audits.getSize(), audits.getTotalElements()
@@ -120,7 +120,7 @@ public class AdminQueryService {
         );
     }
 
-    private AdminDtos.AuditView auditView(AdminAuditEntity audit) {
+    private AdminDtos.AuditView auditView(AuditEntity audit) {
         return new AdminDtos.AuditView(
             audit.getId(), audit.getEvent().name(), audit.getActorId(), audit.getTargetId(),
             audit.isSuccess(), audit.getSource().name(), audit.getTraceId(), audit.getOccurredAt()

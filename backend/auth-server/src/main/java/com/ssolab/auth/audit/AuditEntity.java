@@ -1,4 +1,4 @@
-package com.ssolab.auth.admin.audit;
+package com.ssolab.auth.audit;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,16 +10,16 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-@Entity(name = "AdminAudit")
+@Entity(name = "Audit")
 @Table(name = "audit_logs", schema = "auth")
-public class AdminAuditEntity {
+public class AuditEntity {
 
     @Id
     private UUID id;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 50)
-    private AdminAuditEvent event;
+    private AuditEvent event;
 
     @Column(name = "actor_id")
     private UUID actorId;
@@ -32,7 +32,7 @@ public class AdminAuditEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private AdminAuditSource source;
+    private AuditSource source;
 
     @Column(name = "trace_id", length = 100)
     private String traceId;
@@ -40,19 +40,19 @@ public class AdminAuditEntity {
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
-    protected AdminAuditEntity() {
+    protected AuditEntity() {
     }
 
-    public static AdminAuditEntity create(
-        AdminAuditEvent event,
+    public static AuditEntity create(
+        AuditEvent event,
         UUID actorId,
         UUID targetId,
         boolean success,
-        AdminAuditSource source,
+        AuditSource source,
         String traceId,
         Instant occurredAt
     ) {
-        AdminAuditEntity audit = new AdminAuditEntity();
+        AuditEntity audit = new AuditEntity();
         audit.id = UUID.randomUUID();
         audit.event = Objects.requireNonNull(event);
         audit.actorId = actorId;
@@ -65,11 +65,11 @@ public class AdminAuditEntity {
     }
 
     public UUID getId() { return id; }
-    public AdminAuditEvent getEvent() { return event; }
+    public AuditEvent getEvent() { return event; }
     public UUID getActorId() { return actorId; }
     public UUID getTargetId() { return targetId; }
     public boolean isSuccess() { return success; }
-    public AdminAuditSource getSource() { return source; }
+    public AuditSource getSource() { return source; }
     public String getTraceId() { return traceId; }
     public Instant getOccurredAt() { return occurredAt; }
 }

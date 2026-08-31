@@ -31,6 +31,14 @@ public class LogoutCoordinator {
         complete(state.revokeAll(userId), currentSessionId);
     }
 
+    public void revokeForEmailChange(UUID userId, String currentSessionId) {
+        complete(state.revokeForEmailChange(userId, currentSessionId), currentSessionId);
+    }
+
+    public void hardDelete(UUID userId, String traceId) {
+        complete(state.hardDelete(userId, traceId), null);
+    }
+
     private void complete(LogoutBatch batch, String currentSessionId) {
         batch.authSessionIds().stream()
             .filter(id -> currentSessionId == null || !currentSessionId.equals(id))
