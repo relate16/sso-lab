@@ -1,19 +1,13 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { adminJson, adminMutation, type Csrf } from './api'
 
 type Session = { authenticated: boolean; name?: string; username?: string; roles?: string[]; acr?: string }
 type Group = { id: string; name: string; parentId: string | null; fullPath: string; memberCount: number }
 type User = { id: string; userId: string; username: string; maskedEmail: string; status: string; roles: string[]; groups: Array<{ id: string; name: string; fullPath: string }> }
 type Audit = { id: string; event: string; actorId: string; targetId?: string; success: boolean; occurredAt: string }
 type Page<T> = { content: T[]; totalElements: number }
-type Csrf = { headerName: string; parameterName: string; token: string }
 type ReauthStart = { challengeId: string; totpAvailable: boolean }
 type ElevatedStatus = { elevated: boolean; expiresAt?: string }
-
-async function json<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, { credentials: 'include', ...init })
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
-  return response.status === 204 ? undefined as T : response.json() as Promise<T>
-}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -30,22 +24,21 @@ function App() {
 
   const refresh = useCallback(async () => {
     const [userPage, groupList, auditPage] = await Promise.all([
-      json<Page<User>>('/api/v1/admin/users'), json<Group[]>('/api/v1/admin/groups'),
-      json<Page<Audit>>('/api/v1/admin/audit-logs')
+      adminJson<Page<User>>('/api/v1/admin/users'), adminJson<Group[]>('/api/v1/admin/groups'),
+      adminJson<Page<Audit>>('/api/v1/admin/audit-logs')
     ])
     setUsers(userPage.content); setGroups(groupList); setAudits(auditPage.content)
     setSelected(current => current && userPage.content.find(user => user.id === current.id) || null)
   }, [])
 
   useEffect(() => {
-    Promise.all([json<Session>('/api/v1/session'), json<Csrf>('/api/v1/csrf'), json<ElevatedStatus>('/api/v1/admin/reauth/status')])
+    Promise.all([adminJson<Session>('/api/v1/session'), adminJson<Csrf>('/api/v1/csrf'), adminJson<ElevatedStatus>('/api/v1/admin/reauth/status')])
       .then(async ([activeSession, csrfToken, status]) => { setSession(activeSession); setCsrf(csrfToken); setElevated(status); await refresh() })
       .catch(() => setSession(null)).finally(() => setLoading(false))
   }, [refresh])
 
   const mutate = async <T,>(url: string, method: string, body?: unknown): Promise<T> => {
-    if (!csrf) throw new Error('CSRF token unavailable')
-    return json<T>(url, { method, headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token }, body: body === undefined ? undefined : JSON.stringify(body) })
+    return adminMutation<T>(csrf, url, method, body)
   }
   const act = async (label: string, action: () => Promise<unknown>) => {
     try { await action(); setNotice(`${label} 완료`); await refresh() }

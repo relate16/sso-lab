@@ -281,6 +281,42 @@ class OidcPostgresqlIntegrationTest {
         refresh("admin-client", OidcTestProperties.ADMIN_SECRET, rpTokens.refreshToken(), 400);
     }
 
+    @Test
+    void preservesOidcContinuationWhenAnonymousSpaProbesProtectedApis() throws Exception {
+        userIdentityService.createIdentity(new CreateUserIdentityCommand(
+            "browser.flow", "Browser Flow", "browser.flow@example.com"));
+        String verifier = "browser-flow-verifier-abcdefghijklmnopqrstuvwxyz-0123456789";
+
+        MvcResult authorization = mvc.perform(get("/oauth2/authorize")
+                .queryParam("response_type", "code").queryParam("client_id", "hr-client")
+                .queryParam("scope", "openid profile email")
+                .queryParam("redirect_uri", "http://localhost:8081/login/oauth2/code/hr-client")
+                .queryParam("state", "browser-state").queryParam("nonce", "browser-nonce")
+                .queryParam("code_challenge", challenge(verifier))
+                .queryParam("code_challenge_method", "S256"))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+        Cookie anonymousSession = authorization.getResponse().getCookie("SESSION");
+        assertThat(anonymousSession).isNotNull();
+
+        mvc.perform(get("/api/v1/me/profile").cookie(anonymousSession))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/me/sessions").cookie(anonymousSession))
+            .andExpect(status().isForbidden());
+
+        OtpRequestResult request = emailOtpService.sendLoginOtp("browser.flow");
+        CapturedOtpMail mail = mailSender.messages().stream()
+            .filter(candidate -> candidate.challengeId().equals(request.challengeId()))
+            .findFirst().orElseThrow();
+        String body = "{\"challengeId\":\"" + request.challengeId()
+            + "\",\"code\":\"" + mail.code() + "\"}";
+        mvc.perform(post("/api/v1/login/email/verify").cookie(anonymousSession).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.continuationPath")
+                .value(org.hamcrest.Matchers.startsWith("/oauth2/authorize?")));
+    }
+
     private Cookie passwordlessLogin(String userId) throws Exception {
         OtpRequestResult request = emailOtpService.sendLoginOtp(userId);
         CapturedOtpMail mail = mailSender.messages().stream()

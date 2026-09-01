@@ -8,10 +8,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -65,13 +68,17 @@ public class PasswordlessSessionAuthenticationService {
             user.getId(), user.getUserId(), roles, scope, method,
             metadata.getCreatedAt(), session.getId()
         );
-        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        List<GrantedAuthority> authorities = new ArrayList<>();
         if (scope == SessionScope.NORMAL) {
             roles.forEach(role -> authorities.add(new SimpleGrantedAuthority("ROLE_" + role)));
             authorities.add(new SimpleGrantedAuthority("SCOPE_NORMAL"));
         } else {
             authorities.add(new SimpleGrantedAuthority("SCOPE_RECOVERY_ONLY"));
         }
+        authorities.add(FactorGrantedAuthority
+            .withFactor(method.name().toLowerCase(Locale.ROOT))
+            .issuedAt(metadata.getCreatedAt())
+            .build());
         Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
             principal, null, authorities
         );

@@ -1,16 +1,26 @@
-SSO Lab - Phase 1 Developer Setup
+SSO Lab Developer Setup - First Run Checklist
 
-1. Install Java 21 (the Gradle Wrapper downloads no application secrets).
-2. Install Node.js 24 LTS with npm.
-3. Install Docker Engine/Desktop with Docker Compose v2 for infrastructure tests.
-4. Copy .env.example to .env only on your local/VM environment.
-5. Replace every CHANGE_ME placeholder; never commit .env or secrets/.
-6. Run backend checks: gradlew.bat clean test build (Windows)
-7. In each frontend/*-web directory run: npm ci && npm run build
-8. Validate Compose: docker compose --env-file .env config
-9. Start Phase 1: docker compose --env-file .env up -d --build
-10. Check containers: docker compose ps
+1. Read md/AI_AGENT_START_HERE.md, then the Master Specification and environment docs in its order.
+2. Install Java 21, Node.js 24 LTS/npm, Docker Engine or Desktop, and Docker Compose v2.
+3. Verify: java -version, node --version, npm --version, docker version, docker compose version.
+4. Copy .env.example to a Git-ignored .env. Replace every CHANGE_ME value with local-only values.
+5. Never commit .env, .env.*, secrets/, PEM/private keys, OTP, tokens, email addresses, or credentials.
+6. For local Docker secrets, create a 0700 secrets directory and 0600 files described in docs/SECRET_MANAGEMENT.md.
+7. Keep production-like SESSION_COOKIE_SECURE=true. For plain HTTP local development only, explicitly use the local/test profile and its documented cookie setting.
+8. Disable real external calls locally: TURNSTILE_ENABLED=false and GMAIL_SMTP_ENABLED=false.
+9. Backend: gradlew.bat clean test on Windows or ./gradlew clean test on Linux. Docker is required to execute Testcontainers tests.
+10. In each frontend/*-web: npm ci, npm test, npm run lint, npm run build.
+11. Validate OpenAPI: python scripts/test/validate-openapi.py.
+12. Validate Compose: docker compose --env-file .env config. Never use production secrets in this command output.
+13. Start the local stack: docker compose --env-file .env up -d --build --wait.
+14. Verify all services with docker compose ps and the backend /actuator/health endpoints.
+15. Confirm Flyway V1-V7 in auth.flyway_schema_history and PostgreSQL has no host port binding.
+16. Set BOOTSTRAP_ADMIN_ENABLED=true and BOOTSTRAP_ADMIN_EMAIL only for the deliberate first-admin claim; disable it after claim.
+17. Complete signup with the configured local mail adapter, enroll TOTP, then test HR -> Approval SSO.
+18. Run isolated Browser E2E on Linux/Docker with scripts/test/run-phase9-e2e.sh; it uses test-only mail and clock support.
+19. Before sharing changes run git diff --check and the Secret/PII audit in docs/TEST_GUIDE.md.
 
-Phase 1 does not implement signup, OTP, TOTP, OIDC, Admin, or Caddy/TLS yet.
-The VM repository path is /opt/sso-lab. Prefer DuckDNS hostnames and never hardcode
-the VM's current DHCP public IPv4 address.
+Detailed instructions: docs/LOCAL_SETUP.md
+Architecture: docs/ARCHITECTURE.md
+Testing: docs/TEST_GUIDE.md
+Production: docs/VM_SETUP_GUIDE.md and docs/DEPLOYMENT.md

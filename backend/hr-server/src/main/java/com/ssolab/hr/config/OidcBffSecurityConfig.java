@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import com.ssolab.hr.logout.BffSessionRegistry;
 
@@ -83,6 +84,7 @@ public class OidcBffSecurityConfig {
             .csrf(csrf -> csrf.ignoringRequestMatchers(request ->
                 "POST".equals(request.getMethod())
                     && "/internal/oidc/backchannel-logout".equals(request.getServletPath())))
+            .requestCache(cache -> cache.requestCache(new NullRequestCache()))
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable);
         SecurityHeaders.apply(http);

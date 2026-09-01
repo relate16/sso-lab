@@ -1,0 +1,26 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "SSO Lab Admin BFF API", "version": "1.0.0"},
+  "servers": [{"url": "https://{adminHostname}", "variables": {"adminHostname": {"default": "today-sso-admin.duckdns.org"}}}],
+  "security": [{"bffSession": []}],
+  "paths": {
+    "/api/v1/csrf": {"get": {"security": [], "responses": {"200": {"description": "CSRF token metadata"}}}},
+    "/api/v1/session": {"get": {"responses": {"200": {"description": "Validated ADMIN OIDC claims without tokens"}, "403": {"description": "ADMIN role and loa:1 required"}}}},
+    "/api/v1/admin/users": {"get": {"responses": {"200": {"description": "Paged masked user list"}}}},
+    "/api/v1/admin/users/{userId}": {"get": {"responses": {"200": {"description": "Masked user detail"}}}},
+    "/api/v1/admin/users/{userId}/suspend": {"post": {"responses": {"200": {"description": "User suspended"}}}},
+    "/api/v1/admin/users/{userId}/resume": {"post": {"responses": {"200": {"description": "User activated"}}}},
+    "/api/v1/admin/users/{userId}/roles": {"put": {"responses": {"200": {"description": "Roles replaced"}}}},
+    "/api/v1/admin/users/{userId}/groups": {"put": {"responses": {"200": {"description": "Groups replaced"}}}},
+    "/api/v1/admin/users/{userId}/email/reveal": {"post": {"responses": {"200": {"description": "Email revealed after fresh re-authentication"}, "401": {"description": "Re-authentication required"}}}},
+    "/api/v1/admin/groups": {"get": {"responses": {"200": {"description": "Group hierarchy"}}}, "post": {"responses": {"201": {"description": "Group created"}}}},
+    "/api/v1/admin/groups/{groupId}": {"patch": {"responses": {"200": {"description": "Group renamed"}}}, "delete": {"responses": {"200": {"description": "Group deleted"}}}},
+    "/api/v1/admin/groups/{groupId}/move": {"post": {"responses": {"200": {"description": "Group moved"}}}},
+    "/api/v1/admin/audit-logs": {"get": {"responses": {"200": {"description": "Redacted audit page"}}}},
+    "/api/v1/admin/reauth/email/start": {"post": {"responses": {"200": {"description": "Email challenge"}}}},
+    "/api/v1/admin/reauth/verify": {"post": {"responses": {"200": {"description": "Re-authentication proof established"}}}},
+    "/api/v1/admin/reauth/status": {"get": {"responses": {"200": {"description": "Current elevated-session status"}}}},
+    "/api/v1/logout": {"post": {"responses": {"302": {"description": "RP-Initiated Logout"}}}}
+  },
+  "components": {"securitySchemes": {"bffSession": {"type": "apiKey", "in": "cookie", "name": "JSESSIONID"}}}
+}

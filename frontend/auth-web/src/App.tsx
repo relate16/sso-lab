@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import ProfilePanel from './ProfilePanel'
+import { csrfMutation } from './api'
 
 declare global {
   interface Window {
@@ -12,7 +13,6 @@ declare global {
   }
 }
 
-type Csrf = { headerName: string; token: string }
 type LoginResult = { authenticated: boolean; continuationPath?: string | null }
 type ManagedSession = { id: string; device: string; authenticationMethod: string; loginAt: string; lastActivityAt: string; expiresAt: string; current: boolean }
 
@@ -49,19 +49,6 @@ function Turnstile({ onToken }: { onToken: (token: string) => void }) {
     data-callback="ssoLabTurnstileCallback" data-expired-callback="ssoLabTurnstileExpired" />
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const csrfResponse = await fetch('/api/v1/csrf', { credentials: 'include' })
-  if (!csrfResponse.ok) throw new Error('CSRF 토큰을 가져오지 못했습니다.')
-  const csrf = await csrfResponse.json() as Csrf
-  const response = await fetch(path, {
-    method: 'POST', credentials: 'include',
-    headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) throw new Error('인증 요청을 처리하지 못했습니다.')
-  return response.json() as Promise<T>
-}
-
 function App() {
   const [method, setMethod] = useState<'EMAIL_OTP' | 'TOTP'>('EMAIL_OTP')
   const [userId, setUserId] = useState('')
@@ -79,10 +66,7 @@ function App() {
   async function sessionMutation(path: string, method: 'DELETE' | 'POST') {
     setBusy(true)
     try {
-      const csrfResponse = await fetch('/api/v1/csrf', { credentials: 'include' })
-      const csrf = await csrfResponse.json() as Csrf
-      const response = await fetch(path, { method, credentials: 'include', headers: { [csrf.headerName]: csrf.token } })
-      if (!response.ok) throw new Error('세션 종료 요청을 처리하지 못했습니다.')
+      await csrfMutation(path, method)
       await loadSessions(); if (sessions.find(item => item.current && path.endsWith(item.id)) || method === 'POST') window.location.assign('/')
     } catch (error) { setMessage(error instanceof Error ? error.message : '요청에 실패했습니다.') }
     finally { setBusy(false) }
@@ -91,7 +75,7 @@ function App() {
   async function sendEmailOtp() {
     setBusy(true)
     try {
-      const result = await postJson<{ challengeId: string }>('/api/v1/login/email/send', { userId, turnstileToken })
+      const result = await csrfMutation<{ challengeId: string }>('/api/v1/login/email/send', 'POST', { userId, turnstileToken })
       setChallengeId(result.challengeId)
       setTurnstileToken('')
       setMessage('등록된 이메일로 OTP를 보냈습니다. 코드는 저장하거나 로그에 남기지 않습니다.')
@@ -104,8 +88,8 @@ function App() {
     try {
       const path = method === 'EMAIL_OTP' ? '/api/v1/login/email/verify' : '/api/v1/login/totp/verify'
       const body = method === 'EMAIL_OTP' ? { challengeId, code } : { userId, code }
-      if (method === 'TOTP') await postJson('/api/v1/login/start', { turnstileToken })
-      const result = await postJson<LoginResult>(path, body)
+      if (method === 'TOTP') await csrfMutation('/api/v1/login/start', 'POST', { turnstileToken })
+      const result = await csrfMutation<LoginResult>(path, 'POST', body)
       if (result.authenticated) window.location.assign(result.continuationPath || '/')
     } catch (error) { setMessage(error instanceof Error ? error.message : '인증에 실패했습니다.') }
     finally { setCode(''); setBusy(false) }

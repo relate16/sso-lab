@@ -64,6 +64,10 @@ workflow secret으로 두지 않는다.
    기동한다.
 8. Flyway, health, TLS, OIDC discovery/JWKS, SSO/logout smoke test를 수행한다.
 
+현재 schema 기준은 V1~V7이다. V7은 Profile self-service의 pending email change와
+Hard Delete 정리를 위한 additive migration이다. 운영 적용 전 PostgreSQL logical backup과
+기존 `auth.flyway_schema_history`를 기록하고, migration 실패 시 volume을 삭제하지 않는다.
+
 실행 명령은 `docs/PHASE8_INFRA.md`의 Compose 실행 모델을 따른다. `down -v`는
 운영 절차에 사용하지 않는다.
 

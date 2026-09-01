@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 
 @Configuration
 public class FoundationSecurityConfig {
@@ -21,10 +22,12 @@ public class FoundationSecurityConfig {
         PasswordlessSessionValidationFilter sessionValidationFilter
     ) throws Exception {
         http
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/test-support/**"))
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/api/v1/csrf").permitAll()
                 .requestMatchers("/api/v1/signup/**", "/api/v1/login/**").permitAll()
+                .requestMatchers("/test-support/**").permitAll()
                 .requestMatchers("/api/v1/totp/recovery/start").permitAll()
                 .requestMatchers("/api/v1/totp/recovery/enroll/**")
                     .hasAuthority("SCOPE_RECOVERY_ONLY")
@@ -32,6 +35,7 @@ public class FoundationSecurityConfig {
                 .anyRequest().denyAll())
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
+            .requestCache(cache -> cache.requestCache(new NullRequestCache()))
             .addFilterAfter(sessionValidationFilter, SecurityContextHolderFilter.class);
 
         SecurityHeaders.apply(http);

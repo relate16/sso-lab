@@ -1,0 +1,92 @@
+services:
+  auth-server:
+    restart: "no"
+    environment:
+      SSO_TEST_SUPPORT_ENABLED: "true"
+      TEST_SUPPORT_API_KEY: ${TEST_SUPPORT_API_KEY:?TEST_SUPPORT_API_KEY must be set}
+
+  admin-server:
+    restart: "no"
+
+  hr-server:
+    restart: "no"
+
+  approval-server:
+    restart: "no"
+
+  auth-web:
+    restart: "no"
+
+  admin-web:
+    restart: "no"
+
+  hr-web:
+    restart: "no"
+
+  approval-web:
+    restart: "no"
+
+  postgres:
+    restart: "no"
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: "no"
+    expose:
+      - "443"
+    environment:
+      ACME_EMAIL: e2e@example.invalid
+      AUTH_HOSTNAME: ${AUTH_HOSTNAME:?AUTH_HOSTNAME must be set}
+      ADMIN_HOSTNAME: ${ADMIN_HOSTNAME:?ADMIN_HOSTNAME must be set}
+      HR_HOSTNAME: ${HR_HOSTNAME:?HR_HOSTNAME must be set}
+      APPROVAL_HOSTNAME: ${APPROVAL_HOSTNAME:?APPROVAL_HOSTNAME must be set}
+    volumes:
+      - ./infra/caddy/Caddyfile.test:/etc/caddy/Caddyfile:ro
+      - ./infra/caddy/sites.e2e.caddy:/etc/caddy/sites.caddy:ro
+    networks:
+      public-network:
+        ipv4_address: ${CADDY_IPV4_ADDRESS:?CADDY_IPV4_ADDRESS must be set}
+        aliases:
+          - ${AUTH_HOSTNAME:?AUTH_HOSTNAME must be set}
+          - ${ADMIN_HOSTNAME:?ADMIN_HOSTNAME must be set}
+          - ${HR_HOSTNAME:?HR_HOSTNAME must be set}
+          - ${APPROVAL_HOSTNAME:?APPROVAL_HOSTNAME must be set}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      admin-server:
+        condition: service_healthy
+      hr-server:
+        condition: service_healthy
+      approval-server:
+        condition: service_healthy
+      auth-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+      hr-web:
+        condition: service_healthy
+      approval-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  e2e:
+    build:
+      context: ./e2e
+    ipc: host
+    environment:
+      AUTH_URL: ${AUTH_PUBLIC_URL:?AUTH_PUBLIC_URL must be set}
+      ADMIN_URL: ${ADMIN_PUBLIC_URL:?ADMIN_PUBLIC_URL must be set}
+      HR_URL: ${HR_PUBLIC_URL:?HR_PUBLIC_URL must be set}
+      APPROVAL_URL: ${APPROVAL_PUBLIC_URL:?APPROVAL_PUBLIC_URL must be set}
+      TEST_SUPPORT_API_KEY: ${TEST_SUPPORT_API_KEY:?TEST_SUPPORT_API_KEY must be set}
+    networks:
+      - public-network
+    depends_on:
+      caddy:
+        condition: service_healthy

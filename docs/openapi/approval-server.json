@@ -1,0 +1,12 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "SSO Lab Approval BFF API", "version": "1.0.0"},
+  "servers": [{"url": "https://{approvalHostname}", "variables": {"approvalHostname": {"default": "today-sso-approval.duckdns.org"}}}],
+  "security": [{"bffSession": []}],
+  "paths": {
+    "/api/v1/csrf": {"get": {"security": [], "responses": {"200": {"description": "CSRF token metadata"}}}},
+    "/api/v1/session": {"get": {"responses": {"200": {"description": "Validated OIDC claims without tokens"}, "401": {"description": "Authentication required"}}}},
+    "/api/v1/logout": {"post": {"responses": {"302": {"description": "RP-Initiated Logout"}}}}
+  },
+  "components": {"securitySchemes": {"bffSession": {"type": "apiKey", "in": "cookie", "name": "JSESSIONID"}}}
+}

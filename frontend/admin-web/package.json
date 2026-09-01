@@ -6,6 +6,7 @@
   "engines": { "node": ">=24" },
   "scripts": {
     "dev": "vite",
+    "test": "node --test test/*.test.mjs",
     "lint": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"

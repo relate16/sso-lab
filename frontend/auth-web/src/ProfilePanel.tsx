@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { csrfMutation, readJson } from './api'
 
-type Csrf = { headerName: string; token: string }
 type Session = {
   id: string
   device: string
@@ -22,23 +22,6 @@ type Profile = {
 type OtpRequest = { challengeId: string; expiresAt: string; resendAvailableAt: string }
 type ReauthResponse = { reauthenticated: boolean; expiresAt: string }
 
-async function mutate<T>(path: string, method: string, body?: unknown): Promise<T> {
-  const csrfResponse = await fetch('/api/v1/csrf', { credentials: 'include' })
-  if (!csrfResponse.ok) throw new Error('CSRF 토큰을 가져오지 못했습니다.')
-  const csrf = await csrfResponse.json() as Csrf
-  const response = await fetch(path, {
-    method,
-    credentials: 'include',
-    headers: {
-      [csrf.headerName]: csrf.token,
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  if (!response.ok) throw new Error('요청을 처리하지 못했습니다.')
-  return response.status === 204 ? undefined as T : response.json() as Promise<T>
-}
-
 export default function ProfilePanel() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [username, setUsername] = useState('')
@@ -54,17 +37,13 @@ export default function ProfilePanel() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const response = await fetch('/api/v1/me/profile', {
-      credentials: 'include',
-      cache: 'no-store',
-    })
-    if (!response.ok) {
+    try {
+      const next = await readJson<Profile>('/api/v1/me/profile')
+      setProfile(next)
+      setUsername(next.username)
+    } catch {
       setProfile(null)
-      return
     }
-    const next = await response.json() as Profile
-    setProfile(next)
-    setUsername(next.username)
   }, [])
 
   useEffect(() => { void load() }, [load])
@@ -81,7 +60,7 @@ export default function ProfilePanel() {
   const changeUsername = (event: FormEvent) => {
     event.preventDefault()
     void run(async () => {
-      const updated = await mutate<Profile>('/api/v1/me/profile/username', 'PATCH', { username })
+      const updated = await csrfMutation<Profile>('/api/v1/me/profile/username', 'PATCH', { username })
       setProfile(updated)
       setNotice('username을 변경했습니다. 현재 Session은 유지됩니다.')
     })
@@ -90,7 +69,7 @@ export default function ProfilePanel() {
   const startEmailChange = (event: FormEvent) => {
     event.preventDefault()
     void run(async () => {
-      const challenge = await mutate<OtpRequest>('/api/v1/me/email-change/start', 'POST', { newEmail })
+      const challenge = await csrfMutation<OtpRequest>('/api/v1/me/email-change/start', 'POST', { newEmail })
       setEmailChallenge(challenge)
       setEmailCode('')
       setNotice('새 이메일로 인증 코드를 보냈습니다.')
@@ -101,7 +80,7 @@ export default function ProfilePanel() {
     event.preventDefault()
     if (!emailChallenge) return
     void run(async () => {
-      await mutate('/api/v1/me/email-change/verify', 'POST', {
+      await csrfMutation('/api/v1/me/email-change/verify', 'POST', {
         challengeId: emailChallenge.challengeId,
         code: emailCode,
       })
@@ -114,7 +93,7 @@ export default function ProfilePanel() {
   }
 
   const startReauthEmail = () => void run(async () => {
-    const challenge = await mutate<OtpRequest>('/api/v1/me/reauth/email/start', 'POST')
+    const challenge = await csrfMutation<OtpRequest>('/api/v1/me/reauth/email/start', 'POST')
     setReauthChallenge(challenge)
     setReauthCode('')
     setNotice('현재 이메일로 탈퇴 재인증 코드를 보냈습니다.')
@@ -123,7 +102,7 @@ export default function ProfilePanel() {
   const verifyReauth = (event: FormEvent) => {
     event.preventDefault()
     void run(async () => {
-      const result = await mutate<ReauthResponse>('/api/v1/me/reauth/verify', 'POST', {
+      const result = await csrfMutation<ReauthResponse>('/api/v1/me/reauth/verify', 'POST', {
         method: reauthMethod,
         challengeId: reauthMethod === 'EMAIL_OTP' ? reauthChallenge?.challengeId : null,
         code: reauthCode,
@@ -135,7 +114,7 @@ export default function ProfilePanel() {
   }
 
   const deleteAccount = () => void run(async () => {
-    await mutate('/api/v1/me/account', 'DELETE', { confirmation })
+    await csrfMutation('/api/v1/me/account', 'DELETE', { confirmation })
     setConfirmation('')
     window.location.assign('/')
   })

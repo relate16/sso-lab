@@ -50,7 +50,8 @@ instance 사이에서 공유되지 않는다. Multi-instance/Redis는 Future Wor
 Production profile은 Turnstile을 기본 활성화한다. 보호 대상은 signup start, login start,
 Email OTP send/resend 및 Recovery start이다. Local/Test는 명시적으로 비활성화할 수 있다.
 
-- Site Key만 Auth Web build 환경에 전달한다.
+- 공개 Site Key는 Auth Web container 시작 시 `/runtime-config.js`에 주입한다. immutable
+  image나 build argument에 고정하지 않는다.
 - Secret Key는 Auth Server `SecretProvider`에서만 읽는다.
 - 누락/실패/Cloudflare 장애는 fail-closed이며 일반화된 오류만 반환한다.
 - 자동 테스트는 실제 Cloudflare/Production Secret을 사용하지 않는다.
@@ -79,6 +80,23 @@ Cookie 기반 Auth/BFF API는 Spring Security CSRF를 유지한다. React는 `/a
 - `/internal/oidc/backchannel-logout`: RS256 Logout Token 검증
 
 Session cookie는 HttpOnly, SameSite=Lax이며 Production에서는 Secure이다.
+
+## Self-service 변경과 삭제
+
+- Profile API는 인증된 본인 정보만 반환하고 다른 사용자 검색을 제공하지 않는다.
+- username 변경은 현재 Session을 유지하고 `USERNAME_CHANGED` Audit을 남긴다. 새
+  `preferred_username` claim은 다음 OIDC 발급부터 반영한다.
+- email 변경은 새 email로 전송한 OTP가 성공해야 한다. 사용자별 최신 pending 요청만
+  유효하며 DB에는 새 email도 AES-256-GCM ciphertext/HMAC lookup 형태로만 둔다.
+- email 변경을 수행한 현재 Auth Session만 유지하고 다른 Auth Session, 모든 Refresh
+  Token과 HR/Approval/Admin BFF Session을 폐기한다.
+- Hard Delete는 Email OTP 또는 TOTP 기반 fresh re-authentication을 요구한다. UI 확인
+  문구는 실수 방지일 뿐 Backend authorization을 대체하지 않는다.
+- Hard Delete는 credential, OTP/pending email 개인정보, OAuth authorization/token,
+  Spring Session과 membership을 삭제하고 `ACCOUNT_DELETED` Audit만 UUID 기반으로
+  보존한다. Audit에 새 email/userId를 복사하지 않는다.
+- 마지막 ACTIVE ADMIN의 자기 Hard Delete는 차단하며 consumed Bootstrap claim은 삭제나
+  재시작 후에도 계정을 자동 복원하지 않는다.
 
 ## Security Headers
 

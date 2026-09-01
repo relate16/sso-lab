@@ -1,0 +1,74 @@
+(deny_internal) {
+	@internal path /internal /internal/*
+	respond @internal 404
+}
+
+(proxy_auth) {
+	reverse_proxy auth-server:8080 {
+		header_up -Forwarded
+		header_up -X-Real-IP
+	}
+}
+
+(proxy_bff) {
+	reverse_proxy {args[0]}:8080 {
+		header_up -Forwarded
+		header_up -X-Real-IP
+	}
+}
+
+{$AUTH_HOSTNAME} {
+	header -Server
+	route {
+		import deny_internal
+		@backend path /api/* /test-support/* /.well-known/* /oauth2/* /userinfo /userinfo/* /connect/* /actuator/health /actuator/health/* /error
+		handle @backend {
+			import proxy_auth
+		}
+		handle {
+			reverse_proxy auth-web:8080
+		}
+	}
+}
+
+{$ADMIN_HOSTNAME} {
+	header -Server
+	route {
+		import deny_internal
+		@backend path /api/* /oauth2/* /login/* /logout /actuator/health /actuator/health/* /error
+		handle @backend {
+			import proxy_bff admin-server
+		}
+		handle {
+			reverse_proxy admin-web:8080
+		}
+	}
+}
+
+{$HR_HOSTNAME} {
+	header -Server
+	route {
+		import deny_internal
+		@backend path /api/* /oauth2/* /login/* /logout /actuator/health /actuator/health/* /error
+		handle @backend {
+			import proxy_bff hr-server
+		}
+		handle {
+			reverse_proxy hr-web:8080
+		}
+	}
+}
+
+{$APPROVAL_HOSTNAME} {
+	header -Server
+	route {
+		import deny_internal
+		@backend path /api/* /oauth2/* /login/* /logout /actuator/health /actuator/health/* /error
+		handle @backend {
+			import proxy_bff approval-server
+		}
+		handle {
+			reverse_proxy approval-web:8080
+		}
+	}
+}

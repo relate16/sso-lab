@@ -1,0 +1,22 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "SSO Lab Auth Server Internal Admin API", "version": "1.0.0"},
+  "servers": [{"url": "http://auth-server:8080"}],
+  "security": [{"internalClient": []}],
+  "paths": {
+    "/internal/admin/v1/users": {"get": {"responses": {"200": {"description": "Paged masked identity list"}}}},
+    "/internal/admin/v1/users/{userId}": {"get": {"responses": {"200": {"description": "Masked identity detail"}, "404": {"description": "Not found"}}}},
+    "/internal/admin/v1/users/{userId}/suspend": {"post": {"responses": {"200": {"description": "User suspended and Sessions/Tokens revoked"}}}},
+    "/internal/admin/v1/users/{userId}/resume": {"post": {"responses": {"200": {"description": "User activated"}}}},
+    "/internal/admin/v1/users/{userId}/roles": {"put": {"responses": {"200": {"description": "Role membership replaced"}}}},
+    "/internal/admin/v1/users/{userId}/groups": {"put": {"responses": {"200": {"description": "Group membership replaced"}}}},
+    "/internal/admin/v1/users/{userId}/email/reveal": {"post": {"responses": {"200": {"description": "Decrypted email after fresh Admin re-authentication"}, "401": {"description": "Re-authentication required"}}}},
+    "/internal/admin/v1/groups": {"get": {"responses": {"200": {"description": "Group hierarchy"}}}, "post": {"responses": {"201": {"description": "Group created"}}}},
+    "/internal/admin/v1/groups/{groupId}": {"patch": {"responses": {"200": {"description": "Group renamed"}}}, "delete": {"responses": {"200": {"description": "Empty group deleted"}}}},
+    "/internal/admin/v1/groups/{groupId}/move": {"post": {"responses": {"200": {"description": "Group moved with cycle validation"}}}},
+    "/internal/admin/v1/reauth/email/start": {"post": {"responses": {"200": {"description": "Admin email re-authentication challenge"}}}},
+    "/internal/admin/v1/reauth/verify": {"post": {"responses": {"200": {"description": "Short-lived Admin re-authentication proof"}, "400": {"description": "Generic verification failure"}}}},
+    "/internal/admin/v1/audit-logs": {"get": {"responses": {"200": {"description": "Redacted Admin audit page"}}}}
+  },
+  "components": {"securitySchemes": {"internalClient": {"type": "apiKey", "in": "header", "name": "X-Internal-Secret"}}}
+}

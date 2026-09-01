@@ -1,4 +1,7 @@
 sso:
+  test-support:
+    enabled: ${SSO_TEST_SUPPORT_ENABLED:false}
+    api-key: ${TEST_SUPPORT_API_KEY:test-support-only-key}
   security:
     turnstile:
       enabled: false

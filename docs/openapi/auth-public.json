@@ -1,0 +1,51 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "SSO Lab Auth Server Public API", "version": "1.0.0"},
+  "servers": [{"url": "https://{authHostname}", "variables": {"authHostname": {"default": "today-sso-auth.duckdns.org"}}}],
+  "security": [{"authSession": []}],
+  "paths": {
+    "/api/v1/csrf": {"get": {"security": [], "responses": {"200": {"description": "CSRF token metadata"}}}},
+    "/api/v1/signup/start": {"post": {"security": [], "responses": {"200": {"description": "Generic signup OTP challenge"}, "429": {"description": "Rate limited"}}}},
+    "/api/v1/signup/resend": {"post": {"security": [], "responses": {"200": {"description": "OTP resent"}, "429": {"description": "Resend limited"}}}},
+    "/api/v1/signup/verify": {"post": {"security": [], "responses": {"200": {"description": "Identity registered"}, "400": {"description": "Generic authentication failure"}}}},
+    "/api/v1/login/start": {"post": {"security": [], "responses": {"200": {"description": "Available passwordless methods"}, "429": {"description": "Rate limited"}}}},
+    "/api/v1/login/email/send": {"post": {"security": [], "responses": {"200": {"description": "Generic email OTP challenge"}, "429": {"description": "Rate limited"}}}},
+    "/api/v1/login/email/resend": {"post": {"security": [], "responses": {"200": {"description": "OTP resent"}, "429": {"description": "Resend limited"}}}},
+    "/api/v1/login/email/verify": {"post": {"security": [], "responses": {"200": {"description": "Auth Session established"}, "400": {"description": "Generic authentication failure"}}}},
+    "/api/v1/login/totp/verify": {"post": {"security": [], "responses": {"200": {"description": "Auth Session established"}, "400": {"description": "Generic authentication failure"}}}},
+    "/api/v1/totp/recovery/start": {"post": {"security": [], "responses": {"200": {"description": "Recovery-only session established"}, "400": {"description": "Generic authentication failure"}}}},
+    "/api/v1/totp/recovery/enroll/confirm": {"post": {"responses": {"200": {"description": "TOTP replaced and one-time recovery codes returned"}}}},
+    "/api/v1/me/profile": {"get": {"responses": {"200": {"description": "Current user profile"}}}},
+    "/api/v1/me/profile/username": {"patch": {"responses": {"200": {"description": "Username updated and audited"}, "409": {"description": "Identity conflict"}}}},
+    "/api/v1/me/email-change/start": {"post": {"responses": {"200": {"description": "Latest pending email OTP challenge"}, "409": {"description": "Email conflict"}}}},
+    "/api/v1/me/email-change/{challengeId}/resend": {"post": {"parameters": [{"$ref": "#/components/parameters/ChallengeId"}], "responses": {"200": {"description": "Pending email OTP resent"}, "429": {"description": "Resend limited"}}}},
+    "/api/v1/me/email-change/verify": {"post": {"responses": {"200": {"description": "Email changed; other Auth/BFF Sessions and all Refresh Tokens revoked"}, "400": {"description": "Generic verification failure"}}}},
+    "/api/v1/me/reauth/email/start": {"post": {"responses": {"200": {"description": "Fresh re-authentication email challenge"}}}},
+    "/api/v1/me/reauth/verify": {"post": {"responses": {"200": {"description": "Fresh re-authentication proof recorded"}, "400": {"description": "Generic verification failure"}}}},
+    "/api/v1/me/account": {"delete": {"responses": {"204": {"description": "Identity and personal credentials permanently deleted; audit retained"}, "409": {"description": "Last active ADMIN deletion blocked"}}}},
+    "/api/v1/me/totp/enroll/start": {"post": {"responses": {"200": {"description": "TOTP enrollment URI"}, "401": {"description": "Fresh re-authentication required"}}}},
+    "/api/v1/me/totp/enroll/confirm": {"post": {"responses": {"200": {"description": "TOTP enabled and recovery codes returned"}}}},
+    "/api/v1/me/totp": {"delete": {"responses": {"204": {"description": "TOTP disabled"}, "401": {"description": "Fresh re-authentication required"}}}},
+    "/api/v1/me/recovery-codes/regenerate": {"post": {"responses": {"200": {"description": "One-time recovery code batch returned"}}}},
+    "/api/v1/me/sessions": {"get": {"responses": {"200": {"description": "Current user's redacted Auth Session list"}}}},
+    "/api/v1/me/sessions/{sessionId}": {"delete": {"parameters": [{"$ref": "#/components/parameters/SessionId"}], "responses": {"204": {"description": "Owned Auth Session revoked"}, "404": {"description": "Session not found for current user"}}}},
+    "/api/v1/me/logout-all": {"post": {"responses": {"204": {"description": "Global logout coordinated"}}}},
+    "/api/v1/me/session": {"delete": {"responses": {"204": {"description": "Current Auth Session revoked"}}}},
+    "/oauth2/authorize": {"get": {"security": [{"authSession": []}], "responses": {"302": {"description": "Exact redirect URI Authorization Code response"}, "400": {"description": "Invalid OAuth request"}}}},
+    "/oauth2/token": {"post": {"security": [{"clientSecretBasic": []}], "responses": {"200": {"description": "ID, Access and rotating Refresh Tokens"}, "400": {"description": "Invalid grant or PKCE"}}}},
+    "/oauth2/jwks": {"get": {"security": [], "responses": {"200": {"description": "OIDC public JWK set"}}}},
+    "/userinfo": {"get": {"security": [{"bearerAuth": []}], "responses": {"200": {"description": "OIDC identity claims"}, "401": {"description": "Invalid Access Token"}}}},
+    "/connect/logout": {"get": {"responses": {"302": {"description": "RP-Initiated Logout to exact post-logout URI"}, "400": {"description": "Invalid logout request"}}}}
+  },
+  "components": {
+    "securitySchemes": {
+      "authSession": {"type": "apiKey", "in": "cookie", "name": "SESSION"},
+      "clientSecretBasic": {"type": "http", "scheme": "basic"},
+      "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+    },
+    "parameters": {
+      "ChallengeId": {"name": "challengeId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "SessionId": {"name": "sessionId", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Opaque public session identifier, never the raw server session ID"}
+    }
+  }
+}

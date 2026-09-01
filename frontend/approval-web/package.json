@@ -1,6 +1,6 @@
 {
   "name": "@sso-lab/approval-web", "version": "0.1.0", "private": true, "type": "module", "engines": { "node": ">=24" },
-  "scripts": { "dev": "vite", "lint": "tsc --noEmit", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
+  "scripts": { "dev": "vite", "test": "node --test test/*.test.mjs", "lint": "tsc --noEmit", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
   "dependencies": { "react": "19.2.8", "react-dom": "19.2.8" },
   "devDependencies": { "@types/react": "19.2.18", "@types/react-dom": "19.2.4", "@vitejs/plugin-react": "6.0.5", "typescript": "6.0.3", "vite": "8.2.2" }
 }

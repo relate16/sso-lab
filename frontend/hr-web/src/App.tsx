@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react'
-type Session = Record<string, unknown> & { authenticated: boolean }
-type Csrf = { parameterName: string; token: string }
+import { loadBffState, type Csrf, type Session } from './session-api'
 function App() {
   const [session, setSession] = useState<Session | null>(null); const [loading, setLoading] = useState(true)
   const [csrf, setCsrf] = useState<Csrf | null>(null)
-  useEffect(() => { Promise.all([
-    fetch('/api/v1/session', { credentials: 'include' }),
-    fetch('/api/v1/csrf', { credentials: 'include' })
-  ]).then(async ([sessionResponse, csrfResponse]) => {
-    if (sessionResponse.ok) setSession(await sessionResponse.json() as Session)
-    if (csrfResponse.ok) setCsrf(await csrfResponse.json() as Csrf)
+  useEffect(() => { loadBffState().then(state => {
+    setSession(state.session); setCsrf(state.csrf)
   }).finally(() => setLoading(false)) }, [])
   return <main className="page-shell"><section className="service-card" aria-labelledby="page-title">
     <p className="eyebrow">SSO LAB · HR DEMO</p><h1 id="page-title">HR OIDC Client</h1>

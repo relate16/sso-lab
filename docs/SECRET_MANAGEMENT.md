@@ -4,6 +4,12 @@
 application log에 기록하지 않는다. PC VM에서는 Auth Server `SecretProvider`와
 Docker Compose file-backed Secret을 기본으로 사용한다.
 
+현재 구현된 provider는 `ENVIRONMENT`, `DOCKER_SECRET` 두 가지다. AWS SSM은 v1
+Future Work이며 현재 `AWS_SSM` 설정값이나 `AwsSsmSecretProvider` 구현은 없다.
+AWS에서는 static access key를 `.env`에 넣지 않는다. 승인된 bootstrap이 SSM
+SecureString을 권한 제한 Docker Secret 파일로 materialize하거나 별도 adapter를
+구현·검증한 뒤 `docs/AWS_SETUP_GUIDE.md`에 따라 활성화한다.
+
 ## 준비 원칙
 
 - 각 용도마다 독립적인 random 값을 사용한다.
@@ -27,6 +33,14 @@ secret만 제공한다.
 4. OIDC signing key는 JWKS 전환 기간과 기존 token TTL을 고려한다.
 5. client/internal/Turnstile/Gmail Secret은 양쪽 소비자를 원자적으로 전환한다.
 6. 재기동 후 health와 기능 테스트를 수행한 뒤에만 이전 Secret을 폐기한다.
+
+## Provider contract와 reference
+
+Domain/service는 `SecretProviderRegistry`에 provider와 reference만 전달한다.
+`system_config`에는 policy와 reference만 저장하며 원문 Secret을 저장하지 않는다.
+Environment는 Local/Test 선택지이고 Production Compose는 12개 file-backed Docker
+Secret을 Auth에 최소 범위로 mount한다. 각 BFF에는 자기 client secret만, Admin
+BFF에는 추가로 Internal API secret만 mount한다.
 
 ## Audit
 
