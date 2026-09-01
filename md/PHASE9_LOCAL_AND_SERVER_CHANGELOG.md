@@ -78,3 +78,31 @@ network, PostgreSQL volume을 모두 제거했다.
 
 실제 Gmail 메일, 실제 Turnstile verification, AWS resource, Production migration/deploy,
 release image publish, commit/push는 수행하지 않았다.
+
+## 후속 v1.1.0 Production 배포 기록
+
+위 문장은 Phase 9 구현과 격리 검증 시점의 경계를 기록한다. 이후 별도 승인으로 다음
+Production 승격을 수행했다.
+
+- release: `v1.1.0`
+- source commit: `32604d9bfb8d56b9dad6ef4af02741af7c188900`
+- deploy workflow run: `33461384791`
+- Production DB: Flyway V1~V7, failed migration 0
+- pre-deploy backup: `20260901T014319Z-pre-v1.1.0`
+- backup path:
+  `/home/today/.local/state/sso-lab/backups/postgres/20260901T014319Z-pre-v1.1.0/`
+
+V1~V6 custom-format dump는 격리 PostgreSQL 17 full restore와 row-count/Flyway 일치까지
+검증했다. V7 적용 후에는 pending Email 변경과 새 Audit event/lifecycle을 구버전이 알지
+못하므로 `v1.0.0` application-only rollback을 안전하다고 보지 않는다. 필요 시 상태를
+보존하고 별도 승인 후 검증된 backup restore + `v1.0.0` 또는 forward-fix를 선택한다.
+
+Production smoke에서는 실제 Gmail/Turnstile, 사용자 생성, Profile 변경, Email 변경 및
+Hard Delete를 실행하지 않았다. Phase 9 격리 E2E가 이 기능들의 전체 흐름을 담당하고,
+Production은 TLS/OIDC/client 인증/보안 경계와 비파괴 음성 경로를 확인했다. 최초 HR/Admin
+token smoke 401은 Secret 불일치가 아니라 RFC 6749 `client_secret_basic` 생성 시
+client ID와 Secret의 form-urlencoded 처리가 누락된 진단 오류였다. 올바른 인코딩 후
+세 client 모두 `400 invalid_grant`였고 token은 발급되지 않았다.
+
+최종 검증 시 실제 사용자, credential, OTP, OAuth authorization, pending Email 변경 및
+Audit data는 0이었다. 상세 운영 기준은 `docs/PRODUCTION_STATUS.md`를 따른다.

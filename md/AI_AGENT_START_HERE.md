@@ -443,6 +443,11 @@ Phase 9는 전체 시스템 수준의 최종 검증과 문서 완성을 위한 P
 | Phase 8 — Infra | 완료 |
 | Phase 9 — Test / Docs | 완료 — Local/Ubuntu 격리 회귀, OpenAPI, 필수 문서, 최종 보안 감사 완료 |
 
+현재 Production 기준은 immutable `v1.1.0`, source commit
+`32604d9bfb8d56b9dad6ef4af02741af7c188900`, PostgreSQL Flyway V1~V7이다. 현재
+release, 검증된 pre-deploy backup 및 rollback 제한의 상세 기준은
+`../docs/PRODUCTION_STATUS.md`를 따른다. 실제 사용자 데이터는 아직 없다.
+
 ---
 
 # 10. 작업 시작 전 절차

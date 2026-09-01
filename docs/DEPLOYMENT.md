@@ -4,6 +4,10 @@
 변경 승인 후에만 수행한다. 현재 테스트 경로는 `/opt/sso-lab-test`, 운영 경로는
 `/opt/sso-lab`이며 서로의 `.env`, `secrets`, volume을 공유하지 않는다.
 
+현재 실제 Production release, source commit, Flyway/backup 및 rollback 기준은
+[Production Status](PRODUCTION_STATUS.md)에 기록한다. 일반 절차보다 해당 상태 기록의
+구체적인 version·backup 정보가 최신 운영 기준이다.
+
 ## 사전 조건
 
 - Linux VM에서 Docker Engine과 `docker compose`가 정상 동작해야 한다.
@@ -117,6 +121,10 @@ volume/network 목록과 실패 로그를 권한 제한 상태로 보존한다. 
 workflow에 다시 입력한다. Flyway migration이 이전 image와 비호환이면 image만
 되돌리지 말고 검증된 DB restore/runbook을 따른다. volume 삭제는 rollback이 아니다.
 구체 명령은 `docs/PHASE8_INFRA.md`를 참조한다.
+
+현재 V7에는 pending Email 변경 lifecycle과 새 Audit event가 포함되어 있으므로
+`v1.0.0` application-only rollback을 안전하다고 가정하지 않는다. 현재 검증된 V1~V6
+restore 기준과 정확한 경로는 [Production Status](PRODUCTION_STATUS.md)를 따른다.
 
 ## 재부팅 및 장애 점검
 

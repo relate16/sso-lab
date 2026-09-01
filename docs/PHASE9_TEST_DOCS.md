@@ -56,13 +56,22 @@ PostgreSQL volume/network만 사용했다. 종료 후 E2E container/network/volu
 ## CI와 Production 영향
 
 CI workflow에는 Frontend test, OpenAPI, 필수 문서와 repository audit step이 추가됐다.
-사용자 지시에 따라 Phase 9 변경은 아직 commit/push하지 않았으므로 이 변경에 대한 새
-GitHub Actions run은 없다. 기준 commit의 기존 CI는 성공 상태다.
-
-Production source, DB, Secret, container와 release image는 변경하지 않았다. Profile/email
-변경/Hard Delete의 V7과 Phase 9 변경을 운영에 반영하려면 별도 승인 후 새 immutable
-release, CI 성공, DB backup과 V7 migration 계획이 필요하다. 기존 `v1.0.0` image에는
-이 변경이 포함되지 않으므로 재사용할 수 없다.
+Phase 9 격리 검증 결과를 최초 보고한 시점에는 사용자 지시에 따라 변경을 commit/push하지
+않았고 Production source, DB, Secret, container 및 release image도 변경하지 않았다.
+그 뒤 별도 승인으로 Phase 9 commit/CI와 새 immutable release, DB backup 및 V7 배포를
+순서대로 수행했다. 기존 `v1.0.0` image에는 V7 기능이 포함되지 않는다.
 
 AWS는 v1 Future Work이다. 현재 `SecretProvider` 구현은 Environment/Docker이며
 `AwsSsmSecretProvider`는 구현되어 있지 않다는 사실을 AWS 가이드에 명시했다.
+
+## 후속 Production 승격 기록
+
+위 Phase 9 격리 완료·CI 성공 뒤 별도 승인을 받아 source commit
+`32604d9bfb8d56b9dad6ef4af02741af7c188900`의 immutable `v1.1.0` image 8개를
+Production에 배포했다. deploy-only workflow run `33461384791`이 성공했고 PostgreSQL은
+검증된 pre-deploy backup 뒤 Flyway V1~V7 상태가 되었다.
+
+Production smoke는 실제 사용자/Gmail/Turnstile을 사용하지 않는 비파괴 범위로 수행했다.
+따라서 격리 E2E의 test user lifecycle 및 authenticated browser SSO/logout과 Production의
+실제 TLS/OIDC/client/security-boundary smoke는 서로 대체하지 않는다. 현재 상태,
+backup과 rollback 제한은 [Production Status](PRODUCTION_STATUS.md)에 기록한다.
