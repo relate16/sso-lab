@@ -33,10 +33,16 @@ h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.5rem); line-height: 1.05; letter-s
 .status { display: inline-flex; align-items: center; gap: .65rem; padding: .7rem 1rem; color: #174f3a; background: #e9f8f0; border-radius: 999px; font-weight: 700; }
 .status-dot { width: .55rem; height: .55rem; background: #20a464; border-radius: 50%; box-shadow: 0 0 0 .25rem rgb(32 164 100 / 13%); }
 .notice { margin: 1.5rem 0 0; color: #6b7381; font-size: .9rem; }
-.method-tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+.auth-tabs, .method-tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+.auth-tabs { padding-bottom: 1rem; border-bottom: 1px solid #e4eaf4; }
+.auth-tabs button { flex: 1; }
 button { border: 1px solid #b8c7e5; border-radius: .65rem; padding: .75rem 1rem; background: #fff; color: #234b98; font-weight: 700; cursor: pointer; }
 button.selected, button[type="submit"] { color: #fff; background: #315fbd; border-color: #315fbd; }
 button:disabled { cursor: not-allowed; opacity: .55; }
 form { display: grid; gap: 1rem; }
 label { display: grid; gap: .45rem; color: #34435d; font-weight: 700; }
 input { width: 100%; border: 1px solid #cdd7e8; border-radius: .65rem; padding: .8rem; color: #172033; background: #fff; }
+.panel-description, .challenge-status { color: #526077; line-height: 1.6; }
+.field-hint { color: #6b7381; font-size: .8rem; font-weight: 500; line-height: 1.5; }
+.form-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
+.form-actions button { flex: 1 1 10rem; }

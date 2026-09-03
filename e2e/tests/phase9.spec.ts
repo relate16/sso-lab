@@ -12,13 +12,15 @@ test.describe.configure({ mode: 'serial' })
 test('Email OTP signup, HR to Approval SSO and central logout', async ({ page, request }) => {
   await setClock(request, new Date())
   await clearMail(request)
-  await signup(request, 'phase9-email-user', 'Phase Nine Email', 'phase9-email@example.test')
+  await signupThroughUi(page, request, 'phase9-email-user', 'Phase Nine Email',
+    'phase9-email@example.test')
 
   const hrClaims = await loginWithEmailOtp(page, request, hrUrl, 'Passwordless SSO 로그인',
     'phase9-email-user')
   expect(hrClaims.authenticated).toBe(true)
   expect(hrClaims.amr).toEqual(['email_otp'])
   expect(hrClaims.acr).toBe('urn:jb:loa:1')
+  expect(hrClaims.roles).toEqual(['USER'])
 
   await page.goto(approvalUrl)
   await page.getByRole('link', { name: 'Passwordless SSO 로그인' }).click()
@@ -186,6 +188,33 @@ async function signup(
     code: await capturedCode(request, challenge.challengeId, 'SIGNUP'),
   })
   expect(verified.ok()).toBeTruthy()
+}
+
+async function signupThroughUi(
+  page: Page,
+  request: APIRequestContext,
+  userId: string,
+  username: string,
+  email: string,
+) {
+  await page.goto(authUrl)
+  await page.getByRole('tab', { name: '회원가입' }).click()
+  await page.getByLabel('User ID').fill(userId)
+  await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Email', { exact: true }).fill(email)
+
+  const startResponse = page.waitForResponse(response =>
+    response.url().endsWith('/api/v1/signup/start') && response.request().method() === 'POST')
+  await page.getByRole('button', { name: '회원가입 OTP 보내기' }).click()
+  const challenge = await (await startResponse).json() as { challengeId: string }
+  await page.getByLabel('회원가입 인증 코드').fill(
+    await capturedCode(request, challenge.challengeId, 'SIGNUP'))
+  await page.getByRole('button', { name: '회원가입 완료' }).click()
+
+  await expect(page.getByRole('tab', { name: '로그인' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByLabel('User ID')).toHaveValue(userId)
+  await expect(page.getByText('회원가입이 완료되었습니다. Email OTP 또는 등록된 TOTP로 로그인해주세요.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '내 정보' })).toHaveCount(0)
 }
 
 async function loginWithEmailOtp(

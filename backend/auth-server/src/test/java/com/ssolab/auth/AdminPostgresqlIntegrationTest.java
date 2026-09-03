@@ -76,6 +76,9 @@ class AdminPostgresqlIntegrationTest {
     @Test
     void enforcesAdminBoundaryBootstrapManagementReauthAndAudit() throws Exception {
         UUID adminId = bootstrapAdmin();
+        UUID laterSignupId = signup(
+            "post.bootstrap", "Bootstrap 이후 가입자", "post.bootstrap@example.com"
+        );
         UserIdentityEntity managed = identityService.createIdentity(new CreateUserIdentityCommand(
             "managed.user", "관리 대상", "managed.user@example.com"
         ));
@@ -90,6 +93,27 @@ class AdminPostgresqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM auth.user_roles ur JOIN auth.roles r ON r.id=ur.role_id "
                 + "WHERE ur.user_id=? AND r.name='ADMIN'", Integer.class, adminId
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.user_roles ur JOIN auth.roles r ON r.id=ur.role_id "
+                + "WHERE ur.user_id=? AND r.name='USER'", Integer.class, adminId
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.user_roles ur JOIN auth.roles r ON r.id=ur.role_id "
+                + "WHERE ur.user_id=? AND r.name='USER'", Integer.class, laterSignupId
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.user_roles ur JOIN auth.roles r ON r.id=ur.role_id "
+                + "WHERE ur.user_id=? AND r.name='ADMIN'", Integer.class, laterSignupId
+        )).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.bootstrap_admin_state "
+                + "WHERE singleton_id=1 AND claimed_at IS NOT NULL AND claimed_by=?",
+            Integer.class, adminId
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.user_roles ur JOIN auth.roles r ON r.id=ur.role_id "
+                + "WHERE r.name='ADMIN'", Integer.class
         )).isEqualTo(1);
 
         mvc.perform(get("/internal/admin/v1/users"))
@@ -185,9 +209,13 @@ class AdminPostgresqlIntegrationTest {
     }
 
     private UUID bootstrapAdmin() {
+        return signup("bootstrap.admin", "초기 관리자", BOOTSTRAP_EMAIL);
+    }
+
+    private UUID signup(String userId, String username, String email) {
         mailSender.clear();
         OtpRequestResult request = emailOtpService.startSignup(new CreateUserIdentityCommand(
-            "bootstrap.admin", "초기 관리자", BOOTSTRAP_EMAIL
+            userId, username, email
         ));
         char[] code = captured(request.challengeId(), OtpMailPurpose.SIGNUP).code().toCharArray();
         try {
