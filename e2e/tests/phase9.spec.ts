@@ -54,15 +54,53 @@ test('controllable-clock TOTP login keeps loa1 SSO claims', async ({ browser, re
   await enrollmentPage.goto(authUrl)
   await expect(enrollmentPage.getByRole('heading', { name: '내 정보' })).toBeVisible()
 
-  const enrollment = await browserMutation<{ otpauthUri: string }>(
-    enrollmentPage, '/api/v1/me/totp/enroll/start', 'POST')
-  const secret = new URL(enrollment.otpauthUri).searchParams.get('secret')
+  await expect(enrollmentPage.getByRole('button', { name: 'TOTP 등록' })).toBeVisible()
+  await enrollmentPage.getByRole('button', { name: 'TOTP 등록' }).click()
+  const reauthStartResponse = enrollmentPage.waitForResponse(response =>
+    response.url().endsWith('/api/v1/me/reauth/email/start')
+    && response.request().method() === 'POST')
+  await enrollmentPage.getByRole('button', { name: '재인증 이메일 코드 보내기' }).click()
+  const reauthChallenge = await (await reauthStartResponse).json() as { challengeId: string }
+  await enrollmentPage.getByLabel('TOTP 관리 재인증 코드').fill(
+    await capturedCode(request, reauthChallenge.challengeId, 'LOGIN'))
+
+  const enrollmentStartResponse = enrollmentPage.waitForResponse(response =>
+    response.url().endsWith('/api/v1/me/totp/enroll/start')
+    && response.request().method() === 'POST')
+  await enrollmentPage.getByRole('button', { name: '재인증 확인' }).click()
+  expect((await enrollmentStartResponse).ok()).toBeTruthy()
+  await expect(enrollmentPage.getByTestId('totp-qr')).toBeVisible()
+  await enrollmentPage.getByText('QR을 스캔할 수 없나요?').click()
+  const otpauthUri = await enrollmentPage.getByTestId('otpauth-uri').innerText()
+  expect(otpauthUri).toMatch(/^otpauth:\/\/totp\//)
+  const secret = new URL(otpauthUri).searchParams.get('secret')
   expect(secret).toBeTruthy()
   const firstCode = totp(secret!, baseTime)
-  const recovery = await browserMutation<{ recoveryCodes: string[] }>(
-    enrollmentPage, '/api/v1/me/totp/enroll/confirm', 'POST', { code: firstCode })
-  expect(recovery.recoveryCodes.length).toBeGreaterThan(0)
-  await enrollmentContext.close()
+
+  await enrollmentPage.getByLabel('인증 앱의 6자리 코드').fill(differentTotp(firstCode))
+  const invalidResponse = enrollmentPage.waitForResponse(response =>
+    response.url().endsWith('/api/v1/me/totp/enroll/confirm')
+    && response.request().method() === 'POST')
+  await enrollmentPage.getByRole('button', { name: 'TOTP 등록 확인' }).click()
+  expect((await invalidResponse).status()).toBe(400)
+  await expect(enrollmentPage.getByText(
+    '요청을 처리하지 못했습니다. 입력과 인증 상태를 확인해주세요.',
+  )).toBeVisible()
+
+  await enrollmentPage.getByLabel('인증 앱의 6자리 코드').fill(firstCode)
+  const confirmResponse = enrollmentPage.waitForResponse(response =>
+    response.url().endsWith('/api/v1/me/totp/enroll/confirm')
+    && response.request().method() === 'POST')
+  await enrollmentPage.getByRole('button', { name: 'TOTP 등록 확인' }).click()
+  expect((await confirmResponse).ok()).toBeTruthy()
+  const recoveryList = enrollmentPage.getByRole('list', { name: 'Recovery Code 목록' })
+  await expect(recoveryList.getByRole('listitem')).toHaveCount(10)
+  await expect(enrollmentPage.getByRole('region', { name: 'Recovery Code' })
+    .getByText('복구 코드는 다시 표시되지 않습니다.', { exact: false })).toBeVisible()
+  await assertCredentialStorageEmpty(enrollmentPage)
+  await enrollmentPage.getByRole('button', { name: '보관 완료하고 닫기' }).click()
+  await expect(recoveryList).toHaveCount(0)
+  await expect(enrollmentPage.locator('.totp-panel').getByText('등록됨')).toBeVisible()
 
   const loginTime = new Date(baseTime.getTime() + 31_000)
   await setClock(request, loginTime)
@@ -83,6 +121,39 @@ test('controllable-clock TOTP login keeps loa1 SSO claims', async ({ browser, re
   await page.getByRole('link', { name: 'Passwordless SSO 로그인' }).click()
   await page.waitForURL(`${approvalUrl}/`)
   expect((await visibleClaims(page)).amr).toEqual(['totp'])
+
+  const regenerateTime = new Date(baseTime.getTime() + 62_000)
+  await setClock(request, regenerateTime)
+  await enrollmentPage.goto(authUrl)
+  await enrollmentPage.getByRole('button', { name: 'Recovery Code 재발급' }).click()
+  await enrollmentPage.getByRole('group', { name: 'TOTP 관리 재인증 방법' })
+    .getByRole('button', { name: 'TOTP' }).click()
+  await enrollmentPage.getByLabel('TOTP 관리 재인증 코드').fill(totp(secret!, regenerateTime))
+  const regenerateResponse = enrollmentPage.waitForResponse(response =>
+    response.url().endsWith('/api/v1/me/recovery-codes/regenerate')
+    && response.request().method() === 'POST')
+  await enrollmentPage.getByRole('button', { name: '재인증 확인' }).click()
+  expect((await regenerateResponse).ok()).toBeTruthy()
+  await expect(enrollmentPage.getByRole('list', { name: 'Recovery Code 목록' })
+    .getByRole('listitem')).toHaveCount(10)
+  await enrollmentPage.getByRole('button', { name: '보관 완료하고 닫기' }).click()
+
+  const disableTime = new Date(baseTime.getTime() + 93_000)
+  await setClock(request, disableTime)
+  await enrollmentPage.getByRole('button', { name: 'TOTP 해제' }).click()
+  await enrollmentPage.getByRole('group', { name: 'TOTP 관리 재인증 방법' })
+    .getByRole('button', { name: 'TOTP' }).click()
+  await enrollmentPage.getByLabel('TOTP 관리 재인증 코드').fill(totp(secret!, disableTime))
+  const disableResponse = enrollmentPage.waitForResponse(response =>
+    response.url().endsWith('/api/v1/me/totp')
+    && response.request().method() === 'DELETE')
+  await enrollmentPage.getByRole('button', { name: '재인증 확인' }).click()
+  expect((await disableResponse).status()).toBe(204)
+  await expect(enrollmentPage.locator('.totp-panel').getByText('미등록')).toBeVisible()
+  await expect(enrollmentPage.getByRole('button', { name: 'TOTP 등록' })).toBeVisible()
+  await assertCredentialStorageEmpty(enrollmentPage)
+
+  await enrollmentContext.close()
   await context.close()
 })
 
@@ -315,6 +386,19 @@ function totp(encodedSecret: string, instant: Date): string {
     | ((digest[offset + 2] & 0xff) << 8)
     | (digest[offset + 3] & 0xff)
   return String(binary % 1_000_000).padStart(6, '0')
+}
+
+function differentTotp(current: string): string {
+  return current === '000000' ? '000001' : '000000'
+}
+
+async function assertCredentialStorageEmpty(page: Page) {
+  const state = await page.evaluate(async () => ({
+    localEntries: window.localStorage.length,
+    sessionEntries: window.sessionStorage.length,
+    databases: (await window.indexedDB.databases()).length,
+  }))
+  expect(state).toEqual({ localEntries: 0, sessionEntries: 0, databases: 0 })
 }
 
 function decodeBase32(value: string): Buffer {

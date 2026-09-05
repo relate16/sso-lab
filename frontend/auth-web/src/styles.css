@@ -46,3 +46,18 @@ input { width: 100%; border: 1px solid #cdd7e8; border-radius: .65rem; padding: 
 .field-hint { color: #6b7381; font-size: .8rem; font-weight: 500; line-height: 1.5; }
 .form-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
 .form-actions button { flex: 1 1 10rem; }
+.totp-panel { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid #dfe6f2; border-radius: .9rem; background: #f8faff; }
+.totp-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.totp-heading h3, .totp-heading p, .sensitive-action h4, .totp-enrollment h4, .recovery-codes h4 { margin-top: 0; }
+.totp-heading p { margin-bottom: 0; color: #526077; }
+.sensitive-action, .totp-enrollment, .recovery-codes { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dfe6f2; }
+.totp-qr { width: fit-content; margin: 1rem auto; padding: .5rem; border: 1px solid #cdd7e8; border-radius: .75rem; background: #fff; }
+.sensitive-uri { display: block; max-width: 100%; margin: .75rem 0; padding: .75rem; overflow-wrap: anywhere; color: #172033; background: #eef2f8; border-radius: .5rem; }
+.recovery-codes ol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem 1rem; padding-left: 1.75rem; }
+.recovery-codes code { font-size: .95rem; letter-spacing: .04em; }
+.warning { color: #8a3d24; font-weight: 700; line-height: 1.5; }
+.danger-button { color: #a22b2b; border-color: #d9aaaa; }
+
+@media (max-width: 34rem) {
+  .recovery-codes ol { grid-template-columns: 1fr; }
+}

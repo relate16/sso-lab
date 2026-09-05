@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { csrfMutation, readJson } from './api'
+import TotpManagementPanel from './TotpManagementPanel'
 
 type Session = {
   id: string
@@ -128,6 +129,8 @@ export default function ProfilePanel() {
       <div><dt>Groups</dt><dd>{profile.groups.length ? profile.groups.join(', ') : '할당된 그룹 없음'}</dd></div>
       <div><dt>TOTP</dt><dd>{profile.totpEnrolled ? '등록됨' : '미등록'}</dd></div>
     </dl>
+
+    <TotpManagementPanel enrolled={profile.totpEnrolled} onStatusChanged={load} />
 
     <form onSubmit={changeUsername}>
       <label>Username<input value={username} maxLength={100}
