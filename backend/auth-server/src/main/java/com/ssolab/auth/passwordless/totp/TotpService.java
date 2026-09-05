@@ -1,5 +1,8 @@
 package com.ssolab.auth.passwordless.totp;
 
+import com.ssolab.auth.audit.AuditEvent;
+import com.ssolab.auth.audit.AuditService;
+import com.ssolab.auth.audit.AuditSource;
 import com.ssolab.auth.identity.model.AccountStatus;
 import com.ssolab.auth.identity.model.UserIdentityEntity;
 import com.ssolab.auth.identity.repository.UserIdentityRepository;
@@ -25,6 +28,7 @@ public class TotpService {
     private final TotpAlgorithm algorithm;
     private final TotpSecretCipher cipher;
     private final RecoveryCodeService recoveryCodeService;
+    private final AuditService auditService;
     private final Clock clock;
 
     public TotpService(
@@ -34,6 +38,7 @@ public class TotpService {
         TotpAlgorithm algorithm,
         TotpSecretCipher cipher,
         RecoveryCodeService recoveryCodeService,
+        AuditService auditService,
         Clock clock
     ) {
         this.repository = repository;
@@ -42,6 +47,7 @@ public class TotpService {
         this.algorithm = algorithm;
         this.cipher = cipher;
         this.recoveryCodeService = recoveryCodeService;
+        this.auditService = auditService;
         this.clock = clock;
     }
 
@@ -160,11 +166,19 @@ public class TotpService {
     }
 
     @Transactional
-    public void disable(UUID userId) {
+    public void disable(UUID userId, String traceId) {
         requireActiveUser(userId);
         repository.findLockedByUserId(userId).ifPresent(repository::delete);
         repository.flush();
         recoveryCodeService.invalidateAll(userId);
+        auditService.recordWithinTransaction(
+            AuditEvent.TOTP_DISABLED,
+            userId,
+            userId,
+            true,
+            AuditSource.AUTH_WEB,
+            traceId
+        );
     }
 
     @Transactional(readOnly = true)

@@ -33,6 +33,7 @@ import jakarta.validation.Valid;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -279,7 +280,7 @@ public class PasswordlessController {
                 new ApiError("REAUTHENTICATION_REQUIRED", "재인증이 필요합니다.")
             );
         }
-        totpService.disable(principal.userId());
+        totpService.disable(principal.userId(), UUID.randomUUID().toString());
         return ResponseEntity.noContent().build();
     }
 

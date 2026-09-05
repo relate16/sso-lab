@@ -1,6 +1,7 @@
 package com.ssolab.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ssolab.auth.audit.AuditSource;
 import com.ssolab.auth.identity.model.UserIdentityEntity;
 import com.ssolab.auth.identity.repository.UserIdentityRepository;
 import com.ssolab.auth.identity.service.CreateUserIdentityCommand;
@@ -271,19 +273,88 @@ class PasswordlessPostgresqlIntegrationTest {
     }
 
     @Test
-    void disablesTotpAndInvalidatesAllRecoveryCodes() {
+    void disablesTotpInvalidatesRecoveryCodesAndAuditsExactlyOnce() {
         UserIdentityEntity user = createUser("disable");
         TotpEnrollmentStart start = totpService.startEnrollment(user.getId());
         byte[] secret = secretFromUri(start.otpauthUri());
         char[] code = totpAlgorithm.generateCode(secret, clock.instant()).toCharArray();
         RecoveryCodeBatch recoveryCodes = totpService.confirmEnrollment(user.getId(), code)
             .recoveryCodes();
+        char[] loginCode = totpAlgorithm.generateCode(
+            secret, clock.instant().plusSeconds(TotpAlgorithm.PERIOD_SECONDS)
+        ).toCharArray();
+        assertThat(totpService.verifyLogin(user.getUserId(), loginCode).status())
+            .isEqualTo(TotpVerificationStatus.SUCCESS);
 
-        totpService.disable(user.getId());
+        String traceId = UUID.randomUUID().toString();
+        totpService.disable(user.getId(), traceId);
 
         assertThat(totpService.isEnrolled(user.getId())).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.totp_credentials WHERE user_id=?",
+            Integer.class,
+            user.getId()
+        )).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.recovery_codes WHERE user_id=? "
+                + "AND used_at IS NULL AND invalidated_at IS NULL",
+            Integer.class,
+            user.getId()
+        )).isZero();
         assertThat(recoveryCodeService.consume(user.getId(), recoveryCodes.codes().get(0)))
             .isFalse();
+        assertThat(jdbcTemplate.queryForList(
+            "SELECT actor_id, target_id, success, source, trace_id "
+                + "FROM auth.audit_logs WHERE event_type='TOTP_DISABLED' AND target_id=?",
+            user.getId()
+        )).singleElement().satisfies(audit -> {
+            assertThat(audit.get("actor_id")).isEqualTo(user.getId());
+            assertThat(audit.get("target_id")).isEqualTo(user.getId());
+            assertThat(audit.get("success")).isEqualTo(true);
+            assertThat(audit.get("source")).isEqualTo(AuditSource.AUTH_WEB.name());
+            assertThat(audit.get("trace_id")).isEqualTo(traceId);
+        });
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.flyway_schema_history "
+                + "WHERE version='8' AND success=true",
+            Integer.class
+        )).isEqualTo(1);
+        Arrays.fill(loginCode, '\0');
+        Arrays.fill(code, '\0');
+        Arrays.fill(secret, (byte) 0);
+    }
+
+    @Test
+    void rollsBackTotpDisableWhenAuditCannotBePersisted() {
+        UserIdentityEntity user = createUser("disable-rollback");
+        TotpEnrollmentStart start = totpService.startEnrollment(user.getId());
+        byte[] secret = secretFromUri(start.otpauthUri());
+        char[] code = totpAlgorithm.generateCode(secret, clock.instant()).toCharArray();
+        RecoveryCodeBatch recoveryCodes = totpService.confirmEnrollment(user.getId(), code)
+            .recoveryCodes();
+
+        assertThatThrownBy(() -> totpService.disable(user.getId(), "x".repeat(101)))
+            .isInstanceOf(RuntimeException.class);
+        entityManager.clear();
+
+        assertThat(totpService.isEnrolled(user.getId())).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.totp_credentials WHERE user_id=? AND status='ACTIVE'",
+            Integer.class,
+            user.getId()
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.recovery_codes WHERE user_id=? "
+                + "AND used_at IS NULL AND invalidated_at IS NULL",
+            Integer.class,
+            user.getId()
+        )).isEqualTo(recoveryCodes.codes().size());
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM auth.audit_logs "
+                + "WHERE event_type='TOTP_DISABLED' AND target_id=?",
+            Integer.class,
+            user.getId()
+        )).isZero();
         Arrays.fill(code, '\0');
         Arrays.fill(secret, (byte) 0);
     }
