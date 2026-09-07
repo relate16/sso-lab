@@ -15,6 +15,7 @@ FORBIDDEN_PATH_PARTS = {
     ".pnpm-store", ".idea", ".vscode", "tmp", "temp",
 }
 FORBIDDEN_SUFFIXES = {".pem", ".key", ".p12", ".jks", ".log"}
+ALLOWED_ENV_EXAMPLE_PATHS = {".env.example", ".env.frontend.local.example"}
 SECRET_PATTERNS = {
     "private-key": re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "github-token": re.compile(rb"\b(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}\b"),
@@ -42,7 +43,7 @@ def require_safe_path(path: pathlib.Path) -> None:
     parts = set(relative.parts)
     if parts & FORBIDDEN_PATH_PARTS:
         raise AssertionError(f"forbidden generated/secret path is a Git candidate: {relative}")
-    if relative.name.startswith(".env") and relative.name != ".env.example":
+    if relative.name.startswith(".env") and relative.as_posix() not in ALLOWED_ENV_EXAMPLE_PATHS:
         raise AssertionError(f"runtime environment file is a Git candidate: {relative}")
     if relative.suffix.casefold() in FORBIDDEN_SUFFIXES:
         raise AssertionError(f"credential/log file is a Git candidate: {relative}")

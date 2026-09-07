@@ -70,6 +70,20 @@ docker compose --env-file .env --env-file .env.frontend.local \
 
 PostgreSQL은 host에 publish하지 않습니다. Auth Server만 Identity DB에 직접 접근하는 서비스 경계도 그대로 유지됩니다.
 
+### Flyway migration 실행과 검증
+
+Auth Server가 기동될 때 Flyway가 `auth` schema에 V1-V8 migration을 순서대로 자동 적용하고, Hibernate는 `ddl-auto=validate`로 결과 schema만 검증합니다. 기존 migration 파일을 수정하거나 H2 또는 `ddl-auto=update`로 대체하지 않습니다.
+
+기동 후 Auth health와 PostgreSQL의 Flyway 이력을 확인합니다. 아래 명령은 비밀번호 원문을 host 명령행에 넣지 않고 PostgreSQL container에 이미 전달된 환경변수를 사용합니다.
+
+```sh
+docker compose --env-file .env --env-file .env.frontend.local \
+  -f docker-compose.yml -f docker-compose.local.yml \
+  exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql --set=ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --command "SELECT installed_rank, version, description, success FROM auth.flyway_schema_history ORDER BY installed_rank;"'
+```
+
+V1-V8이 모두 한 번씩 존재하고 `success=true`인지 확인합니다. 실제 PostgreSQL 17 migration 회귀는 Repository root에서 `./gradlew --no-daemon clean build`(Windows는 `.\gradlew.bat --no-daemon clean build`)를 실행해 Testcontainers test까지 확인합니다. Docker가 없어서 Testcontainers가 실행되지 않았다면 migration 검증 완료로 간주하지 않습니다.
+
 ## 3. Frontend 설치와 실행
 
 처음 실행하거나 lock file이 변경되었을 때 각 디렉터리에서 의존성을 설치합니다.
@@ -143,7 +157,41 @@ APPROVAL_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:5176/
 
 네 앱이 같은 host를 사용해도 Session이 충돌하지 않도록 Auth는 기존 `SESSION`, 각 BFF는 `SSO_LAB_ADMIN_SESSION`, `SSO_LAB_HR_SESSION`, `SSO_LAB_APPROVAL_SESSION`을 사용합니다. Authorization Code + PKCE, exact redirect URI, 서버 측 token 저장, CSRF 정책은 유지됩니다.
 
-## 6. 검증
+## 6. 최초 사용자와 Bootstrap Admin
+
+Bootstrap Admin은 관리자 row를 SQL로 직접 삽입하는 기능이 아니라, 검증된 지정 email로 최초 signup을 완료한 한 계정에만 `USER`와 `ADMIN` Role을 부여하는 one-shot claim입니다. Frontend는 Role 또는 Bootstrap 값을 전송하지 않으며 Auth Server가 서버 설정과 DB claim 상태를 판정합니다.
+
+로컬에서 이 흐름을 확인할 때만 Git-ignored `.env`에 다음 값을 설정합니다. 실제 개인정보나 운영 email을 사용하지 않습니다.
+
+```text
+BOOTSTRAP_ADMIN_ENABLED=true
+BOOTSTRAP_ADMIN_EMAIL=<local test email>
+```
+
+Auth Web의 회원가입 화면에서 설정한 email로 Email OTP signup을 완료하고, Admin Web OIDC 로그인과 Admin API 접근을 확인합니다. claim이 소비된 뒤에는 `BOOTSTRAP_ADMIN_ENABLED=false`로 되돌리고 Auth Server를 재생성합니다. 같은 flag를 다시 켜거나 서버를 재시작해도 이미 소비된 claim으로 추가 ADMIN이 생성되지 않습니다. DB 직접 수정으로 claim을 초기화하지 않으며 자세한 정책은 [Bootstrap Admin Guide](BOOTSTRAP_ADMIN_GUIDE.md)를 따릅니다.
+
+Local/Test의 mail sender는 메모리 sink이며 OTP를 log에 출력하지 않습니다. OTP가 필요한 자동 검증은 아래 격리 E2E를 사용합니다. 수동 개발을 위해 test-support를 사용해야 한다면 `test` profile에서만 Git-ignored `.env`의 `SSO_TEST_SUPPORT_ENABLED=true`와 16자 이상의 로컬 전용 `TEST_SUPPORT_API_KEY`를 명시적으로 설정합니다. 기본값은 계속 `false`이며 Production에서는 절대 활성화하지 않습니다.
+
+## 7. TOTP 로컬 검증
+
+로그인한 Auth Web의 `내 정보`에서 `TOTP 등록`을 시작하고 다음을 확인합니다.
+
+1. `otpauthUri` QR은 Auth Web의 로컬 SVG renderer로만 표시되며 외부 QR service로 전송되지 않습니다.
+2. Authenticator에 QR을 등록하고 현재 6자리 code로 enrollment를 확정합니다.
+3. Recovery Code 10개는 한 번만 표시되며 Browser Storage나 log에 남지 않습니다.
+4. 로그아웃 후 TOTP 로그인이 성공하는지 확인합니다.
+5. Recovery Code 재발급과 TOTP 해제에는 fresh re-authentication 및 CSRF가 계속 적용되는지 확인합니다.
+6. TOTP 해제 후 credential과 Recovery Code가 무효화되고 `TOTP_DISABLED` Audit이 민감값 없이 기록되는지 확인합니다.
+
+Test Mail Sink, Turnstile test double 및 controllable TOTP clock을 사용하는 전체 자동 검증은 운영 자원과 분리된 Linux/Docker 환경에서 실행합니다.
+
+```sh
+scripts/test/run-phase9-e2e.sh
+```
+
+이 스크립트의 격리 구성과 보안 조건은 [Test Guide](TEST_GUIDE.md)를 따릅니다. 실제 Gmail, 실제 Turnstile 또는 Production Secret을 로컬 검증에 사용하지 않습니다.
+
+## 8. 검증
 
 각 Frontend에서 다음을 실행합니다.
 
@@ -161,7 +209,7 @@ node scripts/test/verify-local-vite-proxy.mjs
 
 `npm run build`는 `.env.frontend.local`을 읽지 않으므로 개발 Backend target이 Production bundle에 포함되지 않습니다. Production Dockerfile, Caddy, Spring Security 및 Production `.env`는 이 로컬 구성의 영향을 받지 않습니다.
 
-## 7. 종료
+## 9. 종료
 
 각 Vite terminal에서 `Ctrl+C`를 누른 뒤 Backend를 종료합니다.
 
