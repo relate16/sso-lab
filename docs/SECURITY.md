@@ -12,7 +12,16 @@ Redis와 분산 Rate Limit은 v1 범위가 아니다.
 
 ## Identity와 Token 경계
 
-- Identity DB는 `auth-server`만 직접 접근한다.
+- 현재 Identity data는 PostgreSQL `auth` schema에 있으며 `auth-server`만 직접 접근한다.
+- 향후 HR/Admin/Approval persistence는 같은 PostgreSQL database를 사용할 수 있지만 각각
+  `hr`, `admin`, `approval` 자체 schema와 전용 DB role만 사용한다. 다른 서비스 schema의
+  `USAGE`와 table 권한은 부여하지 않는다.
+- JPA/JDBC/Flyway 사용 자체는 금지하지 않는다. Auth 구현 module/package, Auth 전용
+  datasource 설정 또는 다른 서비스의 schema/table을 직접 사용하는 것을 금지한다.
+- 서비스 간 data는 소유 서비스의 API/integration contract로 교환하고 transaction 편의를
+  위해 다른 schema를 수정하지 않는다. 서로 다른 Java process는 같은 database에서도 하나의
+  `@Transactional`로 묶이지 않으며, 필요한 경우 Saga/Transactional Outbox/retry/compensation을
+  별도 설계한다.
 - Admin Web → Admin Server → Auth Server Internal API 경계를 유지한다.
 - React는 Access/Refresh/ID Token을 `localStorage`, `sessionStorage`, IndexedDB에 저장하지
   않는다. BFF가 Authorization Code + PKCE와 Token을 server-side에서 관리한다.
@@ -114,8 +123,10 @@ reverse proxy header의 중복·충돌을 최종 확인한다.
 - request detail logging과 사용자-facing stacktrace/message 노출은 비활성화한다.
 - 인증 보안 이벤트 logger는 action과 일반화된 reason만 받고 원문 식별자를 받지 않는다.
 - 공통 masker는 credential label, Email, JWT 형태를 `<redacted>`로 치환한다.
-- Compose 검증은 실행 로그를 민감 패턴으로 검사하며 source audit은 Browser Token
-  storage와 Identity DB dependency 경계를 함께 확인한다.
+- Compose 검증은 실행 로그를 민감 패턴으로 검사하며 source audit은 Browser Token storage,
+  Auth 구현 직접 의존, Auth datasource 재사용과 명시적인 cross-schema 참조를 확인한다.
+  정적 audit으로 판별할 수 없는 runtime schema ownership은 PostgreSQL role/privilege를 최종
+  강제 수단으로 사용한다.
 
 ## Key rotation
 

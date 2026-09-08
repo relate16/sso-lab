@@ -27,6 +27,50 @@ PUBLIC_IP_LITERALS = (
     b"175.197." + b"31.136",
 )
 
+SERVICE_SCHEMA_OWNERS = {
+    # `auth` is the current physical name of the Identity-owned schema.
+    # `identity` is reserved for the same owner if a separately approved rename occurs.
+    "auth-server": frozenset({"auth", "identity"}),
+    "admin-server": frozenset({"admin"}),
+    "hr-server": frozenset({"hr"}),
+    "approval-server": frozenset({"approval"}),
+}
+OWNED_SCHEMA_NAMES = frozenset(
+    schema
+    for schemas in SERVICE_SCHEMA_OWNERS.values()
+    for schema in schemas
+)
+SOURCE_SUFFIXES = {".java", ".kt", ".kts", ".sql", ".yml", ".yaml", ".properties", ".xml"}
+CODE_SUFFIXES = {".java", ".kt", ".kts"}
+CONFIG_SUFFIXES = {".yml", ".yaml", ".properties", ".xml"}
+AUTH_SERVER_PACKAGE_REFERENCE = re.compile(r"\bcom\.ssolab\.auth(?:\.|;)")
+AUTH_SERVER_PROJECT_REFERENCE = re.compile(r"[\"']:backend:auth-server[\"']")
+AUTH_DB_CONFIGURATION_REFERENCE = re.compile(
+    r"\bAUTH_DB_(?:URL|USER|USERNAME|PASSWORD)\b",
+    re.IGNORECASE,
+)
+SCHEMA_QUALIFIED_REFERENCE = re.compile(
+    rf"(?<![A-Za-z0-9_])[\"`]?({'|'.join(sorted(OWNED_SCHEMA_NAMES))})[\"`]?\s*\.",
+    re.IGNORECASE,
+)
+SCHEMA_DDL_REFERENCE = re.compile(
+    rf"\b(?:CREATE|ALTER|DROP)\s+SCHEMA\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?"
+    rf"({'|'.join(sorted(OWNED_SCHEMA_NAMES))})\b",
+    re.IGNORECASE,
+)
+JPA_SCHEMA_REFERENCE = re.compile(
+    rf"\bschema\s*=\s*[\"']({'|'.join(sorted(OWNED_SCHEMA_NAMES))})[\"']",
+    re.IGNORECASE,
+)
+CONFIG_SCHEMA_REFERENCE = re.compile(
+    rf"(?im)^\s*(?:default[-_.]?schema|schemas?|currentSchema)\s*[:=]\s*"
+    rf"\[?\s*({'|'.join(sorted(OWNED_SCHEMA_NAMES))})\b",
+)
+SEARCH_PATH_REFERENCE = re.compile(r"(?im)^.*\bsearch_path\b.*$")
+CURRENT_SCHEMA_REFERENCE = re.compile(r"(?i)\bcurrentSchema=([^\s;&\"']+)")
+STRING_LITERAL = re.compile(r'"""(.*?)"""|"(?:\\.|[^"\\])*"', re.DOTALL)
+URL_REFERENCE = re.compile(r"\bhttps?://[^\s\"']+", re.IGNORECASE)
+
 
 def candidates() -> list[pathlib.Path]:
     output = subprocess.check_output(
@@ -69,19 +113,117 @@ def audit_content(path: pathlib.Path) -> None:
             raise AssertionError(f"non-example email/PII in {relative}")
 
 
-def require_architecture_boundaries() -> None:
-    for service in ("admin-server", "hr-server", "approval-server"):
-        service_root = ROOT / "backend" / service
-        build_text = (service_root / "build.gradle.kts").read_text(encoding="utf-8").casefold()
-        for dependency in ("postgresql", "jdbc", "jpa", "flyway"):
-            if dependency in build_text:
-                raise AssertionError(f"{service} directly declares Identity DB dependency {dependency}")
-        java = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in (service_root / "src").rglob("*.java")
+def quoted_strings(text: str) -> list[str]:
+    values: list[str] = []
+    for match in STRING_LITERAL.finditer(text):
+        literal = match.group(1)
+        if literal is None:
+            literal = match.group(0)[1:-1]
+        values.append(literal)
+    return values
+
+
+def strip_sql_comments(text: str) -> str:
+    without_blocks = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    return re.sub(r"(?m)--.*$", "", without_blocks)
+
+
+def explicit_schema_references(path: pathlib.Path, text: str) -> set[str]:
+    suffix = path.suffix.casefold()
+    searchable: list[str] = []
+    if suffix == ".sql":
+        searchable.append(strip_sql_comments(text))
+    elif suffix in CODE_SUFFIXES:
+        searchable.extend(quoted_strings(text))
+    elif suffix in CONFIG_SUFFIXES:
+        searchable.append(text)
+
+    references: set[str] = set()
+    for candidate in searchable:
+        candidate = URL_REFERENCE.sub("", candidate).replace(r'\"', '"')
+        references.update(match.group(1).casefold() for match in SCHEMA_QUALIFIED_REFERENCE.finditer(candidate))
+        references.update(match.group(1).casefold() for match in SCHEMA_DDL_REFERENCE.finditer(candidate))
+        for line in SEARCH_PATH_REFERENCE.findall(candidate):
+            references.update(
+                schema for schema in OWNED_SCHEMA_NAMES
+                if re.search(rf"(?<![A-Za-z0-9_]){re.escape(schema)}(?![A-Za-z0-9_])", line, re.IGNORECASE)
+            )
+        for match in CURRENT_SCHEMA_REFERENCE.finditer(candidate):
+            references.update(
+                schema.casefold()
+                for schema in match.group(1).split(",")
+                if schema.casefold() in OWNED_SCHEMA_NAMES
+            )
+
+    if suffix in CODE_SUFFIXES:
+        references.update(match.group(1).casefold() for match in JPA_SCHEMA_REFERENCE.finditer(text))
+    if suffix in CONFIG_SUFFIXES:
+        references.update(match.group(1).casefold() for match in CONFIG_SCHEMA_REFERENCE.finditer(text))
+    return references
+
+
+def require_service_source_boundary(service: str, path: pathlib.Path, text: str) -> None:
+    if service not in SERVICE_SCHEMA_OWNERS:
+        return
+    if service != "auth-server":
+        if path.name == "build.gradle.kts" and AUTH_SERVER_PROJECT_REFERENCE.search(text):
+            raise AssertionError(f"{service} directly depends on the auth-server implementation module")
+        if path.suffix.casefold() in CODE_SUFFIXES and AUTH_SERVER_PACKAGE_REFERENCE.search(text):
+            raise AssertionError(f"{service} directly references an auth-server implementation package")
+        if AUTH_DB_CONFIGURATION_REFERENCE.search(text):
+            raise AssertionError(f"{service} directly uses Auth Identity datasource configuration")
+
+    foreign_schemas = explicit_schema_references(path, text) - SERVICE_SCHEMA_OWNERS[service]
+    if foreign_schemas:
+        names = ", ".join(sorted(foreign_schemas))
+        raise AssertionError(
+            f"{service} explicitly references schema owned by another service in {path.as_posix()}: {names}"
         )
-        if re.search(r"@(Entity|Repository)\b|JpaRepository|JdbcTemplate", java):
-            raise AssertionError(f"{service} contains direct Identity persistence code")
+
+
+def compose_service_blocks(text: str) -> dict[str, str]:
+    blocks: dict[str, list[str]] = {}
+    current: str | None = None
+    in_services = False
+    for line in text.splitlines():
+        if line == "services:":
+            in_services = True
+            current = None
+            continue
+        if not in_services:
+            continue
+        if line and not line.startswith(" "):
+            break
+        service_match = re.match(r"^  ([a-z0-9][a-z0-9-]*):\s*$", line)
+        if service_match:
+            current = service_match.group(1)
+            blocks.setdefault(current, [])
+            continue
+        if current is not None:
+            blocks[current].append(line)
+    return {service: "\n".join(lines) for service, lines in blocks.items()}
+
+
+def require_architecture_boundaries() -> None:
+    for service in SERVICE_SCHEMA_OWNERS:
+        service_root = ROOT / "backend" / service
+        build_path = service_root / "build.gradle.kts"
+        require_service_source_boundary(
+            service,
+            build_path,
+            build_path.read_text(encoding="utf-8"),
+        )
+        for source_area in (service_root / "src" / "main", service_root / "src" / "test"):
+            if not source_area.is_dir():
+                continue
+            for path in source_area.rglob("*"):
+                if path.is_file() and path.suffix.casefold() in SOURCE_SUFFIXES:
+                    require_service_source_boundary(service, path, path.read_text(encoding="utf-8"))
+
+    for compose_path in ROOT.glob("docker-compose*.yml"):
+        for service, block in compose_service_blocks(compose_path.read_text(encoding="utf-8")).items():
+            if service in SERVICE_SCHEMA_OWNERS:
+                require_service_source_boundary(service, compose_path, block)
 
     frontend_source = "\n".join(
         path.read_text(encoding="utf-8")
