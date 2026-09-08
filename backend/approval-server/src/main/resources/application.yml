@@ -22,7 +22,7 @@ server:
 
 sso:
   oidc-client:
-    registration-id: ${APPROVAL_CLIENT_ID:approval-client}
+    registration-id: ${APPROVAL_REGISTRATION_ID:${APPROVAL_CLIENT_ID:approval-client}}
     client-id: ${APPROVAL_CLIENT_ID:approval-client}
     client-secret: ${APPROVAL_CLIENT_SECRET:}
     client-secret-file: ${APPROVAL_CLIENT_SECRET_FILE:}

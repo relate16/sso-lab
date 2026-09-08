@@ -43,6 +43,46 @@ test('each dev server is loopback-only and proxies only its configured backend p
   }
 })
 
+test('remote HTTPS targets change origin for virtual-host routing without weakening TLS', () => {
+  const remoteEnv = {
+    ...env,
+    SSO_LOCAL_AUTH_SERVER_URL: 'https://auth.example.test',
+    SSO_LOCAL_ADMIN_SERVER_URL: 'https://admin.example.test',
+    SSO_LOCAL_HR_SERVER_URL: 'https://hr.example.test',
+    SSO_LOCAL_APPROVAL_SERVER_URL: 'https://approval.example.test',
+  }
+
+  for (const service of Object.keys(expected)) {
+    const config = createFrontendViteConfig({
+      service,
+      command: 'serve',
+      reactPlugin: { name: 'react-test' },
+      loadEnv: () => remoteEnv,
+      repoRoot: '/repo',
+    })
+    for (const proxy of Object.values(config.server.proxy)) {
+      assert.equal(proxy.changeOrigin, true)
+      assert.equal(proxy.secure, true)
+    }
+  }
+})
+
+test('localhost and IPv6 loopback targets preserve the incoming origin behavior', () => {
+  for (const target of ['http://localhost:18080', 'https://dev.localhost:18080', 'http://[::1]:18080']) {
+    const config = createFrontendViteConfig({
+      service: 'auth',
+      command: 'serve',
+      reactPlugin: { name: 'react-test' },
+      loadEnv: () => ({ ...env, SSO_LOCAL_AUTH_SERVER_URL: target }),
+      repoRoot: '/repo',
+    })
+    for (const proxy of Object.values(config.server.proxy)) {
+      assert.equal(proxy.changeOrigin, false)
+      assert.equal(proxy.secure, true)
+    }
+  }
+})
+
 test('internal paths are rejected locally without reaching a proxy', () => {
   const config = createFrontendViteConfig({
     service: 'auth', command: 'serve', reactPlugin: { name: 'react-test' },

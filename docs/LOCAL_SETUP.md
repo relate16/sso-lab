@@ -25,6 +25,8 @@ cp .env.frontend.local.example .env.frontend.local
 
 `.env`에는 Docker Compose와 Backend용 로컬 설정 및 개발 전용 Secret을 넣습니다. `.env.frontend.local`은 네 Vite port와 loopback Backend target만 관리합니다. 두 파일 모두 Git 대상이 아니며 Production 값을 복사하지 않습니다.
 
+Backend가 별도 승인된 공유 서버 DB를 사용해야 할 때만 `.env.backend.local.example`을 `.env.backend.local`로 복사합니다. 이 파일은 Git에서 제외되며 DB password와 모든 local-only Secret을 보관합니다. 공유 DB mode를 사용하지 않을 때에는 만들 필요가 없습니다.
+
 기본 local/test 정책은 다음과 같습니다. `docker-compose.local.yml`이 이를 명시적으로 적용하며 CSRF는 비활성화하지 않습니다.
 
 ```text
@@ -70,9 +72,60 @@ docker compose --env-file .env --env-file .env.frontend.local \
 
 PostgreSQL은 host에 publish하지 않습니다. Auth Server만 Identity DB에 직접 접근하는 서비스 경계도 그대로 유지됩니다.
 
+### 선택 사항: SSH tunnel을 통한 공유 서버 DB mode
+
+기본 개발 mode는 위의 격리된 local PostgreSQL입니다. 개인 시연 환경에서 기존 서버 PostgreSQL을 의도적으로 공유할 때에는 두 번째 PowerShell에서 tunnel을 먼저 엽니다.
+
+```powershell
+Copy-Item .env.backend.local.example .env.backend.local
+./scripts/local/start-shared-db-tunnel.ps1
+```
+
+스크립트는 SSH hostname으로 접속해 현재 `sso-lab-postgres-1` container의 private bridge 주소를 동적으로 조회합니다. 주소를 파일에 저장하거나 하드코딩하지 않으며 `127.0.0.1:15432`만 listen합니다. 서버의 PostgreSQL 5432는 Host/Public interface에 publish하지 않습니다. PowerShell에서 `Ctrl+C`를 누르거나 SSH 연결이 끊기면 DB 접근도 종료됩니다.
+
+`.env.backend.local`의 `POSTGRES_USER`, `POSTGRES_PASSWORD`와 DB 이름을 승인된 공유 DB credential에 맞추고, 나머지 `CHANGE_ME` 값은 Production과 독립된 local-only key/secret으로 교체합니다. Production secret 파일을 Windows로 복사하지 않습니다. 준비 후 다음과 같이 local Backend만 기동합니다.
+
+```powershell
+docker compose --env-file .env --env-file .env.frontend.local --env-file .env.backend.local `
+  -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.local-shared-db.yml config
+
+docker compose --env-file .env --env-file .env.frontend.local --env-file .env.backend.local `
+  -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.local-shared-db.yml `
+  up -d --build --wait auth-server admin-server hr-server approval-server
+```
+
+Docker Desktop 없이 Windows에서 빌드된 Spring Boot JAR를 직접 실행하려면 먼저
+`./gradlew.bat --no-daemon clean build`를 완료한 뒤 별도의 PowerShell에서 다음 도우미를
+사용합니다. 이 도우미도 같은 ignored env 파일을 읽고 네 Backend를
+`127.0.0.1:18080`~`18083`에만 bind하며, Auth datasource의 tunnel host를
+`127.0.0.1:15432`로 변환합니다.
+
+```powershell
+./scripts/local/shared-backends.ps1
+
+# 종료
+./scripts/local/shared-backends.ps1 -Stop
+```
+
+이 override가 적용되면 local PostgreSQL service는 시작되지 않고 Auth datasource는 Docker Desktop Host의 SSH tunnel(`host.docker.internal:15432`)만 사용합니다. Windows에서 Auth Server를 직접 `bootRun`할 때에는 같은 ignored env에서 JDBC host만 `127.0.0.1:15432`로 바꿀 수 있습니다.
+
+`local-shared-db` profile은 Flyway를 강제로 비활성화하고 Hibernate를 `ddl-auto=validate`로 유지합니다. 또한 기동 최우선 안전 점검에서 다음 조건이 하나라도 다르면 Auth Server를 실패시킵니다.
+
+- 사용자가 공유 DB write 위험을 명시적으로 승인했는지
+- Flyway, Bootstrap Admin, Turnstile, Gmail 및 test-support가 비활성인지
+- JDBC endpoint가 `127.0.0.1` 또는 `host.docker.internal` tunnel인지
+- issuer와 redirect가 local loopback URL인지
+- OAuth client ID가 Production 기본 ID가 아닌 `sso-local-*`인지
+
+Auth Server는 local-only HR/Approval/Admin client row를 별도 ID로 upsert합니다. BFF의 registration ID와 callback path는 기존 `hr-client`, `approval-client`, `admin-client`를 유지하므로 local UI 경로는 변하지 않습니다. Production client row는 수정하지 않습니다.
+
+공유 mode에서도 Identity DB 직접 접근은 Auth Server에만 있습니다. Admin/HR/Approval BFF에는 datasource, JPA 또는 Flyway가 추가되지 않습니다. 다만 Spring Session, local OIDC authorization/token, OTP challenge와 Audit은 같은 `auth` schema에 기록됩니다. 특히 사용자 기준 global logout 또는 session 관리 작업은 Production Session/token에도 영향을 줄 수 있으므로 공유 mode에서 destructive logout, 전체 session 삭제, signup, email 변경, TOTP 등록/해제 및 자동 E2E를 실행하지 않습니다.
+
+Local-only crypto key로는 기존 Production 암호문을 복호화할 수 없습니다. 기존 사용자 Email OTP에는 Production email AES key가, email lookup에는 Production HMAC key가, 기존 TOTP 로그인에는 Production TOTP AES key가 각각 필요합니다. 이 문서는 해당 Production key를 복사하도록 권장하지 않습니다. 따라서 Production key를 별도로 안전하게 공급하도록 명시 승인받지 않은 공유 mode의 기본 검증 범위는 기동, health, CSRF, OIDC discovery와 비인증 redirect까지입니다. OTP HMAC, OIDC RSA/client secret 및 Internal API secret은 local-only 값으로 사용할 수 있습니다.
+
 ### Flyway migration 실행과 검증
 
-Auth Server가 기동될 때 Flyway가 `auth` schema에 V1-V8 migration을 순서대로 자동 적용하고, Hibernate는 `ddl-auto=validate`로 결과 schema만 검증합니다. 기존 migration 파일을 수정하거나 H2 또는 `ddl-auto=update`로 대체하지 않습니다.
+기본 local DB mode에서는 Auth Server가 기동될 때 Flyway가 `auth` schema에 V1-V8 migration을 순서대로 자동 적용하고, Hibernate는 `ddl-auto=validate`로 결과 schema만 검증합니다. 기존 migration 파일을 수정하거나 H2 또는 `ddl-auto=update`로 대체하지 않습니다. 앞의 공유 서버 DB mode에서는 이 절차를 실행하지 않으며 Flyway가 반드시 비활성 상태여야 합니다.
 
 기동 후 Auth health와 PostgreSQL의 Flyway 이력을 확인합니다. 아래 명령은 비밀번호 원문을 host 명령행에 넣지 않고 PostgreSQL container에 이미 전달된 환경변수를 사용합니다.
 
@@ -153,7 +206,17 @@ Frontend API 코드는 계속 `/api/...` 같은 상대경로만 사용합니다.
 
 `/internal`과 `/internal/**`는 Vite에서 404로 차단하며 Backend로 전달하지 않습니다. WebSocket proxy는 구성하지 않습니다. Vite와 Backend port는 모두 loopback-only이고 Vite는 `strictPort: true`이므로 지정 port가 사용 중이면 다른 port로 자동 변경되지 않습니다.
 
+Proxy target이 `127.0.0.1`, `localhost`, `*.localhost` 또는 `::1`이면 기존 direct local 개발 동작을 유지하도록 upstream origin을 변경하지 않습니다. 그 외의 원격 target은 hostname 기반 HTTPS virtual host가 정확한 Host/SNI를 받도록 Vite가 검증된 고정 target origin으로만 `changeOrigin`을 적용합니다. TLS 인증서 검증은 두 경우 모두 유지하며 임의 요청 값으로 target이나 origin을 바꿀 수 없습니다.
+
 CSRF cookie와 header는 같은 Vite origin을 통해 그대로 왕복합니다. 보호 대상 POST는 CSRF token이 있어야 성공하고 token이 없으면 기존 Spring Security 정책에 의해 계속 거부됩니다.
+
+### 원격 Production target의 범위
+
+`SSO_LOCAL_*_SERVER_URL`에 HTTPS Production hostname을 지정하면 Vite proxy를 통한 API 연결과 TLS 검증은 가능합니다. 그러나 `127.0.0.1`의 서로 다른 port는 cookie 관점에서 서로 다른 host가 아닙니다. Production의 Admin/HR/Approval BFF는 각 hostname으로 격리된 동일 이름의 `JSESSIONID`를 사용하므로, 세 BFF를 모두 `127.0.0.1` port로 proxy하면 브라우저에서 BFF Session cookie가 서로 덮어써집니다.
+
+또한 Production OIDC client의 exact redirect URI와 post-logout redirect URI는 Production HTTPS hostname으로 등록되어 있습니다. 따라서 로컬 BFF에서 시작한 authorization 요청도 callback과 logout 완료 후에는 Production hostname으로 돌아가며, 로컬 Vite origin에 인증된 BFF Session을 만들지 않습니다. Production Turnstile도 Production Auth Web이 runtime에 주입하는 Site Key와 등록 hostname을 사용하므로 로컬 Auth Web의 기본 개발 설정만으로 실제 Production Email OTP 요청을 완료할 수 없습니다.
+
+이 제약을 피하려고 localhost를 CORS/CSRF allow-list에 추가하거나, exact redirect URI를 완화하거나, Production cookie 보안을 낮추지 않습니다. 전체 signup/login/SSO/logout 개발은 이 문서의 `docker-compose.local.yml` 구성을 사용하고, 원격 Production target은 비파괴 API 연결 진단에만 사용합니다. Production 인증 흐름 검증은 Production HTTPS Frontend에서 수행합니다.
 
 ## 5. 로컬 OIDC/SSO URL
 
@@ -238,6 +301,13 @@ node scripts/test/verify-local-vite-proxy.mjs
 ```powershell
 docker compose --env-file .env --env-file .env.frontend.local `
   -f docker-compose.yml -f docker-compose.local.yml down
+```
+
+공유 서버 DB mode를 종료할 때에는 동일한 세 파일을 지정하되 volume을 삭제하지 않습니다. 그 후 tunnel PowerShell에서 `Ctrl+C`를 눌러 DB 접근을 닫습니다.
+
+```powershell
+docker compose --env-file .env --env-file .env.frontend.local --env-file .env.backend.local `
+  -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.local-shared-db.yml down
 ```
 
 데이터 삭제가 목적이 아니라면 `down -v`를 사용하지 않습니다.

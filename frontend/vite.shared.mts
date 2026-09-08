@@ -110,6 +110,14 @@ function validatedPort(value: string, key: string): number {
   return port
 }
 
+function isLoopbackTarget(target: string): boolean {
+  const hostname = new URL(target).hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  return hostname === 'localhost'
+    || hostname.endsWith('.localhost')
+    || hostname === '::1'
+    || /^127(?:\.\d{1,3}){3}$/.test(hostname)
+}
+
 function denyInternalPathsPlugin() {
   return {
     name: 'sso-lab-deny-internal-paths',
@@ -140,7 +148,9 @@ export function createFrontendViteConfig(options: SharedConfigOptions) {
   const port = validatedPort(requiredValue(env, settings.portKey), settings.portKey)
   const proxy = Object.fromEntries(settings.proxyPaths.map(path => [path, {
     target,
-    changeOrigin: false,
+    // Keep direct loopback development unchanged. Remote virtual hosts need the
+    // validated target origin as Host/SNI while TLS verification remains enabled.
+    changeOrigin: !isLoopbackTarget(target),
     secure: true,
   }]))
 

@@ -1,0 +1,43 @@
+# Apply after docker-compose.yml and docker-compose.local.yml.
+# This mode is intentionally explicit because auth-server writes sessions and
+# local-only OIDC client rows to the shared database.
+services:
+  postgres:
+    profiles: [local-database-only]
+
+  auth-server:
+    depends_on: !reset {}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: local,local-shared-db
+      SPRING_FLYWAY_ENABLED: "false"
+      AUTH_DB_URL: ${SSO_LOCAL_SHARED_AUTH_DB_URL:?SSO_LOCAL_SHARED_AUTH_DB_URL must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SSO_LOCAL_SHARED_DB_ACKNOWLEDGED: ${SSO_LOCAL_SHARED_DB_ACKNOWLEDGED:-false}
+      BOOTSTRAP_ADMIN_ENABLED: "false"
+      TURNSTILE_ENABLED: "false"
+      GMAIL_SMTP_ENABLED: "false"
+      SSO_TEST_SUPPORT_ENABLED: "false"
+      HR_CLIENT_ID: ${SSO_LOCAL_HR_CLIENT_ID:-sso-local-hr-client}
+      APPROVAL_CLIENT_ID: ${SSO_LOCAL_APPROVAL_CLIENT_ID:-sso-local-approval-client}
+      ADMIN_CLIENT_ID: ${SSO_LOCAL_ADMIN_CLIENT_ID:-sso-local-admin-client}
+
+  admin-server:
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      ADMIN_REGISTRATION_ID: admin-client
+      ADMIN_CLIENT_ID: ${SSO_LOCAL_ADMIN_CLIENT_ID:-sso-local-admin-client}
+
+  hr-server:
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      HR_REGISTRATION_ID: hr-client
+      HR_CLIENT_ID: ${SSO_LOCAL_HR_CLIENT_ID:-sso-local-hr-client}
+
+  approval-server:
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      APPROVAL_REGISTRATION_ID: approval-client
+      APPROVAL_CLIENT_ID: ${SSO_LOCAL_APPROVAL_CLIENT_ID:-sso-local-approval-client}

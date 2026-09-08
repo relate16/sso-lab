@@ -21,10 +21,13 @@ class RepositoryEnvironmentFileAuditTest(unittest.TestCase):
     def test_only_root_environment_examples_are_allowed_and_content_is_audited(self) -> None:
         REQUIRE_SAFE_PATH(ROOT / ".env.example")
         REQUIRE_SAFE_PATH(ROOT / ".env.frontend.local.example")
+        REQUIRE_SAFE_PATH(ROOT / ".env.backend.local.example")
         AUDIT_CONTENT(ROOT / ".env.frontend.local.example")
+        AUDIT_CONTENT(ROOT / ".env.backend.local.example")
 
         for relative in (
             ".env.frontend.local",
+            ".env.backend.local",
             ".env.other.example",
             "nested/.env.frontend.local.example",
         ):
@@ -114,6 +117,13 @@ class ServiceSchemaOwnershipAuditTest(unittest.TestCase):
             "hr-server",
             "OidcPropertiesTest.java",
             'URI issuer = URI.create("https://auth.example.test");',
+        )
+
+    def test_hyphenated_configuration_property_is_not_treated_as_schema_access(self) -> None:
+        self.assert_allowed(
+            "auth-server",
+            "SafetyCheck.java",
+            'environment.getProperty("sso.bootstrap-admin.enabled");',
         )
 
     def test_auth_datasource_configuration_is_blocked_for_non_owner(self) -> None:

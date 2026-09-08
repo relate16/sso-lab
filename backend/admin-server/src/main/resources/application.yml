@@ -22,7 +22,7 @@ server:
 
 sso:
   oidc-client:
-    registration-id: ${ADMIN_CLIENT_ID:admin-client}
+    registration-id: ${ADMIN_REGISTRATION_ID:${ADMIN_CLIENT_ID:admin-client}}
     client-id: ${ADMIN_CLIENT_ID:admin-client}
     client-secret: ${ADMIN_CLIENT_SECRET:}
     client-secret-file: ${ADMIN_CLIENT_SECRET_FILE:}

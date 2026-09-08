@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !.env.frontend.local.example
+!.env.backend.local.example
 
 # Secret files
 secrets/

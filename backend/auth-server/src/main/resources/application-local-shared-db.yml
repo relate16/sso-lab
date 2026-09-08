@@ -1,0 +1,10 @@
+spring:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+sso:
+  local-shared-database:
+    acknowledged: ${SSO_LOCAL_SHARED_DB_ACKNOWLEDGED:false}

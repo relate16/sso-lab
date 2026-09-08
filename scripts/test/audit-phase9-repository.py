@@ -15,7 +15,11 @@ FORBIDDEN_PATH_PARTS = {
     ".pnpm-store", ".idea", ".vscode", "tmp", "temp",
 }
 FORBIDDEN_SUFFIXES = {".pem", ".key", ".p12", ".jks", ".log"}
-ALLOWED_ENV_EXAMPLE_PATHS = {".env.example", ".env.frontend.local.example"}
+ALLOWED_ENV_EXAMPLE_PATHS = {
+    ".env.example",
+    ".env.frontend.local.example",
+    ".env.backend.local.example",
+}
 SECRET_PATTERNS = {
     "private-key": re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "github-token": re.compile(rb"\b(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}\b"),
@@ -50,7 +54,7 @@ AUTH_DB_CONFIGURATION_REFERENCE = re.compile(
     re.IGNORECASE,
 )
 SCHEMA_QUALIFIED_REFERENCE = re.compile(
-    rf"(?<![A-Za-z0-9_])[\"`]?({'|'.join(sorted(OWNED_SCHEMA_NAMES))})[\"`]?\s*\.",
+    rf"(?<![A-Za-z0-9_-])[\"`]?({'|'.join(sorted(OWNED_SCHEMA_NAMES))})[\"`]?\s*\.",
     re.IGNORECASE,
 )
 SCHEMA_DDL_REFERENCE = re.compile(
