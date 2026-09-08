@@ -1,0 +1,17 @@
+{
+  "name": "@sso-lab/frontend-tools",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow --kill-others-on-fail \"npm --prefix frontend/auth-web run dev\" \"npm --prefix frontend/admin-web run dev\" \"npm --prefix frontend/hr-web run dev\" \"npm --prefix frontend/approval-web run dev\"",
+    "test:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow \"npm --prefix frontend/auth-web run test\" \"npm --prefix frontend/admin-web run test\" \"npm --prefix frontend/hr-web run test\" \"npm --prefix frontend/approval-web run test\"",
+    "lint:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow \"npm --prefix frontend/auth-web run lint\" \"npm --prefix frontend/admin-web run lint\" \"npm --prefix frontend/hr-web run lint\" \"npm --prefix frontend/approval-web run lint\"",
+    "build:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow \"npm --prefix frontend/auth-web run build\" \"npm --prefix frontend/admin-web run build\" \"npm --prefix frontend/hr-web run build\" \"npm --prefix frontend/approval-web run build\""
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5"
+  }
+}

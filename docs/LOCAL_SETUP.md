@@ -86,6 +86,12 @@ V1-V8이 모두 한 번씩 존재하고 `success=true`인지 확인합니다. �
 
 ## 3. Frontend 설치와 실행
 
+Repository root의 일괄 명령은 로컬 도구 의존성을 root `devDependency`로 관리하므로 먼저 한 번 설치합니다. 전역 npm package는 필요하지 않습니다.
+
+```powershell
+npm ci
+```
+
 처음 실행하거나 lock file이 변경되었을 때 각 디렉터리에서 의존성을 설치합니다.
 
 ```powershell
@@ -96,6 +102,14 @@ cd ../approval-web; npm ci
 ```
 
 그 후 터미널 네 개를 열고 각각 실행합니다.
+
+네 개발 서버를 한 terminal에서 동시에 실행하려면 Repository root에서 다음을 사용합니다. 로그에는 각각 `[auth]`, `[admin]`, `[hr]`, `[approval]` prefix가 붙으며 `Ctrl+C` 한 번으로 네 프로세스를 함께 종료합니다.
+
+```powershell
+npm run dev:all
+```
+
+개별 앱만 실행해야 할 때에는 기존 명령을 그대로 사용합니다.
 
 ```powershell
 cd frontend/auth-web
@@ -193,7 +207,15 @@ scripts/test/run-phase9-e2e.sh
 
 ## 8. 검증
 
-각 Frontend에서 다음을 실행합니다.
+Repository root에서 네 Frontend의 test, TypeScript lint와 Production build를 병렬로 실행할 수 있습니다. 각 출력은 앱별 prefix로 구분되고 하나라도 실패하면 root 명령도 실패합니다.
+
+```powershell
+npm run test:all
+npm run lint:all
+npm run build:all
+```
+
+개별 Frontend 검증 명령도 그대로 유지됩니다. 각 앱 디렉터리에서 다음을 실행합니다.
 
 ```sh
 npm test
