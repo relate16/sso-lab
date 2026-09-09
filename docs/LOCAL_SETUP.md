@@ -109,10 +109,10 @@ Docker Desktop 없이 Windows에서 빌드된 Spring Boot JAR를 직접 실행�
 
 이 override가 적용되면 local PostgreSQL service는 시작되지 않고 Auth datasource는 Docker Desktop Host의 SSH tunnel(`host.docker.internal:15432`)만 사용합니다. Windows에서 Auth Server를 직접 `bootRun`할 때에는 같은 ignored env에서 JDBC host만 `127.0.0.1:15432`로 바꿀 수 있습니다.
 
-`local-shared-db` profile은 Flyway를 강제로 비활성화하고 Hibernate를 `ddl-auto=validate`로 유지합니다. 또한 기동 최우선 안전 점검에서 다음 조건이 하나라도 다르면 Auth Server를 실패시킵니다.
+`local-shared-db` profile은 Flyway를 강제로 비활성화하고 Hibernate를 `ddl-auto=validate`로 유지합니다. Auth Server에서는 일반 `local` profile의 in-memory mail sink 대신 runtime mail 구성을 사용하므로, 기본값인 `SSO_LOCAL_SHARED_GMAIL_ENABLED=false`에서는 메일이 발송되지 않습니다. 실제 Email OTP를 의도적으로 시험할 때에만 이 값을 `true`로 바꾸고 승인된 SMTP 설정을 ignored env에 넣습니다. 또한 기동 최우선 안전 점검에서 다음 조건이 하나라도 다르면 Auth Server를 실패시킵니다.
 
 - 사용자가 공유 DB write 위험을 명시적으로 승인했는지
-- Flyway, Bootstrap Admin, Turnstile, Gmail 및 test-support가 비활성인지
+- Flyway, Bootstrap Admin, Turnstile 및 test-support가 비활성인지
 - JDBC endpoint가 `127.0.0.1` 또는 `host.docker.internal` tunnel인지
 - issuer와 redirect가 local loopback URL인지
 - OAuth client ID가 Production 기본 ID가 아닌 `sso-local-*`인지

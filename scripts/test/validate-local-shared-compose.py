@@ -14,11 +14,15 @@ assert "postgres" not in services, "local postgres must be inactive in shared DB
 auth = services["auth-server"]
 assert not auth.get("depends_on"), "auth-server must not depend on local postgres"
 auth_env = auth["environment"]
-assert auth_env["SPRING_PROFILES_ACTIVE"] == "local,local-shared-db"
+assert auth_env["SPRING_PROFILES_ACTIVE"] == "local-shared-db"
 assert auth_env["SPRING_FLYWAY_ENABLED"] == "false"
 assert auth_env["BOOTSTRAP_ADMIN_ENABLED"] == "false"
 assert auth_env["TURNSTILE_ENABLED"] == "false"
-assert auth_env["GMAIL_SMTP_ENABLED"] == "false"
+assert auth_env["GMAIL_SMTP_ENABLED"] in {"true", "false"}
+if auth_env["GMAIL_SMTP_ENABLED"] == "true":
+    assert auth_env["GMAIL_SMTP_USERNAME"]
+    assert auth_env["GMAIL_SMTP_FROM"]
+    assert auth_env["GMAIL_APP_PASSWORD"]
 assert auth_env["SSO_TEST_SUPPORT_ENABLED"] == "false"
 assert auth_env["AUTH_DB_URL"].startswith(
     "jdbc:postgresql://host.docker.internal:15432/"

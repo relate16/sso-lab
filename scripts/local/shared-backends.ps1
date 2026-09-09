@@ -11,7 +11,7 @@ $repository = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 $stateDirectory = Join-Path $repository ".tooling/tmp"
 $pidFile = Join-Path $stateDirectory "shared-backend-pids.txt"
 $services = @(
-    @{ Name = "auth-server"; Port = 18080; Jar = "backend/auth-server/build/libs/auth-server-0.1.0-SNAPSHOT.jar"; Profile = "local,local-shared-db"; Cookie = "SESSION" },
+    @{ Name = "auth-server"; Port = 18080; Jar = "backend/auth-server/build/libs/auth-server-0.1.0-SNAPSHOT.jar"; Profile = "local-shared-db"; Cookie = "SESSION" },
     @{ Name = "admin-server"; Port = 18081; Jar = "backend/admin-server/build/libs/admin-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_ADMIN_SESSION" },
     @{ Name = "hr-server"; Port = 18082; Jar = "backend/hr-server/build/libs/hr-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_HR_SESSION" },
     @{ Name = "approval-server"; Port = 18083; Jar = "backend/approval-server/build/libs/approval-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_APPROVAL_SESSION" }
@@ -85,7 +85,22 @@ $env:SPRING_FLYWAY_ENABLED = "false"
 $env:SSO_LOCAL_SHARED_DB_ACKNOWLEDGED = "true"
 $env:BOOTSTRAP_ADMIN_ENABLED = "false"
 $env:TURNSTILE_ENABLED = "false"
-$env:GMAIL_SMTP_ENABLED = "false"
+$gmailEnabled = if ($settings.ContainsKey("SSO_LOCAL_SHARED_GMAIL_ENABLED")) {
+    $settings["SSO_LOCAL_SHARED_GMAIL_ENABLED"]
+} else {
+    "false"
+}
+if ($gmailEnabled -notin @("true", "false")) {
+    throw "SSO_LOCAL_SHARED_GMAIL_ENABLED must be true or false"
+}
+if ($gmailEnabled -eq "true") {
+    foreach ($key in @("GMAIL_SMTP_USERNAME", "GMAIL_SMTP_FROM", "GMAIL_APP_PASSWORD")) {
+        if (-not $settings.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($settings[$key])) {
+            throw "$key must be set when shared DB Gmail delivery is enabled"
+        }
+    }
+}
+$env:GMAIL_SMTP_ENABLED = $gmailEnabled
 $env:SSO_TEST_SUPPORT_ENABLED = "false"
 $env:SESSION_COOKIE_SECURE = "false"
 $env:SERVER_FORWARD_HEADERS_STRATEGY = "none"

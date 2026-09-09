@@ -50,7 +50,6 @@ public class LocalSharedDatabaseSafetyCheck implements ApplicationRunner, Ordere
         requireFalse("spring.flyway.enabled");
         requireFalse("sso.bootstrap-admin.enabled");
         requireFalse("sso.security.turnstile.enabled");
-        requireFalse("sso.mail.gmail.enabled");
         requireFalse("sso.test-support.enabled");
         validateTunnelDatasource(environment.getProperty("spring.datasource.url"));
         validateLocalOidc();

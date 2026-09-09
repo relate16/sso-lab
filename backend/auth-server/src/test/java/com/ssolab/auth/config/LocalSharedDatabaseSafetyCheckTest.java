@@ -27,8 +27,7 @@ class LocalSharedDatabaseSafetyCheckTest {
             .thenReturn(true);
         for (String key : new String[]{
             "spring.flyway.enabled", "sso.bootstrap-admin.enabled",
-            "sso.security.turnstile.enabled", "sso.mail.gmail.enabled",
-            "sso.test-support.enabled"
+            "sso.security.turnstile.enabled", "sso.test-support.enabled"
         }) {
             when(environment.getProperty(key, Boolean.class, true)).thenReturn(false);
         }
@@ -47,6 +46,13 @@ class LocalSharedDatabaseSafetyCheckTest {
     void rejectsEnabledFlyway() {
         when(environment.getProperty("spring.flyway.enabled", Boolean.class, true)).thenReturn(true);
         assertThatThrownBy(check::validate).hasMessageContaining("spring.flyway.enabled");
+    }
+
+    @Test
+    void permitsExplicitRuntimeMailDeliveryWithoutWeakeningDatabaseGuards() {
+        when(environment.getProperty("sso.mail.gmail.enabled", Boolean.class, true))
+            .thenReturn(true);
+        assertThatCode(check::validate).doesNotThrowAnyException();
     }
 
     @Test

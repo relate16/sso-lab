@@ -10,7 +10,7 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     environment:
-      SPRING_PROFILES_ACTIVE: local,local-shared-db
+      SPRING_PROFILES_ACTIVE: local-shared-db
       SPRING_FLYWAY_ENABLED: "false"
       AUTH_DB_URL: ${SSO_LOCAL_SHARED_AUTH_DB_URL:?SSO_LOCAL_SHARED_AUTH_DB_URL must be set}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
@@ -18,7 +18,7 @@ services:
       SSO_LOCAL_SHARED_DB_ACKNOWLEDGED: ${SSO_LOCAL_SHARED_DB_ACKNOWLEDGED:-false}
       BOOTSTRAP_ADMIN_ENABLED: "false"
       TURNSTILE_ENABLED: "false"
-      GMAIL_SMTP_ENABLED: "false"
+      GMAIL_SMTP_ENABLED: ${SSO_LOCAL_SHARED_GMAIL_ENABLED:-false}
       SSO_TEST_SUPPORT_ENABLED: "false"
       HR_CLIENT_ID: ${SSO_LOCAL_HR_CLIENT_ID:-sso-local-hr-client}
       APPROVAL_CLIENT_ID: ${SSO_LOCAL_APPROVAL_CLIENT_ID:-sso-local-approval-client}
