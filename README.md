@@ -8,7 +8,7 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
 
 **Live:** [Admin](https://today-sso-admin.duckdns.org) · [HR](https://today-sso-hr.duckdns.org) · [Approval](https://today-sso-approval.duckdns.org) · [Auth](https://today-sso-auth.duckdns.org)
 
-> 개인 시연 서버이므로 점검 중에는 접속이 일시적으로 제한될 수 있습니다. 계정 정보는 공개하지 않으며, 아래 화면만으로도 핵심 인증 흐름을 확인할 수 있습니다.
+> 별도의 공용 계정은 제공하지 않습니다. Auth에서 이메일 인증으로 직접 회원가입한 뒤 Passwordless 로그인과 HR·Approval SSO를 체험할 수 있습니다. 일반 가입자는 `USER` 권한을 받으며, 관리자 기능은 아래 화면을 통해 확인할 수 있습니다. 개인 시연 서버이므로 점검 중에는 접속이 일시적으로 제한될 수 있습니다.
 
 ## SSO Demo — Screenshot / GIF로 보는 Passwordless 인증
 
