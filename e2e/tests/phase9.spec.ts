@@ -223,7 +223,7 @@ test('ADMIN can suspend and fresh-email-reauth before unmasking', async ({ page,
   await signup(request, 'phase9-admin-user', 'Phase Nine Admin', 'phase9-admin@example.test')
   await signup(request, 'phase9-admin-target', 'Phase Nine Target', 'phase9-target@example.test')
 
-  await loginWithEmailOtp(page, request, adminUrl, '관리자 SSO 로그인',
+  await loginWithEmailOtp(page, request, adminUrl, 'Passwordless SSO 로그인',
     'phase9-admin-user', false)
   await expect(page.getByRole('heading', { name: 'Identity control plane' })).toBeVisible()
   await page.getByRole('button', { name: /Phase Nine Target/ }).click()

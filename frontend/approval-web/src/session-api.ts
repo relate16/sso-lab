@@ -1,5 +1,15 @@
 export type Fetcher = typeof fetch
-export type Session = Record<string, unknown> & { authenticated: boolean }
+export type Session = {
+  authenticated: boolean
+  name?: string
+  username?: string
+  userId?: string
+  email?: string
+  roles?: string[]
+  groups?: string[]
+  amr?: string[]
+  acr?: string
+}
 export type Csrf = { parameterName: string; token: string }
 
 export async function loadBffState(fetcher: Fetcher = fetch): Promise<{

@@ -120,9 +120,9 @@ export default function ProfilePanel() {
     window.location.assign('/')
   })
 
-  return <section aria-labelledby="profile-title">
-    <h2 id="profile-title">내 정보</h2>
-    <dl>
+  return <section className="panel profile-panel" aria-labelledby="profile-title">
+    <div className="section-heading"><div><p className="section-kicker">PROFILE</p><h2 id="profile-title">내 정보</h2></div></div>
+    <dl className="profile-details">
       <div><dt>User ID</dt><dd>{profile.userId}</dd></div>
       <div><dt>Email</dt><dd>{profile.email}</dd></div>
       <div><dt>Roles</dt><dd>{profile.roles.join(', ')}</dd></div>
