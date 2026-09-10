@@ -16,37 +16,39 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
 
 ### 1. 관리자 페이지에서 통합 로그인을 시작합니다
 
-<table>
-  <tr>
-    <td width="50%" align="center"><strong>관리자 페이지 — 로그인 전</strong></td>
-    <td width="50%" align="center"><strong>중앙 Auth — Passwordless 인증</strong></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/demo/01-admin-login.png" alt="관리자 페이지 로그인 전 화면"></td>
-    <td><img src="docs/images/demo/02-passwordless-auth.png" alt="중앙 Auth의 Passwordless 로그인 화면"></td>
-  </tr>
-  <tr>
-    <td>관리자 페이지는 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.</td>
-    <td>로그인 요청은 중앙 Auth로 이동하며 Email OTP 또는 TOTP를 선택할 수 있습니다.</td>
-  </tr>
-</table>
+#### 관리자 페이지 — 로그인 전
+
+<p align="center">
+  <img src="docs/images/demo/01-admin-login.png" width="900" alt="관리자 페이지 로그인 전 화면">
+</p>
+
+관리자 페이지는 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
+
+#### 중앙 Auth — Passwordless 인증
+
+<p align="center">
+  <img src="docs/images/demo/02-passwordless-auth.png" width="900" alt="중앙 Auth의 Passwordless 로그인 화면">
+</p>
+
+로그인 요청은 중앙 Auth로 이동하며 Email OTP 또는 TOTP를 선택할 수 있습니다.
 
 ### 2. 이메일로 받은 일회용 인증 코드를 확인합니다
 
-<table>
-  <tr>
-    <td width="50%" align="center"><strong>Email OTP 수신</strong></td>
-    <td width="50%" align="center"><strong>6자리 인증 코드 입력</strong></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/demo/03-email-otp-received.png" alt="이메일로 수신한 로그인 OTP"></td>
-    <td><img src="docs/images/demo/04-email-otp-verification.png" alt="Auth 화면에서 Email OTP를 입력하는 과정"></td>
-  </tr>
-  <tr>
-    <td>사용자의 암호 대신 짧게 만료되는 일회용 인증 코드를 발송합니다.</td>
-    <td>재발송 제한과 최대 시도 횟수를 서버에서 검증한 뒤 Auth SSO Session을 생성합니다.</td>
-  </tr>
-</table>
+#### Email OTP 수신
+
+<p align="center">
+  <img src="docs/images/demo/03-email-otp-received.png" width="900" alt="이메일로 수신한 로그인 OTP">
+</p>
+
+사용자의 암호 대신 짧게 만료되는 일회용 인증 코드를 발송합니다.
+
+#### 6자리 인증 코드 입력
+
+<p align="center">
+  <img src="docs/images/demo/04-email-otp-verification.png" width="900" alt="Auth 화면에서 Email OTP를 입력하는 과정">
+</p>
+
+재발송 제한과 최대 시도 횟수를 서버에서 검증한 뒤 Auth SSO Session을 생성합니다.
 
 ### 3. 인증이 완료되면 관리자 기능을 사용할 수 있습니다
 
@@ -58,20 +60,21 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
 
 ### 4. 다른 서비스는 다시 인증하지 않고 이용합니다
 
-<table>
-  <tr>
-    <td width="50%" align="center"><strong>HR 포털 — 접속 전</strong></td>
-    <td width="50%" align="center"><strong>기존 SSO Session으로 접속 완료</strong></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/demo/06-hr-login.png" alt="HR 포털 로그인 전 화면"></td>
-    <td><img src="docs/images/demo/07-hr-sso-complete.png" alt="추가 인증 없이 SSO가 완료된 HR 포털"></td>
-  </tr>
-  <tr>
-    <td>HR은 독립된 Client/BFF Session을 사용하며 중앙 Auth에 인증을 요청합니다.</td>
-    <td>이미 Auth에서 인증했으므로 OTP를 다시 입력하지 않고 HR callback과 로그인이 완료됩니다.</td>
-  </tr>
-</table>
+#### HR 포털 — 접속 전
+
+<p align="center">
+  <img src="docs/images/demo/06-hr-login.png" width="900" alt="HR 포털 로그인 전 화면">
+</p>
+
+HR은 독립된 Client/BFF Session을 사용하며 중앙 Auth에 인증을 요청합니다.
+
+#### 기존 SSO Session으로 접속 완료
+
+<p align="center">
+  <img src="docs/images/demo/07-hr-sso-complete.png" width="900" alt="추가 인증 없이 SSO가 완료된 HR 포털">
+</p>
+
+이미 Auth에서 인증했으므로 OTP를 다시 입력하지 않고 HR callback과 로그인이 완료됩니다.
 
 ## 핵심 기능
 
