@@ -1,6 +1,6 @@
 # SSO Lab
 
-> 한 번의 Passwordless 인증으로 관리자, HR, 전자결재 서비스를 이용하는 사내 통합인증 플랫폼
+> 비밀번호 없는 한 번의 인증으로 관리자, HR, 전자결재 서비스를 이용하는 사내 통합인증 플랫폼
 
 [![CI](https://github.com/relate16/sso-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/relate16/sso-lab/actions/workflows/ci.yml)
 
@@ -12,17 +12,17 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
 
 ## SSO Demo — Screenshot / GIF로 보는 Passwordless 인증
 
-아래 예시는 **관리자 페이지에서 로그인을 시작해 Email OTP 인증을 완료한 뒤, HR 포털에도 추가 인증 없이 접속하는 과정**입니다. Approval도 같은 중앙 인증과 SSO 구조를 사용합니다.
+아래 예시는 **관리자 포털에서 로그인을 시작해 Email OTP 인증을 완료한 뒤, HR 포털에도 추가 인증 없이 접속하는 과정**입니다. Approval도 같은 중앙 인증과 SSO 구조를 사용합니다.
 
-### 1. 관리자 페이지에서 통합 로그인을 시작합니다
+### 1. 관리자 포털에서 통합 로그인을 시작합니다
 
-#### 관리자 페이지 — 로그인 전
+#### 관리자 포털 — 로그인 전
 
 <p align="center">
   <img src="docs/images/demo/01-admin-login.png" width="900" alt="관리자 페이지 로그인 전 화면">
 </p>
 
-관리자 페이지는 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
+관리자 포털은 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
 
 #### 중앙 Auth — Passwordless 인증
 
@@ -30,7 +30,7 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
   <img src="docs/images/demo/02-passwordless-auth.png" width="900" alt="중앙 Auth의 Passwordless 로그인 화면">
 </p>
 
-로그인 요청은 중앙 Auth로 이동하며 Email OTP 또는 TOTP를 선택할 수 있습니다.
+관리자 포털에서 로그인 요청은 중앙 인증 포털로 이동하며 인증 수단으로는 Email OTP 또는 TOTP를 선택할 수 있습니다.
 
 ### 2. 이메일로 받은 일회용 인증 코드를 확인합니다
 
@@ -40,7 +40,7 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
   <img src="docs/images/demo/03-email-otp-received.png" width="900" alt="이메일로 수신한 로그인 OTP">
 </p>
 
-사용자의 암호 대신 짧게 만료되는 일회용 인증 코드를 발송합니다.
+사용자의 암호 대신 일회용 인증 코드를 발송합니다.
 
 #### 6자리 인증 코드 입력
 
@@ -48,7 +48,7 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
   <img src="docs/images/demo/04-email-otp-verification.png" width="900" alt="Auth 화면에서 Email OTP를 입력하는 과정">
 </p>
 
-재발송 제한과 최대 시도 횟수를 서버에서 검증한 뒤 Auth SSO Session을 생성합니다.
+일회용 인증 코드를 입력 후, 로그인을 하면 서버에서 검증한 뒤 SSO 세션을 생성해 관리자 포털로 이동시킵니다.
 
 ### 3. 인증이 완료되면 관리자 기능을 사용할 수 있습니다
 
@@ -56,25 +56,25 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
   <img src="docs/images/demo/05-admin-sso-complete.png" width="900" alt="SSO 인증이 완료된 관리자 화면">
 </p>
 
-관리자 권한은 Browser가 전달한 값이 아니라 검증된 OIDC Claim을 기준으로 판정합니다. 관리자는 사용자 상태와 Role, 계층형 Group을 관리하고, 민감한 작업에는 별도의 Email OTP/TOTP 재인증을 거칩니다. 주요 작업은 Audit으로 남습니다.
+인증이 완료된 후이므로, 관리자 기능을 사용할 수 있습니다.
 
 ### 4. 다른 서비스는 다시 인증하지 않고 이용합니다
 
-#### HR 포털 — 접속 전
+#### HR 포털 — 로그인 전
 
 <p align="center">
   <img src="docs/images/demo/06-hr-login.png" width="900" alt="HR 포털 로그인 전 화면">
 </p>
 
-HR은 독립된 Client/BFF Session을 사용하며 중앙 Auth에 인증을 요청합니다.
+HR 포털는 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
 
-#### 기존 SSO Session으로 접속 완료
+#### 기존 SSO Session으로 로그인 완료
 
 <p align="center">
   <img src="docs/images/demo/07-hr-sso-complete.png" width="900" alt="추가 인증 없이 SSO가 완료된 HR 포털">
 </p>
 
-이미 Auth에서 인증했으므로 OTP를 다시 입력하지 않고 HR callback과 로그인이 완료됩니다.
+HR 포털에서 로그인 버튼 클릭 시, 이미 Auth에서 인증했으므로 OTP를 다시 입력하지 않고 HR 포털에 로그인이 됩니다.
 
 ## 핵심 기능
 
