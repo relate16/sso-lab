@@ -24,13 +24,13 @@ SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비�
 
 관리자 포털은 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
 
-#### 중앙 인증 포털 — Passwordless 인증
+#### 인증 포털 — Passwordless 인증
 
 <p align="center">
   <img src="docs/images/demo/02-passwordless-auth.png" width="900" alt="중앙 Auth의 Passwordless 로그인 화면">
 </p>
 
-관리자 포털에서 로그인 요청은 중앙 인증 포털로 이동하며 인증 수단으로는 Email OTP 또는 TOTP를 선택할 수 있습니다.
+관리자 포털에서 로그인 요청은 인증 포털로 이동하며 인증 수단으로는 Email OTP 또는 TOTP를 선택할 수 있습니다.
 
 ### 2. 이메일로 받은 일회용 인증 코드를 확인합니다
 
@@ -56,7 +56,7 @@ SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비�
   <img src="docs/images/demo/05-admin-sso-complete.png" width="900" alt="SSO 인증이 완료된 관리자 화면">
 </p>
 
-인증이 완료되어 관리자 기능을 사용할 수 있습니다.
+인증이 완료되었으므로 관리자 포털에서 관리자 기능을 사용할 수 있습니다.
 
 ### 4. 다른 서비스는 다시 인증하지 않고 이용합니다
 
@@ -66,7 +66,7 @@ SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비�
   <img src="docs/images/demo/06-hr-login.png" width="900" alt="HR 포털 로그인 전 화면">
 </p>
 
-HR 포털는 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
+HR 포털은 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
 
 #### 기존 SSO Session으로 로그인 완료
 
