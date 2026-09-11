@@ -56,7 +56,7 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
   <img src="docs/images/demo/05-admin-sso-complete.png" width="900" alt="SSO 인증이 완료된 관리자 화면">
 </p>
 
-인증이 완료된 후이므로, 관리자 기능을 사용할 수 있습니다.
+인증이 완료되어 관리자 기능을 사용할 수 있습니다.
 
 ### 4. 다른 서비스는 다시 인증하지 않고 이용합니다
 
