@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/relate16/sso-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/relate16/sso-lab/actions/workflows/ci.yml)
 
-SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번호 없이 로그인하고 여러 업무 서비스에 다시 인증하지 않고 접근하는 과정을 보여주는 프로젝트입니다. 단순 로그인 화면에 그치지 않고 사용자·권한 관리, 세션 폐기, 중앙 로그아웃, 보안 통제와 배포 자동화까지 하나의 흐름으로 구성했습니다.
+SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비밀번호 없이 로그인하고 여러 업무 서비스에 다시 인증하지 않고 접근하는 과정을 보여주는 프로젝트입니다. 단순 로그인 화면에 그치지 않고 사용자·권한 관리, 세션 폐기, 중앙 로그아웃, 보안 통제와 배포 자동화까지 하나의 흐름으로 구성했습니다.
 
 **Live:** [Admin](https://today-sso-admin.duckdns.org) · [HR](https://today-sso-hr.duckdns.org) · [Approval](https://today-sso-approval.duckdns.org) · [Auth](https://today-sso-auth.duckdns.org)
 
@@ -24,7 +24,7 @@ SSO Lab은 중앙 Auth Server와 서비스별 BFF를 직접 구현해, 비밀번
 
 관리자 포털은 인증되지 않은 사용자에게 SSO 로그인만 안내합니다.
 
-#### 중앙 Auth — Passwordless 인증
+#### 중앙 인증 포털 — Passwordless 인증
 
 <p align="center">
   <img src="docs/images/demo/02-passwordless-auth.png" width="900" alt="중앙 Auth의 Passwordless 로그인 화면">
