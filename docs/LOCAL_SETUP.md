@@ -97,8 +97,10 @@ docker compose --env-file .env --env-file .env.frontend.local --env-file .env.ba
 Docker Desktop 없이 Windows에서 빌드된 Spring Boot JAR를 직접 실행하려면 먼저
 `./gradlew.bat --no-daemon clean build`를 완료한 뒤 별도의 PowerShell에서 다음 도우미를
 사용합니다. 이 도우미도 같은 ignored env 파일을 읽고 네 Backend를
-`127.0.0.1:18080`~`18083`에만 bind하며, Auth datasource의 tunnel host를
-`127.0.0.1:15432`로 변환합니다.
+`127.0.0.1:18080`~`18083`에만 bind합니다. `.env.backend.local`의
+`AUTH_DB_URL`은 Windows JVM용 `127.0.0.1:15432` endpoint이며,
+`SSO_LOCAL_SHARED_AUTH_DB_URL`은 Docker용 `host.docker.internal:15432` endpoint입니다.
+도우미는 두 URL과 local client ID/Gmail enable alias가 서로 일치하는지 확인한 뒤 기동합니다.
 
 ```powershell
 ./scripts/local/shared-backends.ps1
@@ -106,6 +108,38 @@ Docker Desktop 없이 Windows에서 빌드된 Spring Boot JAR를 직접 실행�
 # 종료
 ./scripts/local/shared-backends.ps1 -Stop
 ```
+
+#### IntelliJ에서 네 Backend 실행
+
+Repository의 `.run/`에는 네 Java `Application` 구성과 이를 병렬로 실행하는
+`All Local Backends` compound 구성이 포함되어 있습니다. IntelliJ가 Gradle project를
+동기화하면 상단 실행 목록에서 자동으로 읽습니다. 기존에 사용자가 직접 만든 임시
+run configuration은 그대로 둘 수 있지만, 공유 구성과 이름이 다른 중복 항목은 삭제해도 됩니다.
+
+최초 한 번만 서비스별 non-secret overlay를 준비합니다.
+
+```powershell
+Copy-Item .env.auth-server.local.example .env.auth-server.local
+Copy-Item .env.admin-server.local.example .env.admin-server.local
+Copy-Item .env.hr-server.local.example .env.hr-server.local
+Copy-Item .env.approval-server.local.example .env.approval-server.local
+```
+
+실제 네 overlay와 `.env.backend.local`은 모두 Git ignored입니다. 공통 credential, crypto,
+SMTP, local OIDC 값과 shared DB 안전장치는 `.env.backend.local` 한 곳에서 관리하고,
+각 overlay에는 해당 서버의 loopback port, Spring profile, session cookie 이름만 둡니다.
+각 IntelliJ 구성은 공통 파일과 자기 overlay를 함께 읽으므로 VM options와 program arguments는
+필요하지 않습니다.
+
+실행 순서는 다음과 같습니다.
+
+1. 별도 PowerShell에서 `./scripts/local/start-shared-db-tunnel.ps1`을 실행합니다.
+2. `./scripts/local/shared-backends.ps1 -Stop`으로 기존 JAR 실행이 남지 않았는지 확인합니다.
+3. IntelliJ에서 `All Local Backends`를 실행합니다.
+4. 각 Run tab에서 Auth/Admin/HR/Approval 로그를 개별 확인합니다.
+
+개별 디버깅이 필요하면 compound 대신 해당 서버 구성만 실행합니다. IntelliJ 방식도
+PowerShell JAR 방식과 같은 local issuer, callback, Flyway 차단 및 shared DB 정책을 사용합니다.
 
 이 override가 적용되면 local PostgreSQL service는 시작되지 않고 Auth datasource는 Docker Desktop Host의 SSH tunnel(`host.docker.internal:15432`)만 사용합니다. Windows에서 Auth Server를 직접 `bootRun`할 때에는 같은 ignored env에서 JDBC host만 `127.0.0.1:15432`로 바꿀 수 있습니다.
 

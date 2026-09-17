@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="All Local Backends" type="CompoundRunConfigurationType">
+    <toRun name="Auth Server - Local Shared DB" type="Application" />
+    <toRun name="Admin Server - Local" type="Application" />
+    <toRun name="HR Server - Local" type="Application" />
+    <toRun name="Approval Server - Local" type="Application" />
+    <method v="2" />
+  </configuration>
+</component>

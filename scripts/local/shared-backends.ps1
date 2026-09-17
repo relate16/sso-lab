@@ -60,11 +60,23 @@ foreach ($line in [IO.File]::ReadLines($resolvedEnvironment)) {
 }
 
 $required = @(
-    "POSTGRES_USER", "POSTGRES_PASSWORD", "SSO_LOCAL_SHARED_AUTH_DB_URL",
+    "POSTGRES_USER", "POSTGRES_PASSWORD", "SSO_LOCAL_SHARED_AUTH_DB_URL", "AUTH_DB_URL",
     "SSO_LOCAL_HR_CLIENT_ID", "SSO_LOCAL_APPROVAL_CLIENT_ID",
-    "SSO_LOCAL_ADMIN_CLIENT_ID", "HR_CLIENT_SECRET", "APPROVAL_CLIENT_SECRET",
+    "SSO_LOCAL_ADMIN_CLIENT_ID", "HR_CLIENT_ID", "APPROVAL_CLIENT_ID", "ADMIN_CLIENT_ID",
+    "HR_CLIENT_SECRET", "APPROVAL_CLIENT_SECRET",
     "ADMIN_CLIENT_SECRET", "ADMIN_INTERNAL_API_SECRET", "SSO_JWT_PRIVATE_KEY",
-    "SSO_JWT_PUBLIC_KEY"
+    "SSO_JWT_PUBLIC_KEY", "SSO_LOCAL_SHARED_DB_ACKNOWLEDGED",
+    "SSO_LOCAL_SHARED_GMAIL_ENABLED", "GMAIL_SMTP_ENABLED",
+    "SPRING_FLYWAY_ENABLED", "BOOTSTRAP_ADMIN_ENABLED", "TURNSTILE_ENABLED",
+    "SSO_TEST_SUPPORT_ENABLED", "SESSION_COOKIE_SECURE",
+    "SERVER_FORWARD_HEADERS_STRATEGY", "TRUSTED_PROXY_CIDRS",
+    "AUTH_PUBLIC_URL", "AUTH_INTERNAL_URL", "HR_REGISTRATION_ID",
+    "APPROVAL_REGISTRATION_ID", "ADMIN_REGISTRATION_ID",
+    "HR_REDIRECT_URI", "HR_POST_LOGOUT_REDIRECT_URI", "HR_BACKCHANNEL_LOGOUT_URI",
+    "APPROVAL_REDIRECT_URI", "APPROVAL_POST_LOGOUT_REDIRECT_URI",
+    "APPROVAL_BACKCHANNEL_LOGOUT_URI", "ADMIN_REDIRECT_URI",
+    "ADMIN_POST_LOGOUT_REDIRECT_URI", "ADMIN_BACKCHANNEL_LOGOUT_URI",
+    "ADMIN_INTERNAL_URL"
 )
 foreach ($key in $required) {
     if (-not $settings.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($settings[$key])) {
@@ -74,24 +86,67 @@ foreach ($key in $required) {
 if ($settings["SSO_LOCAL_SHARED_AUTH_DB_URL"] -notmatch '^jdbc:postgresql://(?:host\.docker\.internal|127\.0\.0\.1):15432/') {
     throw "Shared database JDBC URL must use the local SSH tunnel"
 }
+$expectedDirectDbUrl = $settings["SSO_LOCAL_SHARED_AUTH_DB_URL"].Replace(
+    "host.docker.internal", "127.0.0.1"
+)
+if ($settings["AUTH_DB_URL"] -cne $expectedDirectDbUrl) {
+    throw "AUTH_DB_URL must be the loopback equivalent of SSO_LOCAL_SHARED_AUTH_DB_URL"
+}
+
+$matchingSettings = @(
+    @("SSO_LOCAL_HR_CLIENT_ID", "HR_CLIENT_ID"),
+    @("SSO_LOCAL_APPROVAL_CLIENT_ID", "APPROVAL_CLIENT_ID"),
+    @("SSO_LOCAL_ADMIN_CLIENT_ID", "ADMIN_CLIENT_ID"),
+    @("SSO_LOCAL_SHARED_GMAIL_ENABLED", "GMAIL_SMTP_ENABLED")
+)
+foreach ($pair in $matchingSettings) {
+    if ($settings[$pair[0]] -cne $settings[$pair[1]]) {
+        throw "$($pair[0]) and $($pair[1]) must match"
+    }
+}
+
+$expectedSettings = @{
+    SSO_LOCAL_SHARED_DB_ACKNOWLEDGED = "true"
+    SPRING_FLYWAY_ENABLED = "false"
+    BOOTSTRAP_ADMIN_ENABLED = "false"
+    TURNSTILE_ENABLED = "false"
+    SSO_TEST_SUPPORT_ENABLED = "false"
+    SESSION_COOKIE_SECURE = "false"
+    SERVER_FORWARD_HEADERS_STRATEGY = "none"
+    TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
+    AUTH_PUBLIC_URL = "http://127.0.0.1:5173"
+    AUTH_INTERNAL_URL = "http://127.0.0.1:18080"
+    HR_REGISTRATION_ID = "hr-client"
+    APPROVAL_REGISTRATION_ID = "approval-client"
+    ADMIN_REGISTRATION_ID = "admin-client"
+    HR_REDIRECT_URI = "http://127.0.0.1:5175/login/oauth2/code/hr-client"
+    HR_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5175/"
+    HR_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18082/internal/oidc/backchannel-logout"
+    APPROVAL_REDIRECT_URI = "http://127.0.0.1:5176/login/oauth2/code/approval-client"
+    APPROVAL_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5176/"
+    APPROVAL_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18083/internal/oidc/backchannel-logout"
+    ADMIN_REDIRECT_URI = "http://127.0.0.1:5174/login/oauth2/code/admin-client"
+    ADMIN_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5174/"
+    ADMIN_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18081/internal/oidc/backchannel-logout"
+    ADMIN_INTERNAL_URL = "http://127.0.0.1:18080/internal/admin/v1"
+}
+foreach ($entry in $expectedSettings.GetEnumerator()) {
+    if ($settings[$entry.Key] -cne $entry.Value) {
+        throw "$($entry.Key) must be $($entry.Value) for local shared-database execution"
+    }
+}
 
 foreach ($entry in $settings.GetEnumerator()) {
     [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, "Process")
 }
-$env:AUTH_DB_URL = $settings["SSO_LOCAL_SHARED_AUTH_DB_URL"].Replace(
-    "host.docker.internal", "127.0.0.1"
-)
+$env:AUTH_DB_URL = $settings["AUTH_DB_URL"]
 $env:SPRING_FLYWAY_ENABLED = "false"
 $env:SSO_LOCAL_SHARED_DB_ACKNOWLEDGED = "true"
 $env:BOOTSTRAP_ADMIN_ENABLED = "false"
 $env:TURNSTILE_ENABLED = "false"
-$gmailEnabled = if ($settings.ContainsKey("SSO_LOCAL_SHARED_GMAIL_ENABLED")) {
-    $settings["SSO_LOCAL_SHARED_GMAIL_ENABLED"]
-} else {
-    "false"
-}
+$gmailEnabled = $settings["GMAIL_SMTP_ENABLED"]
 if ($gmailEnabled -notin @("true", "false")) {
-    throw "SSO_LOCAL_SHARED_GMAIL_ENABLED must be true or false"
+    throw "GMAIL_SMTP_ENABLED must be true or false"
 }
 if ($gmailEnabled -eq "true") {
     foreach ($key in @("GMAIL_SMTP_USERNAME", "GMAIL_SMTP_FROM", "GMAIL_APP_PASSWORD")) {
@@ -107,9 +162,9 @@ $env:SERVER_FORWARD_HEADERS_STRATEGY = "none"
 $env:TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
 $env:AUTH_PUBLIC_URL = "http://127.0.0.1:5173"
 $env:AUTH_INTERNAL_URL = "http://127.0.0.1:18080"
-$env:HR_CLIENT_ID = $settings["SSO_LOCAL_HR_CLIENT_ID"]
-$env:APPROVAL_CLIENT_ID = $settings["SSO_LOCAL_APPROVAL_CLIENT_ID"]
-$env:ADMIN_CLIENT_ID = $settings["SSO_LOCAL_ADMIN_CLIENT_ID"]
+$env:HR_CLIENT_ID = $settings["HR_CLIENT_ID"]
+$env:APPROVAL_CLIENT_ID = $settings["APPROVAL_CLIENT_ID"]
+$env:ADMIN_CLIENT_ID = $settings["ADMIN_CLIENT_ID"]
 $env:HR_REGISTRATION_ID = "hr-client"
 $env:APPROVAL_REGISTRATION_ID = "approval-client"
 $env:ADMIN_REGISTRATION_ID = "admin-client"

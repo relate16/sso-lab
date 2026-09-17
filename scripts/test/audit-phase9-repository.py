@@ -19,6 +19,10 @@ ALLOWED_ENV_EXAMPLE_PATHS = {
     ".env.example",
     ".env.frontend.local.example",
     ".env.backend.local.example",
+    ".env.auth-server.local.example",
+    ".env.admin-server.local.example",
+    ".env.hr-server.local.example",
+    ".env.approval-server.local.example",
 }
 SECRET_PATTERNS = {
     "private-key": re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
