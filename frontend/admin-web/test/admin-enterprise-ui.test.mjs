@@ -90,3 +90,17 @@ test('enterprise UI routes, dialogs, drawers, empty states, and elevated reveal 
   assert.doesNotMatch(source, /window\.(prompt|confirm)/)
   assert.doesNotMatch(source, /\/internal\//)
 })
+
+test('production CSP gives Emotion a request nonce without unsafe-inline styles', async () => {
+  const [entrypoint, html, nginx] = await Promise.all([
+    readFile(new URL('../src/main.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../nginx.conf', import.meta.url), 'utf8'),
+  ])
+  assert.match(html, /meta name="csp-nonce" content="__CSP_NONCE__"/)
+  assert.match(entrypoint, /createCache\(\{ key: 'sso-admin', nonce \}\)/)
+  assert.match(entrypoint, /<CacheProvider value=\{emotionCache\}>/)
+  assert.match(nginx, /style-src 'self' 'nonce-\$request_id'/)
+  assert.match(nginx, /sub_filter '__CSP_NONCE__' '\$request_id'/)
+  assert.doesNotMatch(nginx, /unsafe-inline/)
+})
