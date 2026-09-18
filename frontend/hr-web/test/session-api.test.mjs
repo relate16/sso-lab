@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { loadBffState } from '../src/session-api.ts'
 
@@ -24,4 +25,11 @@ test('HR treats an unauthorized session response as signed out', async () => {
     ? new Response(null, { status: 401 })
     : new Response(JSON.stringify({ parameterName: '_csrf', token: 'test-csrf' })))
   assert.equal(state.session, null)
+})
+
+test('HR login presents the shared SSO Lab portal language', async () => {
+  const source = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(source, /SSO Lab HR 포털/)
+  assert.match(source, /조직의 인사 정보와 업무를 확인합니다\./)
+  assert.match(source, /Passwordless SSO 로그인/)
 })

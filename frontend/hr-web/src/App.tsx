@@ -9,7 +9,7 @@ function App() {
   const authenticated = Boolean(session?.authenticated)
   const displayName = session?.name || session?.username || session?.userId || '사용자'
   if (loading) return <main className="center"><p className="notice">세션을 확인하고 있습니다…</p></main>
-  if (!authenticated) return <main className="center"><section className="login-card" aria-labelledby="page-title"><span className="login-mark" aria-hidden="true">HR</span><p className="eyebrow">임직원 서비스</p><h1 id="page-title">HR 포털</h1><p>인사 정보와 조직 관련 서비스를 이용할 수 있는 공간입니다. 회사 계정으로 안전하게 로그인해주세요.</p><a className="login-link" href="/oauth2/authorization/hr-client">Passwordless SSO 로그인</a></section></main>
+  if (!authenticated) return <main className="center"><section className="login-card" aria-labelledby="page-title"><span className="login-mark" aria-hidden="true">HR</span><p className="eyebrow">임직원 전용 포털</p><h1 id="page-title">SSO Lab HR 포털</h1><p>조직의 인사 정보와 업무를 확인합니다.</p><a className="login-link" href="/oauth2/authorization/hr-client">Passwordless SSO 로그인</a></section></main>
   return <main className="page-shell"><section className="service-card authenticated-card" aria-labelledby="page-title">
     <header className="service-header"><div><p className="eyebrow">SSO LAB · HR</p><h1 id="page-title">HR 포털</h1>
       <p className="summary">인사 서비스에 필요한 내 계정 정보와 접근 상태를 확인합니다.</p></div>

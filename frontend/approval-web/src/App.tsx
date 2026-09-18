@@ -9,7 +9,7 @@ function App() {
   const authenticated = Boolean(session?.authenticated)
   const displayName = session?.name || session?.username || session?.userId || '사용자'
   if (loading) return <main className="center"><p className="notice">세션을 확인하고 있습니다…</p></main>
-  if (!authenticated) return <main className="center"><section className="login-card" aria-labelledby="page-title"><span className="login-mark" aria-hidden="true">AP</span><p className="eyebrow">업무 결재 서비스</p><h1 id="page-title">전자결재</h1><p>결재 요청과 처리 현황을 확인할 수 있는 공간입니다. 회사 계정으로 안전하게 로그인해주세요.</p><a className="login-link" href="/oauth2/authorization/approval-client">Passwordless SSO 로그인</a></section></main>
+  if (!authenticated) return <main className="center"><section className="login-card" aria-labelledby="page-title"><span className="login-mark" aria-hidden="true">AP</span><p className="eyebrow">업무 결재 포털</p><h1 id="page-title">SSO Lab 전자결재</h1><p>결재 문서와 승인 업무를 관리합니다.</p><a className="login-link" href="/oauth2/authorization/approval-client">Passwordless SSO 로그인</a></section></main>
   return <main className="page-shell"><section className="service-card authenticated-card" aria-labelledby="page-title">
     <header className="service-header"><div><p className="eyebrow">SSO LAB · APPROVAL</p><h1 id="page-title">전자결재</h1>
       <p className="summary">통합 인증으로 결재 서비스에 안전하게 접속합니다.</p></div>
