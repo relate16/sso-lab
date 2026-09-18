@@ -9,11 +9,13 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -44,13 +46,26 @@ public class AdminApiController {
         this.elevatedSession = elevatedSession;
     }
 
+    @GetMapping("/dashboard")
+    AdminApiDtos.DashboardView dashboard(@AuthenticationPrincipal OidcUser user) {
+        return internalClient.dashboard(actor(user));
+    }
+
     @GetMapping("/users")
     AdminApiDtos.PageResponse<AdminApiDtos.UserView> users(
         @AuthenticationPrincipal OidcUser user,
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String role,
+        @RequestParam(required = false) UUID groupId,
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "25") int size
+        @RequestParam(defaultValue = "25") int size,
+        @RequestParam(defaultValue = "normalizedUserId") String sort,
+        @RequestParam(defaultValue = "asc") String direction
     ) {
-        return internalClient.users(actor(user), page, size);
+        return internalClient.users(
+            actor(user), q, status, role, groupId, page, size, sort, direction
+        );
     }
 
     @GetMapping("/users/{userId}")
@@ -93,6 +108,30 @@ public class AdminApiController {
         );
     }
 
+    @PostMapping("/users/bulk/status")
+    AdminApiDtos.BulkResult bulkStatus(
+        @AuthenticationPrincipal OidcUser user,
+        @Valid @RequestBody BulkStatusRequest request
+    ) {
+        return internalClient.bulkStatus(
+            actor(user), new AdminApiDtos.BulkStatusRequest(
+                request.userIds(), request.status()
+            ), traceId()
+        );
+    }
+
+    @PutMapping("/users/bulk/roles")
+    AdminApiDtos.BulkResult bulkRoles(
+        @AuthenticationPrincipal OidcUser user,
+        @Valid @RequestBody BulkRolesRequest request
+    ) {
+        return internalClient.bulkRoles(
+            actor(user), new AdminApiDtos.BulkRolesRequest(
+                request.userIds(), request.roles()
+            ), traceId()
+        );
+    }
+
     @PostMapping("/users/{userId}/email/reveal")
     AdminApiDtos.EmailRevealResponse revealEmail(
         @AuthenticationPrincipal OidcUser user,
@@ -107,6 +146,14 @@ public class AdminApiController {
     @GetMapping("/groups")
     List<AdminApiDtos.GroupView> groups(@AuthenticationPrincipal OidcUser user) {
         return internalClient.groups(actor(user));
+    }
+
+    @GetMapping("/groups/{groupId}")
+    AdminApiDtos.GroupDetailView group(
+        @AuthenticationPrincipal OidcUser user,
+        @PathVariable UUID groupId
+    ) {
+        return internalClient.group(actor(user), groupId);
     }
 
     @PostMapping("/groups")
@@ -149,13 +196,39 @@ public class AdminApiController {
         internalClient.deleteGroup(actor(user), groupId, traceId());
     }
 
+    @PostMapping("/groups/{groupId}/members/{userId}")
+    void addGroupMember(
+        @AuthenticationPrincipal OidcUser user,
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
+        internalClient.addGroupMember(actor(user), groupId, userId, traceId());
+    }
+
+    @DeleteMapping("/groups/{groupId}/members/{userId}")
+    void removeGroupMember(
+        @AuthenticationPrincipal OidcUser user,
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
+        internalClient.removeGroupMember(actor(user), groupId, userId, traceId());
+    }
+
     @GetMapping("/audit-logs")
     AdminApiDtos.PageResponse<AdminApiDtos.AuditView> audit(
         @AuthenticationPrincipal OidcUser user,
+        @RequestParam(required = false) String event,
+        @RequestParam(required = false) Boolean success,
+        @RequestParam(required = false) Instant from,
+        @RequestParam(required = false) Instant to,
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "50") int size
+        @RequestParam(defaultValue = "50") int size,
+        @RequestParam(defaultValue = "occurredAt") String sort,
+        @RequestParam(defaultValue = "desc") String direction
     ) {
-        return internalClient.audit(actor(user), page, size);
+        return internalClient.audit(
+            actor(user), event, success, from, to, page, size, sort, direction
+        );
     }
 
     @PostMapping("/reauth/email/start")
@@ -202,6 +275,16 @@ public class AdminApiController {
     public record RolesRequest(@NotEmpty Set<@NotBlank String> roles) {
     }
     public record GroupsRequest(@NotNull Set<@NotNull UUID> groupIds) {
+    }
+    public record BulkStatusRequest(
+        @NotEmpty @Size(max = 100) Set<@NotNull UUID> userIds,
+        @NotBlank @Pattern(regexp = "ACTIVE|SUSPENDED") String status
+    ) {
+    }
+    public record BulkRolesRequest(
+        @NotEmpty @Size(max = 100) Set<@NotNull UUID> userIds,
+        @NotEmpty Set<@NotBlank String> roles
+    ) {
     }
     public record CreateGroupRequest(@NotBlank @Size(max = 100) String name, UUID parentId) {
     }

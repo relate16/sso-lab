@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,13 +50,26 @@ public class InternalAdminController {
         this.rateLimits = rateLimits;
     }
 
+    @GetMapping("/dashboard")
+    AdminDtos.DashboardView dashboard(@RequestHeader(ACTOR_HEADER) UUID actorId) {
+        return queryService.dashboard(actorId);
+    }
+
     @GetMapping("/users")
     AdminDtos.PageResponse<AdminDtos.UserView> users(
         @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String role,
+        @RequestParam(required = false) UUID groupId,
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "25") int size
+        @RequestParam(defaultValue = "25") int size,
+        @RequestParam(defaultValue = "normalizedUserId") String sort,
+        @RequestParam(defaultValue = "asc") String direction
     ) {
-        return queryService.users(actorId, page, size);
+        return queryService.users(
+            actorId, q, status, role, groupId, page, size, sort, direction
+        );
     }
 
     @GetMapping("/users/{userId}")
@@ -104,6 +118,28 @@ public class InternalAdminController {
         managementService.replaceGroups(actorId, userId, request.groupIds(), traceId);
     }
 
+    @PostMapping("/users/bulk/status")
+    AdminDtos.BulkResult bulkStatus(
+        @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @RequestHeader(value = TRACE_HEADER, required = false) String traceId,
+        @Valid @RequestBody AdminDtos.BulkStatusRequest request
+    ) {
+        return managementService.bulkStatus(
+            actorId, request.userIds(), request.status(), traceId
+        );
+    }
+
+    @PutMapping("/users/bulk/roles")
+    AdminDtos.BulkResult bulkRoles(
+        @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @RequestHeader(value = TRACE_HEADER, required = false) String traceId,
+        @Valid @RequestBody AdminDtos.BulkRolesRequest request
+    ) {
+        return managementService.bulkRoles(
+            actorId, request.userIds(), request.roles(), traceId
+        );
+    }
+
     @PostMapping("/users/{userId}/email/reveal")
     AdminDtos.EmailRevealResponse revealEmail(
         @RequestHeader(ACTOR_HEADER) UUID actorId,
@@ -117,6 +153,14 @@ public class InternalAdminController {
     @GetMapping("/groups")
     List<AdminDtos.GroupView> groups(@RequestHeader(ACTOR_HEADER) UUID actorId) {
         return queryService.groups(actorId);
+    }
+
+    @GetMapping("/groups/{groupId}")
+    AdminDtos.GroupDetailView group(
+        @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @PathVariable UUID groupId
+    ) {
+        return queryService.group(actorId, groupId);
     }
 
     @PostMapping("/groups")
@@ -160,6 +204,26 @@ public class InternalAdminController {
         managementService.deleteGroup(actorId, groupId, traceId);
     }
 
+    @PostMapping("/groups/{groupId}/members/{userId}")
+    void addGroupMember(
+        @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @RequestHeader(value = TRACE_HEADER, required = false) String traceId,
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
+        managementService.addGroupMember(actorId, groupId, userId, traceId);
+    }
+
+    @DeleteMapping("/groups/{groupId}/members/{userId}")
+    void removeGroupMember(
+        @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @RequestHeader(value = TRACE_HEADER, required = false) String traceId,
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
+        managementService.removeGroupMember(actorId, groupId, userId, traceId);
+    }
+
     @PostMapping("/reauth/email/start")
     AdminDtos.ReauthStartResponse startReauth(
         @RequestHeader(ACTOR_HEADER) UUID actorId,
@@ -186,9 +250,17 @@ public class InternalAdminController {
     @GetMapping("/audit-logs")
     AdminDtos.PageResponse<AdminDtos.AuditView> audit(
         @RequestHeader(ACTOR_HEADER) UUID actorId,
+        @RequestParam(required = false) String event,
+        @RequestParam(required = false) Boolean success,
+        @RequestParam(required = false) Instant from,
+        @RequestParam(required = false) Instant to,
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "50") int size
+        @RequestParam(defaultValue = "50") int size,
+        @RequestParam(defaultValue = "occurredAt") String sort,
+        @RequestParam(defaultValue = "desc") String direction
     ) {
-        return queryService.audit(actorId, page, size);
+        return queryService.audit(
+            actorId, event, success, from, to, page, size, sort, direction
+        );
     }
 }

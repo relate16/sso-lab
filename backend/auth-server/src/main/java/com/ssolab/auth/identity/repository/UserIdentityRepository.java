@@ -6,12 +6,16 @@ import com.ssolab.auth.identity.model.UserIdentityEntity;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Sort;
+import java.util.List;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
-public interface UserIdentityRepository extends JpaRepository<UserIdentityEntity, UUID> {
+public interface UserIdentityRepository extends JpaRepository<UserIdentityEntity, UUID>,
+    JpaSpecificationExecutor<UserIdentityEntity> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from UserIdentity user where user.id = :userId")
@@ -35,4 +39,8 @@ public interface UserIdentityRepository extends JpaRepository<UserIdentityEntity
         @Param("roleName") RoleName roleName,
         @Param("status") AccountStatus status
     );
+
+    long countByStatus(AccountStatus status);
+
+    List<UserIdentityEntity> findDistinctByGroupsId(UUID groupId, Sort sort);
 }

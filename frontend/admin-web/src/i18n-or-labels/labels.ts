@@ -1,0 +1,33 @@
+export const labels = {
+  product: 'SSO Lab Admin',
+  dashboard: '대시보드',
+  users: '사용자',
+  groups: '그룹',
+  audits: '감사 로그',
+  loading: '관리자 환경을 불러오는 중입니다.',
+  emptyUsers: '조건에 맞는 사용자가 없습니다.',
+  emptyGroups: '등록된 그룹이 없습니다.',
+  emptyAudits: '조건에 맞는 감사 기록이 없습니다.',
+  genericError: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+} as const
+
+export const auditEventLabels: Record<string, string> = {
+  BOOTSTRAP_ADMIN_CLAIMED: '초기 관리자 등록',
+  ACCOUNT_SUSPENDED: '계정 비활성화',
+  ACCOUNT_RESUMED: '계정 활성화',
+  ACCOUNT_DELETED: '계정 삭제',
+  GROUP_CREATED: '그룹 생성',
+  GROUP_UPDATED: '그룹 이름 변경',
+  GROUP_MOVED: '그룹 이동',
+  GROUP_DELETED: '그룹 삭제',
+  GROUP_ASSIGNED: '그룹 사용자 추가',
+  GROUP_REMOVED: '그룹 사용자 제거',
+  ROLE_ASSIGNED: '역할 부여',
+  ROLE_REMOVED: '역할 제거',
+  USERNAME_CHANGED: '사용자명 변경',
+  EMAIL_CHANGED: '이메일 변경',
+  TOTP_DISABLED: 'TOTP 해제',
+  ADMIN_REAUTH_SUCCESS: '관리자 보안 인증 성공',
+  ADMIN_REAUTH_FAILED: '관리자 보안 인증 실패',
+  ADMIN_EMAIL_REVEALED: '사용자 이메일 조회',
+}

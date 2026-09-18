@@ -146,6 +146,84 @@ public class AdminManagementService {
     }
 
     @Transactional
+    public AdminDtos.BulkResult bulkStatus(
+        UUID actorId,
+        Set<UUID> userIds,
+        String status,
+        String traceId
+    ) {
+        guard.requireActiveAdmin(actorId);
+        AccountStatus desired;
+        try {
+            desired = AccountStatus.valueOf(status);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("unsupported account status", exception);
+        }
+        for (UUID userId : userIds) {
+            if (desired == AccountStatus.ACTIVE) {
+                resume(actorId, userId, traceId);
+            } else {
+                suspend(actorId, userId, traceId);
+            }
+        }
+        return new AdminDtos.BulkResult(userIds.size(), userIds.size(), 0);
+    }
+
+    @Transactional
+    public AdminDtos.BulkResult bulkRoles(
+        UUID actorId,
+        Set<UUID> userIds,
+        Set<String> roles,
+        String traceId
+    ) {
+        guard.requireActiveAdmin(actorId);
+        for (UUID userId : userIds) {
+            replaceRoles(actorId, userId, roles, traceId);
+        }
+        return new AdminDtos.BulkResult(userIds.size(), userIds.size(), 0);
+    }
+
+    @Transactional
+    public void addGroupMember(
+        UUID actorId,
+        UUID groupId,
+        UUID userId,
+        String traceId
+    ) {
+        guard.requireActiveAdmin(actorId);
+        UserIdentityEntity target = requireLockedUser(userId);
+        IdentityGroupEntity group = groupRepository.findById(groupId).orElseThrow(
+            () -> new IdentityNotFoundException("group was not found")
+        );
+        if (target.getGroups().contains(group)) {
+            return;
+        }
+        target.addGroup(group);
+        userRepository.saveAndFlush(target);
+        audit(AuditEvent.GROUP_ASSIGNED, actorId, userId, traceId);
+    }
+
+    @Transactional
+    public void removeGroupMember(
+        UUID actorId,
+        UUID groupId,
+        UUID userId,
+        String traceId
+    ) {
+        guard.requireActiveAdmin(actorId);
+        UserIdentityEntity target = requireLockedUser(userId);
+        IdentityGroupEntity group = groupRepository.findById(groupId).orElseThrow(
+            () -> new IdentityNotFoundException("group was not found")
+        );
+        if (!target.getGroups().contains(group)) {
+            return;
+        }
+        target.removeGroup(group);
+        userRepository.saveAndFlush(target);
+        audit(AuditEvent.GROUP_REMOVED, actorId, userId, traceId);
+    }
+
+    @Transactional
     public UUID createGroup(
         UUID actorId,
         String name,

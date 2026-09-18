@@ -3,6 +3,7 @@ package com.ssolab.auth.admin.service;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
@@ -14,6 +15,16 @@ public final class AdminDtos {
     }
 
     public record PageResponse<T>(List<T> content, int page, int size, long totalElements) {
+    }
+
+    public record DashboardView(
+        long totalUsers,
+        long activeUsers,
+        long suspendedUsers,
+        long adminUsers,
+        long totalGroups,
+        List<AuditView> recentSecurityEvents
+    ) {
     }
 
     public record UserView(
@@ -43,11 +54,20 @@ public final class AdminDtos {
     ) {
     }
 
+
+    public record GroupMemberView(UUID id, String userId, String username, String status) {
+    }
+
+    public record GroupDetailView(GroupView group, List<GroupMemberView> members) {
+    }
+
     public record AuditView(
         UUID id,
         String event,
         UUID actorId,
         UUID targetId,
+        String actorLabel,
+        String targetLabel,
         boolean success,
         String source,
         String traceId,
@@ -59,6 +79,21 @@ public final class AdminDtos {
     }
 
     public record GroupsRequest(@NotNull Set<@NotNull UUID> groupIds) {
+    }
+
+    public record BulkStatusRequest(
+        @NotEmpty @Size(max = 100) Set<@NotNull UUID> userIds,
+        @NotBlank @Pattern(regexp = "ACTIVE|SUSPENDED") String status
+    ) {
+    }
+
+    public record BulkRolesRequest(
+        @NotEmpty @Size(max = 100) Set<@NotNull UUID> userIds,
+        @NotEmpty Set<@NotBlank String> roles
+    ) {
+    }
+
+    public record BulkResult(int requestedCount, int succeededCount, int failedCount) {
     }
 
     public record CreateGroupRequest(

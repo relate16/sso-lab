@@ -11,6 +11,9 @@ public final class AdminApiDtos {
 
     public record PageResponse<T>(List<T> content, int page, int size, long totalElements) {
     }
+    public record DashboardView(long totalUsers, long activeUsers, long suspendedUsers,
+        long adminUsers, long totalGroups, List<AuditView> recentSecurityEvents) {
+    }
     public record UserView(UUID id, String userId, String username, String maskedEmail,
         String status, List<String> roles, List<GroupMembership> groups,
         Instant createdAt, Instant updatedAt) {
@@ -20,12 +23,23 @@ public final class AdminApiDtos {
     public record GroupView(UUID id, String name, UUID parentId, String fullPath,
         long memberCount, Instant createdAt, Instant updatedAt) {
     }
+    public record GroupMemberView(UUID id, String userId, String username, String status) {
+    }
+    public record GroupDetailView(GroupView group, List<GroupMemberView> members) {
+    }
     public record AuditView(UUID id, String event, UUID actorId, UUID targetId,
-        boolean success, String source, String traceId, Instant occurredAt) {
+        String actorLabel, String targetLabel, boolean success, String source,
+        String traceId, Instant occurredAt) {
     }
     public record RolesRequest(Set<String> roles) {
     }
     public record GroupsRequest(Set<UUID> groupIds) {
+    }
+    public record BulkStatusRequest(Set<UUID> userIds, String status) {
+    }
+    public record BulkRolesRequest(Set<UUID> userIds, Set<String> roles) {
+    }
+    public record BulkResult(int requestedCount, int succeededCount, int failedCount) {
     }
     public record CreateGroupRequest(String name, UUID parentId) {
     }

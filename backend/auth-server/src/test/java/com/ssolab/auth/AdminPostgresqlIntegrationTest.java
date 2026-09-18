@@ -2,6 +2,7 @@ package com.ssolab.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -166,6 +167,60 @@ class AdminPostgresqlIntegrationTest {
         mvc.perform(post("/internal/admin/v1/users/{id}/resume", managed.getId())
                 .headers(internalHeaders(adminId)))
             .andExpect(status().isOk());
+
+        mvc.perform(get("/internal/admin/v1/dashboard").headers(internalHeaders(adminId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalUsers").value(3))
+            .andExpect(jsonPath("$.activeUsers").value(3))
+            .andExpect(jsonPath("$.adminUsers").value(2))
+            .andExpect(jsonPath("$.totalGroups").value(1));
+        mvc.perform(get("/internal/admin/v1/users")
+                .headers(internalHeaders(adminId))
+                .queryParam("q", "managed").queryParam("status", "ACTIVE")
+                .queryParam("role", "ADMIN").queryParam("groupId", groupId.toString())
+                .queryParam("sort", "username").queryParam("direction", "desc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].userId").value("managed.user"));
+        mvc.perform(post("/internal/admin/v1/groups/{groupId}/members/{userId}",
+                groupId, laterSignupId).headers(internalHeaders(adminId)))
+            .andExpect(status().isOk());
+        mvc.perform(get("/internal/admin/v1/groups/{groupId}", groupId)
+                .headers(internalHeaders(adminId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.members.length()").value(2))
+            .andExpect(jsonPath("$.members[?(@.userId == 'post.bootstrap')].username")
+                .value(org.hamcrest.Matchers.contains("Bootstrap 이후 가입자")));
+        mvc.perform(delete("/internal/admin/v1/groups/{groupId}/members/{userId}",
+                groupId, laterSignupId).headers(internalHeaders(adminId)))
+            .andExpect(status().isOk());
+
+        String bulkIds = "[\"" + managed.getId() + "\",\"" + laterSignupId + "\"]";
+        mvc.perform(post("/internal/admin/v1/users/bulk/status")
+                .headers(internalHeaders(adminId)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userIds\":" + bulkIds + ",\"status\":\"SUSPENDED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.succeededCount").value(2));
+        mvc.perform(post("/internal/admin/v1/users/bulk/status")
+                .headers(internalHeaders(adminId)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userIds\":" + bulkIds + ",\"status\":\"ACTIVE\"}"))
+            .andExpect(status().isOk());
+        mvc.perform(put("/internal/admin/v1/users/bulk/roles")
+                .headers(internalHeaders(adminId)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userIds\":" + bulkIds + ",\"roles\":[\"USER\"]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.requestedCount").value(2));
+        mvc.perform(get("/internal/admin/v1/audit-logs")
+                .headers(internalHeaders(adminId))
+                .queryParam("event", "GROUP_ASSIGNED").queryParam("success", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get("/internal/admin/v1/audit-logs")
+                .headers(internalHeaders(adminId)).queryParam("event", "GROUP_CREATED"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].actorLabel")
+                .value("bootstrap.admin · 초기 관리자"))
+            .andExpect(jsonPath("$.content[0].targetLabel").value("그룹 /Engineering"));
 
         mailSender.clear();
         String startBody = mvc.perform(post("/internal/admin/v1/reauth/email/start")

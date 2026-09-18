@@ -1,6 +1,8 @@
 package com.ssolab.admin.internal;
 
 import java.util.List;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -23,11 +25,23 @@ public class InternalAdminClient {
         this.client = RestClient.builder().baseUrl(properties.baseUri().toString()).build();
     }
 
+    public AdminApiDtos.DashboardView dashboard(UUID actorId) {
+        return headers(client.get().uri("/dashboard"), actorId, null)
+            .retrieve().body(AdminApiDtos.DashboardView.class);
+    }
+
     public AdminApiDtos.PageResponse<AdminApiDtos.UserView> users(
-        UUID actorId, int page, int size
+        UUID actorId, String query, String status, String role, UUID groupId,
+        int page, int size, String sort, String direction
     ) {
         return headers(client.get().uri(uri -> uri.path("/users")
-                .queryParam("page", page).queryParam("size", size).build()), actorId, null)
+                .queryParamIfPresent("q", Optional.ofNullable(query))
+                .queryParamIfPresent("status", Optional.ofNullable(status))
+                .queryParamIfPresent("role", Optional.ofNullable(role))
+                .queryParamIfPresent("groupId", Optional.ofNullable(groupId))
+                .queryParam("page", page).queryParam("size", size)
+                .queryParam("sort", sort).queryParam("direction", direction).build()),
+            actorId, null)
             .retrieve().body(new ParameterizedTypeReference<>() { });
     }
 
@@ -56,9 +70,30 @@ public class InternalAdminClient {
             .retrieve().toBodilessEntity();
     }
 
+    public AdminApiDtos.BulkResult bulkStatus(
+        UUID actorId, AdminApiDtos.BulkStatusRequest request, String traceId
+    ) {
+        return headers(client.post().uri("/users/bulk/status")
+            .contentType(MediaType.APPLICATION_JSON).body(request), actorId, traceId)
+            .retrieve().body(AdminApiDtos.BulkResult.class);
+    }
+
+    public AdminApiDtos.BulkResult bulkRoles(
+        UUID actorId, AdminApiDtos.BulkRolesRequest request, String traceId
+    ) {
+        return headers(client.put().uri("/users/bulk/roles")
+            .contentType(MediaType.APPLICATION_JSON).body(request), actorId, traceId)
+            .retrieve().body(AdminApiDtos.BulkResult.class);
+    }
+
     public List<AdminApiDtos.GroupView> groups(UUID actorId) {
         return headers(client.get().uri("/groups"), actorId, null).retrieve()
             .body(new ParameterizedTypeReference<>() { });
+    }
+
+    public AdminApiDtos.GroupDetailView group(UUID actorId, UUID groupId) {
+        return headers(client.get().uri("/groups/{id}", groupId), actorId, null)
+            .retrieve().body(AdminApiDtos.GroupDetailView.class);
     }
 
     public AdminApiDtos.CreatedId createGroup(
@@ -90,11 +125,28 @@ public class InternalAdminClient {
             .retrieve().toBodilessEntity();
     }
 
+    public void addGroupMember(UUID actorId, UUID groupId, UUID userId, String traceId) {
+        headers(client.post().uri("/groups/{groupId}/members/{userId}", groupId, userId),
+            actorId, traceId).retrieve().toBodilessEntity();
+    }
+
+    public void removeGroupMember(UUID actorId, UUID groupId, UUID userId, String traceId) {
+        headers(client.delete().uri("/groups/{groupId}/members/{userId}", groupId, userId),
+            actorId, traceId).retrieve().toBodilessEntity();
+    }
+
     public AdminApiDtos.PageResponse<AdminApiDtos.AuditView> audit(
-        UUID actorId, int page, int size
+        UUID actorId, String event, Boolean success, Instant from, Instant to,
+        int page, int size, String sort, String direction
     ) {
         return headers(client.get().uri(uri -> uri.path("/audit-logs")
-                .queryParam("page", page).queryParam("size", size).build()), actorId, null)
+                .queryParamIfPresent("event", Optional.ofNullable(event))
+                .queryParamIfPresent("success", Optional.ofNullable(success))
+                .queryParamIfPresent("from", Optional.ofNullable(from))
+                .queryParamIfPresent("to", Optional.ofNullable(to))
+                .queryParam("page", page).queryParam("size", size)
+                .queryParam("sort", sort).queryParam("direction", direction).build()),
+            actorId, null)
             .retrieve().body(new ParameterizedTypeReference<>() { });
     }
 

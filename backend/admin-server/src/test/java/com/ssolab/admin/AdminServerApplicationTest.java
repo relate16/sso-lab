@@ -6,6 +6,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -22,9 +23,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.ssolab.admin.internal.AdminApiDtos;
 import com.ssolab.admin.internal.InternalAdminClient;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -138,6 +142,70 @@ class AdminServerApplicationTest {
             .andReturn().getResponse().getContentAsString();
 
         assertThat(response).doesNotContain("opaque-internal-proof");
+    }
+
+    @Test
+    void exposesActualDashboardAndForwardsServerSideUserFilters(@Autowired MockMvc mvc)
+        throws Exception {
+        UUID actorId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        when(internalAdminClient.dashboard(actorId)).thenReturn(new AdminApiDtos.DashboardView(
+            8, 6, 2, 1, 3, List.of()
+        ));
+        when(internalAdminClient.users(
+            actorId, "alice", "ACTIVE", "ADMIN", null, 1, 15, "username", "desc"
+        )).thenReturn(new AdminApiDtos.PageResponse<>(List.of(), 1, 15, 0));
+
+        mvc.perform(get("/api/v1/admin/dashboard").with(adminLogin(actorId, "urn:jb:loa:1")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalUsers").value(8))
+            .andExpect(jsonPath("$.activeUsers").value(6));
+        mvc.perform(get("/api/v1/admin/users")
+                .queryParam("q", "alice").queryParam("status", "ACTIVE")
+                .queryParam("role", "ADMIN").queryParam("page", "1")
+                .queryParam("size", "15").queryParam("sort", "username")
+                .queryParam("direction", "desc")
+                .with(adminLogin(actorId, "urn:jb:loa:1")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(1));
+        verify(internalAdminClient).users(
+            actorId, "alice", "ACTIVE", "ADMIN", null, 1, 15, "username", "desc"
+        );
+    }
+
+    @Test
+    void validatesAndProtectsBulkOperationsWithCsrf(@Autowired MockMvc mvc) throws Exception {
+        UUID actorId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID first = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        UUID second = UUID.fromString("00000000-0000-0000-0000-000000000003");
+        when(internalAdminClient.bulkStatus(eq(actorId), any(), anyString()))
+            .thenReturn(new AdminApiDtos.BulkResult(2, 2, 0));
+        when(internalAdminClient.bulkRoles(eq(actorId), any(), anyString()))
+            .thenReturn(new AdminApiDtos.BulkResult(2, 2, 0));
+        String ids = "[\"" + first + "\",\"" + second + "\"]";
+
+        mvc.perform(post("/api/v1/admin/users/bulk/status")
+                .with(adminLogin(actorId, "urn:jb:loa:1"))
+                .contentType("application/json")
+                .content("{\"userIds\":" + ids + ",\"status\":\"SUSPENDED\"}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/admin/users/bulk/status")
+                .with(adminLogin(actorId, "urn:jb:loa:1")).with(csrf())
+                .contentType("application/json")
+                .content("{\"userIds\":[],\"status\":\"SUSPENDED\"}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/admin/users/bulk/status")
+                .with(adminLogin(actorId, "urn:jb:loa:1")).with(csrf())
+                .contentType("application/json")
+                .content("{\"userIds\":" + ids + ",\"status\":\"SUSPENDED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.requestedCount").value(2))
+            .andExpect(jsonPath("$.failedCount").value(0));
+        mvc.perform(put("/api/v1/admin/users/bulk/roles")
+                .with(adminLogin(actorId, "urn:jb:loa:1")).with(csrf())
+                .contentType("application/json")
+                .content("{\"userIds\":" + ids + ",\"roles\":[\"USER\",\"ADMIN\"]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.succeededCount").value(2));
     }
 
     private static org.springframework.test.web.servlet.request.RequestPostProcessor adminLogin(
