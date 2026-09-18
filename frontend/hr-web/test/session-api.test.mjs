@@ -30,6 +30,10 @@ test('HR treats an unauthorized session response as signed out', async () => {
 test('HR login presents the shared SSO Lab portal language', async () => {
   const source = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
   assert.match(source, /SSO Lab HR 포털/)
+  assert.match(source, /Human Resources Portal/)
+  assert.match(source, /임직원 전용 인사 포털/)
+  assert.match(source, /MarsLogo/)
+  assert.match(source, /LoginIcon/)
   assert.match(source, /조직의 인사 정보와 업무를 확인합니다\./)
   assert.match(source, /Passwordless SSO 로그인/)
 })

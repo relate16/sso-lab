@@ -9,6 +9,15 @@ type LoginOtpChallenge = { challengeId: string; expiresAt: string; resendAvailab
 type ManagedSession = { id: string; device: string; authenticationMethod: string; loginAt: string; lastActivityAt: string; expiresAt: string; current: boolean }
 type AuthenticationState = 'CHECKING' | 'SIGNED_OUT' | 'SIGNED_IN'
 
+function MarsLogo() {
+  return <svg width="46" height="46" viewBox="0 0 48 48" fill="none" role="img" aria-label="SSO Lab Auth">
+    <circle cx="24" cy="24" r="12" fill="currentColor" opacity=".95" />
+    <path d="M10 29.5c4.8 6.1 19.2 7.6 28.2 1.4 5.5-3.8 5.2-8.8-1.1-11.2-7.3-2.8-20.3-.2-27 5.1-4.5 3.5-3.5 7.2 2.2 8.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".55" />
+    <circle cx="20" cy="20" r="2.1" fill="white" opacity=".55" />
+    <path d="m31.5 12.5 4-4m0 0h-3.2m3.2 0v3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+}
+
 function App() {
   const [view, setView] = useState<'LOGIN' | 'SIGNUP'>('LOGIN')
   const [method, setMethod] = useState<'EMAIL_OTP' | 'TOTP'>('EMAIL_OTP')
@@ -277,7 +286,8 @@ function App() {
   }
 
   return <main className="page-shell"><section className="service-card" aria-labelledby="page-title">
-    <p className="eyebrow">SSO LAB · AUTH</p>
+    <div className="login-brand"><span className="login-logo"><MarsLogo /></span><div><strong>SSO Lab Auth</strong><span>Passwordless Identity Platform</span></div></div>
+    <p className="eyebrow">사용자 전용 인증 포털</p>
     <h1 id="page-title">{view === 'LOGIN' ? 'Passwordless sign in' : 'Passwordless sign up'}</h1>
     <p className="summary">비밀번호 없이 이메일 인증 또는 TOTP로 안전하게 로그인합니다.</p>
     <div className="auth-tabs" role="tablist" aria-label="계정 인증">

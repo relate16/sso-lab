@@ -23,8 +23,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgb(15 98 95 / 24%); 
 .login-brand { grid-column: 1 / -1; display: flex; align-items: center; gap: .85rem; align-self: start; z-index: 1; }
 .login-brand > div { display: grid; }.login-brand strong { font-size: 1.05rem; }.login-brand span { color: var(--muted); font-size: .78rem; }
 .login-logo, .brand-logo { display: grid; place-items: center; color: var(--petrol); }
-.login-copy { align-self: center; max-width: 37rem; z-index: 1; }.login-copy h1 { margin: 1.2rem 0; font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: 1.05; letter-spacing: -.055em; }.login-copy > p { max-width: 34rem; margin-bottom: 2rem; line-height: 1.75; }
+.login-copy { align-self: center; max-width: 40rem; z-index: 1; }.login-copy h1 { margin: 1.2rem 0; font-size: clamp(2.4rem, 4vw, 3.4rem); line-height: 1.05; letter-spacing: -.05em; white-space: nowrap; }.login-copy > p { max-width: 34rem; margin-bottom: 2rem; line-height: 1.75; }
 .login-label { display: inline-flex; align-items: center; gap: .45rem; color: var(--petrol); font-size: .78rem; font-weight: 750; }
+.admin-login-link { width: fit-content; display: inline-flex; align-items: center; justify-content: center; gap: .55rem; padding: .78rem 1rem; border: 1px solid var(--petrol); border-radius: .65rem; color: #fff; background: var(--petrol); text-decoration: none; font-weight: 700; }
+.admin-login-link:hover { background: var(--petrol-dark); }
 .login-assurance { align-self: end; display: grid; gap: .75rem; padding: 1.4rem; border-left: 1px solid var(--border); color: var(--muted); font-size: .8rem; z-index: 1; }.login-assurance span::before { content: '✓'; margin-right: .5rem; color: var(--petrol); font-weight: 900; }
 
 .admin-root { min-height: 100vh; background: var(--canvas); }
@@ -62,7 +64,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgb(15 98 95 / 24%); 
   .topbar { gap: .5rem; }.topbar-actions > .MuiChip-root { display: none; }.page-container { padding-top: 1.25rem; }.page-header { align-items: flex-start; flex-direction: column; }.metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.data-card { max-height: none; }.audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
-  .login-page { padding: .75rem; }.enterprise-login { min-height: calc(100vh - 1.5rem); display: flex; flex-direction: column; padding: 1.5rem; border-radius: 1rem; }.login-copy { margin: auto 0; }.login-copy h1 { font-size: 2.5rem; }.login-assurance { margin-top: 2rem; border-top: 1px solid var(--border); border-left: 0; padding: 1rem 0 0; }
+  .login-page { padding: .75rem; }.enterprise-login { min-height: calc(100vh - 1.5rem); display: flex; flex-direction: column; padding: 1.5rem; border-radius: 1rem; }.login-copy { margin: auto 0; }.login-copy h1 { font-size: 2.25rem; white-space: normal; }.login-assurance { margin-top: 2rem; border-top: 1px solid var(--border); border-left: 0; padding: 1rem 0 0; }
   .topbar-title .MuiTypography-overline-root { display: none; }.identity-button > div:last-child { display: none; }.topbar-actions { gap: .25rem; }.page-header h4 { font-size: 2rem; }.metric-grid, .filter-panel, .audit-filters { grid-template-columns: 1fr; }.bulk-bar, .pagination-row { align-items: flex-start; flex-direction: column; }.tree-actions .MuiButton-root { min-width: 0; }.detail-list > div { grid-template-columns: 6rem 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

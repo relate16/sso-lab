@@ -28,7 +28,11 @@ test('Approval does not synthesize a session from a failed BFF response', async 
 
 test('Approval login presents the shared SSO Lab portal language', async () => {
   const source = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(source, /SSO Lab 전자결재/)
+  assert.match(source, /SSO Lab 전자결재 포털/)
+  assert.match(source, /Digital Approval Portal/)
+  assert.match(source, /임직원 전용 결재 포털/)
+  assert.match(source, /MarsLogo/)
+  assert.match(source, /LoginIcon/)
   assert.match(source, /결재 문서와 승인 업무를 관리합니다\./)
   assert.match(source, /Passwordless SSO 로그인/)
 })

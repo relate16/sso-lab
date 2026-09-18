@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, Typography } from '@mui/material'
+import { Box, CircularProgress, Typography } from '@mui/material'
 import { LogIn, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { BrowserRouter } from 'react-router-dom'
@@ -30,7 +30,7 @@ function App() {
 }
 
 function LoginPage() {
-  return <main className="login-page"><section className="enterprise-login"><div className="login-brand"><span className="login-logo"><MarsLogo size={46} /></span><div><strong>SSO Lab Admin</strong><span>Enterprise SSO Management</span></div></div><div className="login-copy"><span className="login-label"><ShieldCheck size={16} />관리자 전용 보안 콘솔</span><Typography variant="h3" component="h1">SSO Lab 관리자 콘솔</Typography><Typography color="text.secondary">조직의 사용자와 접근 권한을 관리합니다.</Typography><Button component="a" href="/oauth2/authorization/admin-client" size="large" variant="contained" endIcon={<LogIn size={18} />}>Passwordless SSO 로그인</Button></div><div className="login-assurance"><span>OIDC Authorization Code + PKCE</span><span>서버 세션 기반 토큰 보호</span><span>중요 작업 재인증</span></div></section></main>
+  return <main className="login-page"><section className="enterprise-login"><div className="login-brand"><span className="login-logo"><MarsLogo size={46} /></span><div><strong>SSO Lab Admin</strong><span>Enterprise SSO Management</span></div></div><div className="login-copy"><span className="login-label"><ShieldCheck size={16} />관리자 전용 보안 포털</span><Typography variant="h3" component="h1">SSO Lab 관리자 포털</Typography><Typography color="text.secondary">조직의 사용자와 접근 권한을 관리합니다.</Typography><a className="admin-login-link" href="/oauth2/authorization/admin-client">Passwordless SSO 로그인<LogIn size={18} aria-hidden="true" /></a></div><div className="login-assurance"><span>OIDC Authorization Code + PKCE</span><span>서버 세션 기반 토큰 보호</span><span>중요 작업 재인증</span></div></section></main>
 }
 
 export default App
