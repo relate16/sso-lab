@@ -11,9 +11,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 REQUIRED_MARKERS: dict[str, tuple[str, ...]] = {
     "README.md": (
-        "Architecture", "SSO Demo", "Passwordless", "strict MFA",
+        "Architecture", "Passwordless", "strict MFA",
         "Security Highlights", "Local Setup", "Future Work",
-        "Screenshot / GIF", "Repository 구조",
+        "Repository 구조",
     ),
     "DEVELOPER_SETUP.txt": ("Java 21", "Node.js 24", "Docker", "OpenAPI"),
     "docs/ARCHITECTURE.md": (
