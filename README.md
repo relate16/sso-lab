@@ -10,7 +10,7 @@ SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비�
 
 > 별도의 공용 계정은 제공하지 않습니다. Auth에서 이메일 인증으로 직접 회원가입한 뒤 Passwordless 로그인과 HR·Approval SSO를 체험할 수 있습니다. 일반 가입자는 `USER` 권한을 받으며, 관리자 기능은 아래 화면을 통해 확인할 수 있습니다. 개인 시연 서버이므로 점검 중에는 접속이 일시적으로 제한될 수 있습니다.
 
-## SSO Demo — Screenshot / GIF로 보는 Passwordless 인증
+## SSO Lab - 한 눈으로 보는 SSO + Passwordless 인증
 
 아래 예시는 **관리자 포털에서 로그인을 시작해 Email OTP 인증을 완료한 뒤, HR 포털에도 추가 인증 없이 접속하는 과정**입니다. Approval도 같은 중앙 인증과 SSO 구조를 사용합니다.
 
