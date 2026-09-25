@@ -5,7 +5,7 @@ COMPOSE="docker compose --env-file .env.test --env-file .env.phase4.local"
 
 bash scripts/test/verify-phase6-compose.sh
 
-for service in auth-server admin-server hr-server approval-server; do
+for service in auth-server admin-server hr-server approval-server gallery-server; do
   headers=$(docker exec "sso-lab-test-${service}-1" \
     wget -qSO /dev/null http://127.0.0.1:8080/actuator/health 2>&1)
   printf '%s' "$headers" | grep -Eqi 'Content-Security-Policy:.*frame-ancestors'

@@ -6,6 +6,8 @@ export function ArtworkStoryDrawer({ artwork, open, onClose, onInquiry }: { artw
   const close = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const previous = document.activeElement as HTMLElement | null
     close.current?.focus()
     const keydown = (event: KeyboardEvent) => {
@@ -18,7 +20,7 @@ export function ArtworkStoryDrawer({ artwork, open, onClose, onInquiry }: { artw
       }
     }
     document.addEventListener('keydown', keydown)
-    return () => { document.removeEventListener('keydown', keydown); previous?.focus() }
+    return () => { document.removeEventListener('keydown', keydown); document.body.style.overflow = previousOverflow; previous?.focus() }
   }, [open, onClose])
   if (!open) return null
   return <div className="story-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>

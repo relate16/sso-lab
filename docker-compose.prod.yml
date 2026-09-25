@@ -1,4 +1,16 @@
 services:
+  gallery-storage-init:
+    image: alpine:3.22
+    user: "0:0"
+    restart: "no"
+    network_mode: none
+    environment:
+      BACKEND_RUNTIME_UID: ${BACKEND_RUNTIME_UID:-1000}
+      BACKEND_RUNTIME_GID: ${BACKEND_RUNTIME_GID:-1000}
+    command: ["sh", "-ec", "chown -R $$BACKEND_RUNTIME_UID:$$BACKEND_RUNTIME_GID /storage && chmod 700 /storage"]
+    volumes:
+      - gallery-storage:/storage
+
   auth-server:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-auth-server:${IMAGE_TAG:?IMAGE_TAG must be set}
     user: "${BACKEND_RUNTIME_UID:-1000}:${BACKEND_RUNTIME_GID:-1000}"
@@ -102,6 +114,9 @@ services:
     secrets:
       - source: gallery-client-secret
         target: GALLERY_CLIENT_SECRET
+    depends_on:
+      gallery-storage-init:
+        condition: service_completed_successfully
 
   auth-web:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-auth-web:${IMAGE_TAG:?IMAGE_TAG must be set}

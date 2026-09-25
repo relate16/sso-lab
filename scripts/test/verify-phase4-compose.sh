@@ -25,8 +25,8 @@ dc exec -T auth-server sh -c \
    wget -qO- http://127.0.0.1:8080/oauth2/jwks | grep -q RS256"
 printf 'discovery_jwks|pass\n'
 
-for service in postgres auth-server admin-server hr-server approval-server \
-  auth-web admin-web hr-web approval-web; do
+for service in postgres auth-server admin-server hr-server approval-server gallery-server \
+  auth-web admin-web hr-web approval-web gallery-web; do
   container_id=$(dc ps -q "$service")
   container_name=$(docker inspect --format '{{.Name}}' "$container_id" | sed 's#^/##')
   health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")

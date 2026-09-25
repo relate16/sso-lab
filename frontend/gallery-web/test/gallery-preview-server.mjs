@@ -9,7 +9,7 @@ const artworks = ids.map((id, index) => ({
   year: 2024 + index % 2, material: 'Oil on canvas', widthCm: [48, 90, 120, 32][index], heightCm: [72, 60, 150, 32][index],
   price: 1200000 + index * 450000, saleStatus: index === 2 ? 'SOLD' : 'AVAILABLE', frameType: frames[index],
   published: true, featured: index < 2, displayOrder: index, publishedAt: new Date(2026, 8, 20 - index).toISOString(),
-  images: [{ id, storageKey: `preview-${index}`, webUrl: `/api/v1/gallery/public/media/preview-${index}/web`, thumbnailUrl: `/api/v1/gallery/public/media/preview-${index}/thumbnail`, widthPx: 900, heightPx: 1200, sortOrder: 0, primary: true }],
+  images: [{ id, storageKey: `preview-${index}`, webUrl: `/api/v1/gallery/media/preview-${index}/web`, thumbnailUrl: `/api/v1/gallery/media/preview-${index}/thumbnail`, widthPx: 900, heightPx: 1200, sortOrder: 0, primary: true }],
 }))
 
 function artworkSvg(index) {
@@ -21,9 +21,9 @@ createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1')
   const media = url.pathname.match(/\/media\/preview-(\d)\/(?:web|thumbnail)$/)
   if (media) { response.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' }); response.end(artworkSvg(Number(media[1]))); return }
-  if (url.pathname === '/api/v1/gallery/public/home') return json(response, artworks)
-  if (url.pathname === '/api/v1/gallery/public/artworks') return json(response, { content: artworks, page: 0, size: 60, totalElements: artworks.length, totalPages: 1 })
-  const detail = url.pathname.match(/\/api\/v1\/gallery\/public\/artworks\/(.+)$/)
+  if (url.pathname === '/api/v1/gallery/home') return json(response, artworks)
+  if (url.pathname === '/api/v1/gallery/artworks') return json(response, { content: artworks, page: 0, size: 60, totalElements: artworks.length, totalPages: 1 })
+  const detail = url.pathname.match(/\/api\/v1\/gallery\/artworks\/(.+)$/)
   if (detail) { const artwork = artworks.find((item) => item.id === detail[1]); return artwork ? json(response, artwork) : json(response, { error: 'not_found' }, 404) }
   json(response, { error: 'not_found' }, 404)
 }).listen(18084, '127.0.0.1', () => console.log('Gallery preview fixture listening on 18084'))

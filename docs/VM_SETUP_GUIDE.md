@@ -71,9 +71,9 @@ git checkout --detach <approved-source-commit>
 
 `.env.example`을 `/opt/sso-lab/.env`로 복사해 non-secret만 확정합니다.
 
-- 네 `*_HOSTNAME`과 네 `*_PUBLIC_URL=https://<hostname>`
+- 다섯 `*_HOSTNAME`과 다섯 `*_PUBLIC_URL=https://<hostname>`
 - Auth issuer인 `AUTH_PUBLIC_URL`
-- HR/Approval/Admin exact `/login/oauth2/code/<client>` redirect URI
+- HR/Approval/Admin/Gallery exact `/login/oauth2/code/<client>` redirect URI
 - 각 exact post-logout root URI
 - PostgreSQL DB/user/JDBC URL의 database/user 일치
 - `SPRING_PROFILES_ACTIVE=prod`, `SESSION_COOKIE_SECURE=true`
@@ -81,7 +81,7 @@ git checkout --detach <approved-source-commit>
 - immutable `IMAGE_REGISTRY`, `IMAGE_NAMESPACE`, `IMAGE_TAG`; `latest` 금지
 - Gmail의 non-secret host/port/username/from, Turnstile 공개 Site Key
 
-DNS provider에서 네 hostname을 VM의 현재 public address로 연결합니다. public IP가 바뀌면 DNS만 갱신합니다. [Domain Change Guide](DOMAIN_CHANGE_GUIDE.md)의 issuer/exact URI 체크리스트를 지킵니다.
+DNS provider에서 다섯 hostname을 VM의 현재 public address로 연결합니다. public IP가 바뀌면 DNS만 갱신합니다. [Domain Change Guide](DOMAIN_CHANGE_GUIDE.md)의 issuer/exact URI 체크리스트를 지킵니다.
 
 ## 4. Secret 준비
 
@@ -97,6 +97,7 @@ oidc-public-key               matching Base64 X.509 RSA DER
 hr-client-secret
 approval-client-secret
 admin-client-secret
+gallery-client-secret
 admin-internal-api-secret
 turnstile-secret
 gmail-app-password
@@ -123,18 +124,20 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml 
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml up -d --wait --no-build
 ```
 
-`down -v`는 금지합니다. Caddy log에서 네 Let's Encrypt public CA 인증서 발급을
+`down -v`는 금지합니다. Caddy log에서 다섯 Let's Encrypt public CA 인증서 발급을
 확인하되 private key를 출력하지 않습니다. HTTP는 HTTPS로 redirect되어야 합니다.
 
 ## 6. Migration, health와 최초 사용
 
-Auth 시작 시 Flyway V1-V7이 실행됩니다. 신규 DB는 V1부터 순서대로 적용되고 기존 DB에는 V7만 additive 적용됩니다.
+Auth 시작 시 Flyway V1-V8, Gallery 시작 시 자체 schema의 V1이 실행됩니다. 두 서비스는
+독립 Flyway history와 schema ownership을 유지합니다.
 
 ```sh
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml ps
 curl --fail "https://${AUTH_HOSTNAME}/actuator/health"
 curl --fail "https://${AUTH_HOSTNAME}/.well-known/openid-configuration"
 curl --fail "https://${AUTH_HOSTNAME}/oauth2/jwks"
+curl --fail "https://${GALLERY_HOSTNAME}/actuator/health"
 ```
 
 PostgreSQL은 container 내부 `pg_isready`로 확인합니다. 최초 signup과 Bootstrap Admin claim 후 flag를 끄고, HR→Approval SSO, TOTP enrollment/login, Admin 접근, RP/global/back-channel logout을 확인합니다. email/token/session/OTP는 log나 test report에 기록하지 않습니다.

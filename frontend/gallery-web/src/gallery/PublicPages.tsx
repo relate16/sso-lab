@@ -21,7 +21,7 @@ export function HomePage() {
       {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
       {!loading && !error && data.length === 0 && <p className="public-status">현재 공개 중인 작품이 없습니다.</p>}
       <div className={`exhibition-wall count-${data.length}`}>{data.map((artwork, index) => { const image = primaryImage(artwork); return <article className="hung-work" key={artwork.id} style={{ '--hang-index': index } as React.CSSProperties}>
-        <Link className={`hanging-frame frame-${artwork.frameType.toLowerCase()}`} to={`/artworks/${artwork.id}?scene=1`}>{image ? <img src={image.webUrl} alt={`${artwork.title} 작품`} /> : <span>Image awaiting</span>}</Link>
+        <Link className={`hanging-frame frame-${artwork.frameType.toLowerCase()}`} to={`/artworks/${artwork.id}?scene=1`}>{image ? <img src={image.thumbnailUrl} alt={`${artwork.title} 작품`} width={image.widthPx} height={image.heightPx} loading={index > 1 ? 'lazy' : 'eager'} /> : <span>Image awaiting</span>}</Link>
         <div className="wall-label"><strong>{artwork.title}</strong><span>{artwork.year ?? '연도 미상'} · {artwork.widthCm} × {artwork.heightCm} cm</span><button type="button" onClick={() => setInquiry(artwork)}>문의</button></div>
       </article>})}</div>
     </section>
@@ -51,7 +51,7 @@ export function WorksPage() {
       <div className="filter-actions"><button type="submit">적용</button><button type="button" className="text-button" onClick={clear}>초기화</button></div>
     </form>
     <div className="works-summary"><span>{result ? `${result.totalElements} works` : 'Loading'}</span></div>
-    {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
+    {error && <div className="public-status" role="alert"><p>작품을 불러오지 못했습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 시도</button></div>}
     {!error && result?.content.length === 0 && <p className="public-status">조건에 맞는 작품이 없습니다.</p>}
     <div className="works-grid">{result?.content.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onInquiry={setInquiry} onView={(selected) => navigate(`/artworks/${selected.id}?scene=1`)} />)}</div>
     {result && result.totalPages > 1 && <nav className="pagination" aria-label="작품 목록 페이지">{Array.from({ length: result.totalPages }, (_, page) => <button key={page} type="button" aria-current={result.page === page ? 'page' : undefined} onClick={() => { const next = new URLSearchParams(params); next.set('page', String(page)); setParams(next) }}>{page + 1}</button>)}</nav>}
@@ -60,5 +60,5 @@ export function WorksPage() {
 }
 
 export function AboutPage() {
-  return <section className="about-page"><header className="public-page-header"><p className="eyebrow">About the gallery</p><h1>Quiet moments,<br />held in paint.</h1></header><div className="about-story"><p className="about-lead">Quiet Winter Gallery는 계절의 적막, 남겨진 빛, 오래 바라본 풍경을 그리는 한 작가의 온라인 전시 공간입니다.</p><div><h2>작품과 공간 사이</h2><p>화면 안에서도 작품이 놓이는 높이와 주변의 여백, 실제 크기의 관계를 느낄 수 있도록 구성했습니다. 작품 정보는 필요한 만큼만 벽면에 두고, 더 긴 이야기는 별도의 설명으로 이어집니다.</p></div><div><h2>작품에 관하여</h2><p>각 작품의 재료와 크기, 판매 상태는 작품 페이지에서 확인할 수 있습니다. 소장이나 전시에 관한 질문은 작품별 문의를 통해 남겨주세요.</p></div><Link className="about-link" to="/works">작품 보러 가기 <span aria-hidden="true">→</span></Link></div></section>
+  return <section className="about-page"><header className="public-page-header"><p className="eyebrow">About the gallery</p><h1>Quiet moments,<br />held in paint.</h1></header><div className="about-story"><p className="about-lead">Quiet Winter Gallery는 계절의 적막, 남겨진 빛, 오래 바라본 풍경을 그리는 한 작가의 온라인 전시 공간입니다.</p><div><h2>작품과 공간 사이</h2><p>화면 안에서도 작품이 놓이는 높이와 주변의 여백, 실제 크기의 관계를 느낄 수 있도록 구성했습니다. 작품 정보는 필요한 만큼만 벽면에 두고, 더 긴 이야기는 별도의 설명으로 이어집니다.</p></div><div><h2>작품과 연락</h2><p>각 작품의 재료와 크기, 판매 상태는 작품 페이지에서 확인할 수 있습니다. 소장, 전시, 작업에 관한 연락은 작품별 문의를 통해 남겨주세요.</p></div><Link className="about-link" to="/works">작품 보러 가기 <span aria-hidden="true">→</span></Link></div></section>
 }

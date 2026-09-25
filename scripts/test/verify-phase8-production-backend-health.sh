@@ -38,7 +38,7 @@ cleanup() {
   set +e
   if [ "$exit_code" -ne 0 ]; then
     compose ps --all
-    compose logs --no-color auth-server admin-server hr-server approval-server \
+    compose logs --no-color auth-server admin-server hr-server approval-server gallery-server \
       | grep -E 'ERROR|Caused by:|Exception|unavailable|failed|Failure' \
       | tail -80 \
       | sed -E 's/(secret|token|password|code)=[^ ,]+/\1=[REDACTED]/Ig'
@@ -79,13 +79,13 @@ printf '\n' >> "$secret_dir/oidc-private-key"
 openssl pkey -in "$fixture/private.pem" -pubout -outform DER \
   | base64 -w 0 > "$secret_dir/oidc-public-key"
 printf '\n' >> "$secret_dir/oidc-public-key"
-for name in hr-client-secret approval-client-secret admin-client-secret \
+for name in hr-client-secret approval-client-secret admin-client-secret gallery-client-secret \
   admin-internal-api-secret turnstile-secret gmail-app-password; do
   printf 'phase8-test-only-%s\n' "$name" > "$secret_dir/$name"
 done
 chmod 600 "$secret_dir"/*
 
-for service in auth-server admin-server hr-server approval-server; do
+for service in auth-server admin-server hr-server approval-server gallery-server; do
   source_ref="$base_image_prefix-$service:$base_image_tag"
   target_ref="$image_registry/$image_namespace/sso-lab-$service:$release_tag"
   docker image inspect "$source_ref" >/dev/null
@@ -102,26 +102,26 @@ python3 scripts/test/validate-phase8-production-secrets.py "$fixture"
 
 compose config --quiet
 compose up -d --wait --no-build \
-  postgres auth-server admin-server hr-server approval-server
+  postgres auth-server admin-server hr-server approval-server gallery-server
 
-for service in postgres auth-server admin-server hr-server approval-server; do
+for service in postgres auth-server admin-server hr-server approval-server gallery-server; do
   container=$(compose ps -q "$service")
   test -n "$container"
   test "$(docker inspect "$container" --format '{{.State.Health.Status}}')" = healthy
   printf 'production_backend_health|%s|pass\n' "$service"
 done
 
-for service in auth-server admin-server hr-server approval-server; do
+for service in auth-server admin-server hr-server approval-server gallery-server; do
   container=$(compose ps -q "$service")
   test "$(docker inspect "$container" --format '{{.Config.User}}')" = \
     "$runtime_uid:$runtime_gid"
 done
 
-compose logs --no-color auth-server admin-server hr-server approval-server \
+compose logs --no-color auth-server admin-server hr-server approval-server gallery-server \
   > "$fixture/backend.log"
 for name in email-encryption-key email-lookup-hmac-key otp-hmac-key \
   totp-encryption-key oidc-private-key oidc-public-key hr-client-secret \
-  approval-client-secret admin-client-secret admin-internal-api-secret \
+  approval-client-secret admin-client-secret gallery-client-secret admin-internal-api-secret \
   turnstile-secret gmail-app-password; do
   if grep -F -f "$secret_dir/$name" "$fixture/backend.log" >/dev/null; then
     echo "Production test Secret value was found in Backend logs: $name" >&2

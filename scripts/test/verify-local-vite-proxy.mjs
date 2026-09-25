@@ -10,6 +10,7 @@ const services = [
   { name: 'admin', app: 'admin-web', webPort: 5174, backendPort: 18081 },
   { name: 'hr', app: 'hr-web', webPort: 5175, backendPort: 18082 },
   { name: 'approval', app: 'approval-web', webPort: 5176, backendPort: 18083 },
+  { name: 'gallery', app: 'gallery-web', webPort: 5177, backendPort: 18084 },
 ]
 
 const localEnv = Object.fromEntries(services.flatMap(service => [

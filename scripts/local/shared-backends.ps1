@@ -14,7 +14,8 @@ $services = @(
     @{ Name = "auth-server"; Port = 18080; Jar = "backend/auth-server/build/libs/auth-server-0.1.0-SNAPSHOT.jar"; Profile = "local-shared-db"; Cookie = "SESSION" },
     @{ Name = "admin-server"; Port = 18081; Jar = "backend/admin-server/build/libs/admin-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_ADMIN_SESSION" },
     @{ Name = "hr-server"; Port = 18082; Jar = "backend/hr-server/build/libs/hr-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_HR_SESSION" },
-    @{ Name = "approval-server"; Port = 18083; Jar = "backend/approval-server/build/libs/approval-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_APPROVAL_SESSION" }
+    @{ Name = "approval-server"; Port = 18083; Jar = "backend/approval-server/build/libs/approval-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "SSO_LAB_APPROVAL_SESSION" },
+    @{ Name = "gallery-server"; Port = 18084; Jar = "backend/gallery-server/build/libs/gallery-server-0.1.0-SNAPSHOT.jar"; Profile = "local"; Cookie = "QUIET_WINTER_GALLERY_SESSION" }
 )
 
 function Stop-RecordedBackends {
@@ -62,20 +63,22 @@ foreach ($line in [IO.File]::ReadLines($resolvedEnvironment)) {
 $required = @(
     "POSTGRES_USER", "POSTGRES_PASSWORD", "SSO_LOCAL_SHARED_AUTH_DB_URL", "AUTH_DB_URL",
     "SSO_LOCAL_HR_CLIENT_ID", "SSO_LOCAL_APPROVAL_CLIENT_ID",
-    "SSO_LOCAL_ADMIN_CLIENT_ID", "HR_CLIENT_ID", "APPROVAL_CLIENT_ID", "ADMIN_CLIENT_ID",
+    "SSO_LOCAL_ADMIN_CLIENT_ID", "SSO_LOCAL_GALLERY_CLIENT_ID", "HR_CLIENT_ID", "APPROVAL_CLIENT_ID", "ADMIN_CLIENT_ID", "GALLERY_CLIENT_ID",
     "HR_CLIENT_SECRET", "APPROVAL_CLIENT_SECRET",
-    "ADMIN_CLIENT_SECRET", "ADMIN_INTERNAL_API_SECRET", "SSO_JWT_PRIVATE_KEY",
+    "ADMIN_CLIENT_SECRET", "GALLERY_CLIENT_SECRET", "ADMIN_INTERNAL_API_SECRET", "SSO_JWT_PRIVATE_KEY",
     "SSO_JWT_PUBLIC_KEY", "SSO_LOCAL_SHARED_DB_ACKNOWLEDGED",
     "SSO_LOCAL_SHARED_GMAIL_ENABLED", "GMAIL_SMTP_ENABLED",
     "SPRING_FLYWAY_ENABLED", "BOOTSTRAP_ADMIN_ENABLED", "TURNSTILE_ENABLED",
     "SSO_TEST_SUPPORT_ENABLED", "SESSION_COOKIE_SECURE",
     "SERVER_FORWARD_HEADERS_STRATEGY", "TRUSTED_PROXY_CIDRS",
     "AUTH_PUBLIC_URL", "AUTH_INTERNAL_URL", "HR_REGISTRATION_ID",
-    "APPROVAL_REGISTRATION_ID", "ADMIN_REGISTRATION_ID",
+    "APPROVAL_REGISTRATION_ID", "ADMIN_REGISTRATION_ID", "GALLERY_REGISTRATION_ID",
     "HR_REDIRECT_URI", "HR_POST_LOGOUT_REDIRECT_URI", "HR_BACKCHANNEL_LOGOUT_URI",
     "APPROVAL_REDIRECT_URI", "APPROVAL_POST_LOGOUT_REDIRECT_URI",
     "APPROVAL_BACKCHANNEL_LOGOUT_URI", "ADMIN_REDIRECT_URI",
     "ADMIN_POST_LOGOUT_REDIRECT_URI", "ADMIN_BACKCHANNEL_LOGOUT_URI",
+    "GALLERY_DB_URL", "GALLERY_REDIRECT_URI", "GALLERY_POST_LOGOUT_REDIRECT_URI",
+    "GALLERY_BACKCHANNEL_LOGOUT_URI",
     "ADMIN_INTERNAL_URL"
 )
 foreach ($key in $required) {
@@ -92,11 +95,15 @@ $expectedDirectDbUrl = $settings["SSO_LOCAL_SHARED_AUTH_DB_URL"].Replace(
 if ($settings["AUTH_DB_URL"] -cne $expectedDirectDbUrl) {
     throw "AUTH_DB_URL must be the loopback equivalent of SSO_LOCAL_SHARED_AUTH_DB_URL"
 }
+if ($settings["GALLERY_DB_URL"] -cne $expectedDirectDbUrl) {
+    throw "GALLERY_DB_URL must be the loopback equivalent of SSO_LOCAL_SHARED_AUTH_DB_URL"
+}
 
 $matchingSettings = @(
     @("SSO_LOCAL_HR_CLIENT_ID", "HR_CLIENT_ID"),
     @("SSO_LOCAL_APPROVAL_CLIENT_ID", "APPROVAL_CLIENT_ID"),
     @("SSO_LOCAL_ADMIN_CLIENT_ID", "ADMIN_CLIENT_ID"),
+    @("SSO_LOCAL_GALLERY_CLIENT_ID", "GALLERY_CLIENT_ID"),
     @("SSO_LOCAL_SHARED_GMAIL_ENABLED", "GMAIL_SMTP_ENABLED")
 )
 foreach ($pair in $matchingSettings) {
@@ -119,6 +126,7 @@ $expectedSettings = @{
     HR_REGISTRATION_ID = "hr-client"
     APPROVAL_REGISTRATION_ID = "approval-client"
     ADMIN_REGISTRATION_ID = "admin-client"
+    GALLERY_REGISTRATION_ID = "gallery-client"
     HR_REDIRECT_URI = "http://127.0.0.1:5175/login/oauth2/code/hr-client"
     HR_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5175/"
     HR_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18082/internal/oidc/backchannel-logout"
@@ -128,6 +136,9 @@ $expectedSettings = @{
     ADMIN_REDIRECT_URI = "http://127.0.0.1:5174/login/oauth2/code/admin-client"
     ADMIN_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5174/"
     ADMIN_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18081/internal/oidc/backchannel-logout"
+    GALLERY_REDIRECT_URI = "http://127.0.0.1:5177/login/oauth2/code/gallery-client"
+    GALLERY_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5177/"
+    GALLERY_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18084/internal/oidc/backchannel-logout"
     ADMIN_INTERNAL_URL = "http://127.0.0.1:18080/internal/admin/v1"
 }
 foreach ($entry in $expectedSettings.GetEnumerator()) {
@@ -165,9 +176,11 @@ $env:AUTH_INTERNAL_URL = "http://127.0.0.1:18080"
 $env:HR_CLIENT_ID = $settings["HR_CLIENT_ID"]
 $env:APPROVAL_CLIENT_ID = $settings["APPROVAL_CLIENT_ID"]
 $env:ADMIN_CLIENT_ID = $settings["ADMIN_CLIENT_ID"]
+$env:GALLERY_CLIENT_ID = $settings["GALLERY_CLIENT_ID"]
 $env:HR_REGISTRATION_ID = "hr-client"
 $env:APPROVAL_REGISTRATION_ID = "approval-client"
 $env:ADMIN_REGISTRATION_ID = "admin-client"
+$env:GALLERY_REGISTRATION_ID = "gallery-client"
 $env:HR_REDIRECT_URI = "http://127.0.0.1:5175/login/oauth2/code/hr-client"
 $env:HR_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5175/"
 $env:HR_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18082/internal/oidc/backchannel-logout"
@@ -177,6 +190,9 @@ $env:APPROVAL_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18083/internal/oidc/bac
 $env:ADMIN_REDIRECT_URI = "http://127.0.0.1:5174/login/oauth2/code/admin-client"
 $env:ADMIN_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5174/"
 $env:ADMIN_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18081/internal/oidc/backchannel-logout"
+$env:GALLERY_REDIRECT_URI = "http://127.0.0.1:5177/login/oauth2/code/gallery-client"
+$env:GALLERY_POST_LOGOUT_REDIRECT_URI = "http://127.0.0.1:5177/"
+$env:GALLERY_BACKCHANNEL_LOGOUT_URI = "http://127.0.0.1:18084/internal/oidc/backchannel-logout"
 $env:ADMIN_INTERNAL_URL = "http://127.0.0.1:18080/internal/admin/v1"
 
 $java = (Resolve-Path ".tooling/jdk21/jdk-21.0.12+8/bin/java.exe").Path
@@ -231,7 +247,7 @@ try {
     if ($healthy -ne $services.Count) {
         throw "Only $healthy of $($services.Count) local Backends became healthy"
     }
-    Write-Host "All four local shared-database Backends are healthy on loopback ports."
+    Write-Host "All five local shared-database Backends are healthy on loopback ports."
 } catch {
     Stop-RecordedBackends
     throw

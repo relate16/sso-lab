@@ -104,3 +104,34 @@ Design decisions:
 
 Remaining after Phase 4: complete accessibility and security verification, CI/CD coverage and final
 documentation in Phase 5. A final deployed-data smoke test remains an operational follow-up.
+
+## Phase 5 — Quality, security and delivery integration
+
+- Completed responsive drawer/bottom-sheet behavior, keyboard focus visibility, focus containment,
+  Escape close and explicit `prefers-reduced-motion` behavior for CSS transitions and rail scrolling.
+- Switched Home/list rendering to thumbnail variants, reserved image dimensions, lazy-loaded
+  non-critical imagery and gave the active Scene web image high fetch priority.
+- Added backend coverage for public/Studio authorization, server-side `ROLE_ADMIN`, anonymous
+  inquiry CSRF, consent handling, publish-without-image rejection and transactional reorder.
+- Added frontend contracts for public API paths, inquiry accessibility, all frame types and reduced
+  motion; corrected public API paths to match the backend contract.
+- Added Gallery to all local Vite proxy checks, IntelliJ compound execution, shared-DB validation,
+  CI frontend matrix, immutable release image matrix, deploy image verification, Caddy/Compose
+  regression scripts, repository boundary audit and Production Secret validation.
+- Added a non-networked one-shot Production volume initializer so the non-root Gallery runtime can
+  write the persistent image volume without broadening the application container's privileges.
+- Updated README and architecture, local setup, security, test and deployment documentation.
+
+Validation:
+
+- Full backend `clean build` — passed: 85 tests, 0 failures/errors; 22 Docker-dependent tests skipped
+  because Docker CLI is unavailable in this Windows environment.
+- All five frontend test suites — passed: 41 tests, 0 failures.
+- All five frontend TypeScript lint and Vite production builds — passed.
+- Gallery backend — 10 tests passed; Gallery frontend — 8 tests passed.
+- Five-app Vite proxy regression — passed for CSRF, `/internal/**` blocking and loopback binding.
+- Phase 9 docs, OpenAPI, repository Secret/PII/service-boundary audits — passed.
+- PowerShell parse and `git diff --check` — passed.
+
+Operational follow-up: GitHub Actions and Docker Compose/Caddy runtime checks must run on the Linux
+CI/host after this commit is pushed. No Release or Production deployment is performed by this phase.

@@ -19,7 +19,7 @@ request() {
 dc config --quiet
 dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile
 
-for host in auth.sso-lab.test admin.sso-lab.test hr.sso-lab.test approval.sso-lab.test; do
+for host in auth.sso-lab.test admin.sso-lab.test hr.sso-lab.test approval.sso-lab.test gallery.sso-lab.test; do
   redirect=$(curl --silent --show-error --output /dev/null --write-out '%{redirect_url}' \
     --resolve "$host:80:127.0.0.1" "http://$host/")
   test "$redirect" = "https://$host/"
@@ -35,13 +35,13 @@ request auth.sso-lab.test --fail --output /dev/null \
   https://auth.sso-lab.test/oauth2/jwks
 printf 'oidc_https_discovery_jwks|pass\n'
 
-for host in auth.sso-lab.test admin.sso-lab.test hr.sso-lab.test approval.sso-lab.test; do
+for host in auth.sso-lab.test admin.sso-lab.test hr.sso-lab.test approval.sso-lab.test gallery.sso-lab.test; do
   health=$(request "$host" --fail "https://$host/actuator/health")
   printf '%s' "$health" | grep -q '"status":"UP"'
   printf 'backend_health_through_caddy|%s|pass\n' "$host"
 done
 
-for host in auth.sso-lab.test admin.sso-lab.test hr.sso-lab.test approval.sso-lab.test; do
+for host in auth.sso-lab.test admin.sso-lab.test hr.sso-lab.test approval.sso-lab.test gallery.sso-lab.test; do
   status=$(request "$host" --output /dev/null --write-out '%{http_code}' \
     "https://$host/internal/admin/v1/users")
   test "$status" = 404
@@ -102,8 +102,8 @@ second_client=$(docker run --rm --network sso-lab-test_public-network \
 test "$second_client" = 200
 printf 'forwarded_real_client_partition|pass\n'
 
-for service in postgres auth-server admin-server hr-server approval-server \
-  auth-web admin-web hr-web approval-web; do
+for service in postgres auth-server admin-server hr-server approval-server gallery-server \
+  auth-web admin-web hr-web approval-web gallery-web; do
   container_id=$(dc ps -q "$service")
   bindings=$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$container_id")
   test "$bindings" = '{}'

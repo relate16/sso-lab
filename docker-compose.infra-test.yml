@@ -11,6 +11,7 @@ services:
       ADMIN_HOSTNAME: ${ADMIN_HOSTNAME:-admin.sso-lab.test}
       HR_HOSTNAME: ${HR_HOSTNAME:-hr.sso-lab.test}
       APPROVAL_HOSTNAME: ${APPROVAL_HOSTNAME:-approval.sso-lab.test}
+      GALLERY_HOSTNAME: ${GALLERY_HOSTNAME:-gallery.sso-lab.test}
     volumes:
       - ./infra/caddy/Caddyfile.test:/etc/caddy/Caddyfile:ro
       - ./infra/caddy/sites.caddy:/etc/caddy/sites.caddy:ro
@@ -28,6 +29,8 @@ services:
         condition: service_healthy
       approval-server:
         condition: service_healthy
+      gallery-server:
+        condition: service_healthy
       auth-web:
         condition: service_healthy
       admin-web:
@@ -35,6 +38,8 @@ services:
       hr-web:
         condition: service_healthy
       approval-web:
+        condition: service_healthy
+      gallery-web:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]

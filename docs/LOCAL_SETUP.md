@@ -1,6 +1,6 @@
 # Local Setup
 
-이 절차는 네 Frontend를 Vite 개발 서버로 실행하고, Backend만 Docker Compose로 실행하는 로컬 개발 기준입니다. 실제 Gmail, Turnstile 또는 Production Secret은 사용하지 않습니다.
+이 절차는 다섯 Frontend를 Vite 개발 서버로 실행하고, Backend만 Docker Compose로 실행하는 로컬 개발 기준입니다. 실제 Gmail, Turnstile 또는 Production Secret은 사용하지 않습니다.
 
 ## 1. 도구와 로컬 설정
 
@@ -23,7 +23,7 @@ cp .env.example .env
 cp .env.frontend.local.example .env.frontend.local
 ```
 
-`.env`에는 Docker Compose와 Backend용 로컬 설정 및 개발 전용 Secret을 넣습니다. `.env.frontend.local`은 네 Vite port와 loopback Backend target만 관리합니다. 두 파일 모두 Git 대상이 아니며 Production 값을 복사하지 않습니다.
+`.env`에는 Docker Compose와 Backend용 로컬 설정 및 개발 전용 Secret을 넣습니다. `.env.frontend.local`은 다섯 Vite port와 loopback Backend target만 관리합니다. 두 파일 모두 Git 대상이 아니며 Production 값을 복사하지 않습니다.
 
 Backend가 별도 승인된 공유 서버 DB를 사용해야 할 때만 `.env.backend.local.example`을 `.env.backend.local`로 복사합니다. 이 파일은 Git에서 제외되며 DB password와 모든 local-only Secret을 보관합니다. 공유 DB mode를 사용하지 않을 때에는 만들 필요가 없습니다.
 
@@ -41,7 +41,7 @@ SSO_TEST_SUPPORT_ENABLED=false
 
 ## 2. Backend 실행
 
-기본 Compose 파일은 변경하지 않습니다. 로컬에서는 `docker-compose.local.yml`을 함께 적용해 Backend 네 개만 host loopback에 공개합니다.
+기본 Compose 파일은 변경하지 않습니다. 로컬에서는 `docker-compose.local.yml`을 함께 적용해 Backend 다섯 개만 host loopback에 공개합니다.
 
 ```powershell
 docker compose --env-file .env --env-file .env.frontend.local `
@@ -49,7 +49,7 @@ docker compose --env-file .env --env-file .env.frontend.local `
 
 docker compose --env-file .env --env-file .env.frontend.local `
   -f docker-compose.yml -f docker-compose.local.yml `
-  up -d --build --wait postgres auth-server admin-server hr-server approval-server
+  up -d --build --wait postgres auth-server admin-server hr-server approval-server gallery-server
 ```
 
 ```sh
@@ -58,7 +58,7 @@ docker compose --env-file .env --env-file .env.frontend.local \
 
 docker compose --env-file .env --env-file .env.frontend.local \
   -f docker-compose.yml -f docker-compose.local.yml \
-  up -d --build --wait postgres auth-server admin-server hr-server approval-server
+  up -d --build --wait postgres auth-server admin-server hr-server approval-server gallery-server
 ```
 
 기본 port mapping은 다음과 같습니다. 모두 `127.0.0.1`에만 bind되므로 LAN에서 직접 접근할 수 없습니다.
@@ -69,6 +69,7 @@ docker compose --env-file .env --env-file .env.frontend.local \
 | Admin | `http://127.0.0.1:18081` | `admin-server:8080` |
 | HR | `http://127.0.0.1:18082` | `hr-server:8080` |
 | Approval | `http://127.0.0.1:18083` | `approval-server:8080` |
+| Gallery | `http://127.0.0.1:18084` | `gallery-server:8080` |
 
 PostgreSQL은 host에 publish하지 않습니다. Auth Server만 Identity DB에 직접 접근하는 서비스 경계도 그대로 유지됩니다.
 
@@ -91,13 +92,13 @@ docker compose --env-file .env --env-file .env.frontend.local --env-file .env.ba
 
 docker compose --env-file .env --env-file .env.frontend.local --env-file .env.backend.local `
   -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.local-shared-db.yml `
-  up -d --build --wait auth-server admin-server hr-server approval-server
+  up -d --build --wait auth-server admin-server hr-server approval-server gallery-server
 ```
 
 Docker Desktop 없이 Windows에서 빌드된 Spring Boot JAR를 직접 실행하려면 먼저
 `./gradlew.bat --no-daemon clean build`를 완료한 뒤 별도의 PowerShell에서 다음 도우미를
-사용합니다. 이 도우미도 같은 ignored env 파일을 읽고 네 Backend를
-`127.0.0.1:18080`~`18083`에만 bind합니다. `.env.backend.local`의
+사용합니다. 이 도우미도 같은 ignored env 파일을 읽고 다섯 Backend를
+`127.0.0.1:18080`~`18084`에만 bind합니다. `.env.backend.local`의
 `AUTH_DB_URL`은 Windows JVM용 `127.0.0.1:15432` endpoint이며,
 `SSO_LOCAL_SHARED_AUTH_DB_URL`은 Docker용 `host.docker.internal:15432` endpoint입니다.
 도우미는 두 URL과 local client ID/Gmail enable alias가 서로 일치하는지 확인한 뒤 기동합니다.
@@ -109,7 +110,7 @@ Docker Desktop 없이 Windows에서 빌드된 Spring Boot JAR를 직접 실행�
 ./scripts/local/shared-backends.ps1 -Stop
 ```
 
-#### IntelliJ에서 네 Backend 실행
+#### IntelliJ에서 다섯 Backend 실행
 
 Repository의 `.run/`에는 네 Java `Application` 구성과 이를 병렬로 실행하는
 `All Local Backends` compound 구성이 포함되어 있습니다. IntelliJ가 Gradle project를
@@ -123,6 +124,7 @@ Copy-Item .env.auth-server.local.example .env.auth-server.local
 Copy-Item .env.admin-server.local.example .env.admin-server.local
 Copy-Item .env.hr-server.local.example .env.hr-server.local
 Copy-Item .env.approval-server.local.example .env.approval-server.local
+Copy-Item .env.gallery-server.local.example .env.gallery-server.local
 ```
 
 실제 네 overlay와 `.env.backend.local`은 모두 Git ignored입니다. 공통 credential, crypto,
@@ -136,7 +138,7 @@ SMTP, local OIDC 값과 shared DB 안전장치는 `.env.backend.local` 한 곳�
 1. 별도 PowerShell에서 `./scripts/local/start-shared-db-tunnel.ps1`을 실행합니다.
 2. `./scripts/local/shared-backends.ps1 -Stop`으로 기존 JAR 실행이 남지 않았는지 확인합니다.
 3. IntelliJ에서 `All Local Backends`를 실행합니다.
-4. 각 Run tab에서 Auth/Admin/HR/Approval 로그를 개별 확인합니다.
+4. 각 Run tab에서 Auth/Admin/HR/Approval/Gallery 로그를 개별 확인합니다.
 
 개별 디버깅이 필요하면 compound 대신 해당 서버 구성만 실행합니다. IntelliJ 방식도
 PowerShell JAR 방식과 같은 local issuer, callback, Flyway 차단 및 shared DB 정책을 사용합니다.
@@ -151,9 +153,9 @@ PowerShell JAR 방식과 같은 local issuer, callback, Flyway 차단 및 shared
 - issuer와 redirect가 local loopback URL인지
 - OAuth client ID가 Production 기본 ID가 아닌 `sso-local-*`인지
 
-Auth Server는 local-only HR/Approval/Admin client row를 별도 ID로 upsert합니다. BFF의 registration ID와 callback path는 기존 `hr-client`, `approval-client`, `admin-client`를 유지하므로 local UI 경로는 변하지 않습니다. Production client row는 수정하지 않습니다.
+Auth Server는 local-only HR/Approval/Admin/Gallery client row를 별도 ID로 upsert합니다. BFF의 registration ID와 callback path는 기존 `hr-client`, `approval-client`, `admin-client`, `gallery-client`를 유지하므로 local UI 경로는 변하지 않습니다. Production client row는 수정하지 않습니다.
 
-공유 mode에서도 Identity DB 직접 접근은 Auth Server에만 있습니다. Admin/HR/Approval BFF에는 datasource, JPA 또는 Flyway가 추가되지 않습니다. 다만 Spring Session, local OIDC authorization/token, OTP challenge와 Audit은 같은 `auth` schema에 기록됩니다. 특히 사용자 기준 global logout 또는 session 관리 작업은 Production Session/token에도 영향을 줄 수 있으므로 공유 mode에서 destructive logout, 전체 session 삭제, signup, email 변경, TOTP 등록/해제 및 자동 E2E를 실행하지 않습니다.
+공유 mode에서도 Identity DB 직접 접근은 Auth Server에만 있습니다. Admin/HR/Approval BFF에는 datasource, JPA 또는 Flyway가 추가되지 않습니다. Gallery는 Identity가 아닌 자체 `gallery` schema만 사용합니다. 다만 Spring Session, local OIDC authorization/token, OTP challenge와 Audit은 같은 `auth` schema에 기록됩니다. 특히 사용자 기준 global logout 또는 session 관리 작업은 Production Session/token에도 영향을 줄 수 있으므로 공유 mode에서 destructive logout, 전체 session 삭제, signup, email 변경, TOTP 등록/해제 및 자동 E2E를 실행하지 않습니다.
 
 Local-only crypto key로는 기존 Production 암호문을 복호화할 수 없습니다. 기존 사용자 Email OTP에는 Production email AES key가, email lookup에는 Production HMAC key가, 기존 TOTP 로그인에는 Production TOTP AES key가 각각 필요합니다. 이 문서는 해당 Production key를 복사하도록 권장하지 않습니다. 따라서 Production key를 별도로 안전하게 공급하도록 명시 승인받지 않은 공유 mode의 기본 검증 범위는 기동, health, CSRF, OIDC discovery와 비인증 redirect까지입니다. OTP HMAC, OIDC RSA/client secret 및 Internal API secret은 local-only 값으로 사용할 수 있습니다.
 
@@ -186,11 +188,12 @@ cd frontend/auth-web; npm ci
 cd ../admin-web; npm ci
 cd ../hr-web; npm ci
 cd ../approval-web; npm ci
+cd ../gallery-web; npm ci
 ```
 
-그 후 터미널 네 개를 열고 각각 실행합니다.
+그 후 필요한 Frontend를 각각 실행합니다.
 
-네 개발 서버를 한 terminal에서 동시에 실행하려면 Repository root에서 다음을 사용합니다. 로그에는 각각 `[auth]`, `[admin]`, `[hr]`, `[approval]` prefix가 붙으며 `Ctrl+C` 한 번으로 네 프로세스를 함께 종료합니다.
+다섯 개발 서버를 한 terminal에서 동시에 실행하려면 Repository root에서 다음을 사용합니다. 로그에는 각각 `[auth]`, `[admin]`, `[hr]`, `[approval]`, `[gallery]` prefix가 붙으며 `Ctrl+C` 한 번으로 다섯 프로세스를 함께 종료합니다.
 
 ```powershell
 npm run dev:all
@@ -218,12 +221,18 @@ cd frontend/approval-web
 npm run dev
 ```
 
+```powershell
+cd frontend/gallery-web
+npm run dev
+```
+
 | Frontend | 접속 URL | Vite proxy target |
 |---|---|---|
 | Auth Web | `http://127.0.0.1:5173` | Auth Server `127.0.0.1:18080` |
 | Admin Web | `http://127.0.0.1:5174` | Admin Server `127.0.0.1:18081` |
 | HR Web | `http://127.0.0.1:5175` | HR Server `127.0.0.1:18082` |
 | Approval Web | `http://127.0.0.1:5176` | Approval Server `127.0.0.1:18083` |
+| Gallery Web | `http://127.0.0.1:5177` | Gallery Server `127.0.0.1:18084` |
 
 정확한 OIDC redirect URI와 cookie 동작을 위해 브라우저에서도 `localhost` 대신 표의 `127.0.0.1` URL을 사용합니다.
 
@@ -236,7 +245,7 @@ Frontend API 코드는 계속 `/api/...` 같은 상대경로만 사용합니다.
 | Frontend | 허용 path |
 |---|---|
 | Auth Web | `/api/**`, `/.well-known/**`, `/oauth2/**`, `/userinfo`, `/connect/**`, `/error` |
-| Admin/HR/Approval Web | `/api/**`, `/oauth2/**`, `/login/**`, `/logout`, `/error` |
+| Admin/HR/Approval/Gallery Web | `/api/**`, `/oauth2/**`, `/login/**`, `/logout`, `/error` |
 
 `/internal`과 `/internal/**`는 Vite에서 404로 차단하며 Backend로 전달하지 않습니다. WebSocket proxy는 구성하지 않습니다. Vite와 Backend port는 모두 loopback-only이고 Vite는 `strictPort: true`이므로 지정 port가 사용 중이면 다른 port로 자동 변경되지 않습니다.
 
@@ -261,12 +270,14 @@ AUTH_PUBLIC_URL=http://127.0.0.1:5173
 HR_REDIRECT_URI=http://127.0.0.1:5175/login/oauth2/code/hr-client
 ADMIN_REDIRECT_URI=http://127.0.0.1:5174/login/oauth2/code/admin-client
 APPROVAL_REDIRECT_URI=http://127.0.0.1:5176/login/oauth2/code/approval-client
+GALLERY_REDIRECT_URI=http://127.0.0.1:5177/login/oauth2/code/gallery-client
 HR_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:5175/
 ADMIN_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:5174/
 APPROVAL_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:5176/
+GALLERY_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:5177/
 ```
 
-네 앱이 같은 host를 사용해도 Session이 충돌하지 않도록 Auth는 기존 `SESSION`, 각 BFF는 `SSO_LAB_ADMIN_SESSION`, `SSO_LAB_HR_SESSION`, `SSO_LAB_APPROVAL_SESSION`을 사용합니다. Authorization Code + PKCE, exact redirect URI, 서버 측 token 저장, CSRF 정책은 유지됩니다.
+다섯 앱이 같은 host를 사용해도 Session이 충돌하지 않도록 Auth는 기존 `SESSION`, 각 BFF는 `SSO_LAB_ADMIN_SESSION`, `SSO_LAB_HR_SESSION`, `SSO_LAB_APPROVAL_SESSION`, `SSO_LAB_GALLERY_SESSION`을 사용합니다. Authorization Code + PKCE, exact redirect URI, 서버 측 token 저장, CSRF 정책은 유지됩니다.
 
 ## 6. 최초 사용자와 Bootstrap Admin
 
@@ -304,7 +315,7 @@ scripts/test/run-phase9-e2e.sh
 
 ## 8. 검증
 
-Repository root에서 네 Frontend의 test, TypeScript lint와 Production build를 병렬로 실행할 수 있습니다. 각 출력은 앱별 prefix로 구분되고 하나라도 실패하면 root 명령도 실패합니다.
+Repository root에서 다섯 Frontend의 test, TypeScript lint와 Production build를 병렬로 실행할 수 있습니다. 각 출력은 앱별 prefix로 구분되고 하나라도 실패하면 root 명령도 실패합니다.
 
 ```powershell
 npm run test:all

@@ -4,6 +4,7 @@
     <toRun name="Admin Server - Local" type="Application" />
     <toRun name="HR Server - Local" type="Application" />
     <toRun name="Approval Server - Local" type="Application" />
+    <toRun name="Gallery Server - Local" type="Application" />
     <method v="2" />
   </configuration>
 </component>

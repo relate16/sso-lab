@@ -14,7 +14,7 @@
 - VM에 최소 4 GB RAM과 애플리케이션 image/volume을 위한 여유 disk를 권장한다.
 - VM의 내부 주소는 공유기 DHCP reservation으로 고정하는 것을 권장한다.
 - 공인 IPv4가 변경될 수 있으므로 DNS와 SSH는 hostname을 사용한다.
-- 네 개의 서비스 hostname, 외부 TCP 80/443 도달성, 운영 Secret 및 immutable
+- 다섯 개의 서비스 hostname, 외부 TCP 80/443 도달성, 운영 Secret 및 immutable
   image tag가 준비되어야 한다.
 - CGNAT 환경은 일반 port forwarding으로 inbound 80/443을 제공할 수 없다.
   이 경우 Cloudflare Tunnel 같은 outbound tunnel을 별도 설계할 수 있지만,
@@ -24,7 +24,7 @@
 
 - `.github/workflows/release-images.yml`은 새 immutable image tag를 만드는 publish
   전용 workflow다. 동일 tag가 GHCR에 이미 있으면 실패하며 deploy는 수행하지 않는다.
-- `.github/workflows/deploy-existing-release.yml`은 이미 존재하는 8개 image manifest를
+- `.github/workflows/deploy-existing-release.yml`은 이미 존재하는 10개 image manifest를
   먼저 확인한 뒤 protected `production` environment 승인 후에만 배포한다. image를
   build, push 또는 overwrite하는 단계는 없다.
 - deploy 입력은 immutable `image_tag`와 그 image를 만든 40자리
@@ -33,7 +33,7 @@
   강제로 사용한다.
 - 운영 `.env`와 `secrets/`는 서버에 계속 남으며 GitHub runner로 복사하거나 출력하지
   않는다.
-- deploy workflow는 운영 Caddy를 중지하기 전에 12개 Secret의 runtime UID/GID
+- deploy workflow는 운영 Caddy를 중지하기 전에 13개 Secret의 runtime UID/GID
   접근성과 암호화 키 형식을 검사한다. `oidc-private-key`는 Base64 PKCS#8 DER,
   `oidc-public-key`는 일치하는 Base64 X.509 DER이어야 한다.
 
@@ -61,16 +61,17 @@ workflow secret으로 두지 않는다.
 3. `/opt/sso-lab/secrets`를 `0700`, 각 Secret 파일을 `0600`으로 생성한다.
    file-backed Compose Secret은 Host numeric ownership을 유지하므로 `.env`의
    `BACKEND_RUNTIME_UID`/`BACKEND_RUNTIME_GID`를 Secret 파일의 `%u:%g`와 일치시킨다.
-4. DNS 네 hostname이 VM 공인 주소를 가리키는지 확인한다.
+4. DNS 다섯 hostname이 VM 공인 주소를 가리키는지 확인한다.
 5. 공유기 port forwarding과 VM firewall에서 외부 80/443만 Caddy로 허용한다.
 6. Compose model을 render하고 Secret/URL/port 경계를 검토한다.
 7. deploy-only workflow가 기존 image를 pull하고 `up -d --wait --no-build`로
    기동한다.
 8. Flyway, health, TLS, OIDC discovery/JWKS, SSO/logout smoke test를 수행한다.
 
-현재 schema 기준은 V1~V7이다. V7은 Profile self-service의 pending email change와
-Hard Delete 정리를 위한 additive migration이다. 운영 적용 전 PostgreSQL logical backup과
-기존 `auth.flyway_schema_history`를 기록하고, migration 실패 시 volume을 삭제하지 않는다.
+현재 schema 기준은 Auth V1~V8과 Gallery V1이다. Gallery migration은 작품, 다중 이미지와
+문의 table을 전용 `gallery` schema에 만든다. 운영 적용 전 PostgreSQL logical backup과
+`auth.flyway_schema_history`, `gallery.flyway_schema_history`를 기록하고, migration 실패 시
+volume이나 image storage를 삭제하지 않는다.
 
 실행 명령은 `docs/PHASE8_INFRA.md`의 Compose 실행 모델을 따른다. `down -v`는
 운영 절차에 사용하지 않는다.
@@ -82,6 +83,7 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml 
 curl --fail https://${AUTH_HOSTNAME}/actuator/health
 curl --fail https://${AUTH_HOSTNAME}/.well-known/openid-configuration
 curl --fail https://${AUTH_HOSTNAME}/oauth2/jwks
+curl --fail https://${GALLERY_HOSTNAME}/actuator/health
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml \
   exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
 ```
@@ -106,7 +108,8 @@ environment로 강제하므로 서버의 Secret이나 `.env` 값을 GitHub에 �
 
 ## Backup
 
-최소 PostgreSQL logical backup과 Caddy data volume의 복구 가능성을 검증한다.
+최소 PostgreSQL logical backup, Gallery image volume과 Caddy data volume의 복구 가능성을
+검증한다. Gallery DB metadata와 image volume은 같은 복구 시점으로 관리한다.
 backup 파일은 repository 밖의 접근 제한 저장소에 두고 암호화한다. Secret
 backup과 DB backup은 별도 접근 정책으로 관리한다.
 

@@ -8,8 +8,11 @@ export function InquiryDrawer({ artwork, onClose }: { artwork: Artwork | null; o
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   useEffect(() => {
     if (!artwork) return
-    closeButton.current?.focus()
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const previous = document.activeElement as HTMLElement | null
+    setState('idle')
+    closeButton.current?.focus()
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
       if (event.key === 'Tab' && panel.current) {
@@ -21,7 +24,7 @@ export function InquiryDrawer({ artwork, onClose }: { artwork: Artwork | null; o
       }
     }
     document.addEventListener('keydown', keydown)
-    return () => { document.removeEventListener('keydown', keydown); previous?.focus() }
+    return () => { document.removeEventListener('keydown', keydown); document.body.style.overflow = previousOverflow; previous?.focus() }
   }, [artwork, onClose])
   if (!artwork) return null
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -35,7 +38,7 @@ export function InquiryDrawer({ artwork, onClose }: { artwork: Artwork | null; o
   return <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div className="inquiry-drawer" ref={panel} role="dialog" aria-modal="true" aria-labelledby="inquiry-title">
       <header><div><p className="eyebrow">Artwork inquiry</p><h2 id="inquiry-title">{artwork.title}</h2></div><button ref={closeButton} className="drawer-close" type="button" onClick={onClose} aria-label="문의 닫기">×</button></header>
-      {state === 'sent' ? <div className="inquiry-complete"><p>문의가 전해졌습니다.</p><span>작가가 확인한 뒤 입력하신 이메일로 답변드립니다.</span><button type="button" onClick={onClose}>닫기</button></div> : <form onSubmit={submit}>
+      {state === 'sent' ? <div className="inquiry-complete" role="status" aria-live="polite"><p>문의가 전해졌습니다.</p><span>작가가 확인한 뒤 입력하신 이메일로 답변드립니다.</span><button type="button" onClick={onClose}>닫기</button></div> : <form onSubmit={submit}>
         <p>작품의 구매 가능 여부와 배송, 전시에 관해 문의하실 수 있습니다.</p>
         <label>이름<input name="name" required maxLength={100} autoComplete="name" /></label>
         <label>이메일<input name="email" type="email" required maxLength={254} autoComplete="email" /></label>

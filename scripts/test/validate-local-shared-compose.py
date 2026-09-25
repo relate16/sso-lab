@@ -33,6 +33,7 @@ expected = {
     "admin-server": ("ADMIN_REGISTRATION_ID", "admin-client"),
     "hr-server": ("HR_REGISTRATION_ID", "hr-client"),
     "approval-server": ("APPROVAL_REGISTRATION_ID", "approval-client"),
+    "gallery-server": ("GALLERY_REGISTRATION_ID", "gallery-client"),
 }
 for service_name, registration in expected.items():
     service = services[service_name]
@@ -40,6 +41,12 @@ for service_name, registration in expected.items():
     if registration:
         key, value = registration
         assert service["environment"][key] == value
+
+gallery_env = services["gallery-server"]["environment"]
+assert gallery_env["SPRING_FLYWAY_ENABLED"] == "false"
+assert gallery_env["GALLERY_DB_URL"].startswith(
+    "jdbc:postgresql://host.docker.internal:15432/"
+)
 
 assert not any(
     published.get("published") == "5432"

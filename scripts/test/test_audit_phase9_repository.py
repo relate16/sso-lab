@@ -26,12 +26,14 @@ class RepositoryEnvironmentFileAuditTest(unittest.TestCase):
         REQUIRE_SAFE_PATH(ROOT / ".env.admin-server.local.example")
         REQUIRE_SAFE_PATH(ROOT / ".env.hr-server.local.example")
         REQUIRE_SAFE_PATH(ROOT / ".env.approval-server.local.example")
+        REQUIRE_SAFE_PATH(ROOT / ".env.gallery-server.local.example")
         AUDIT_CONTENT(ROOT / ".env.frontend.local.example")
         AUDIT_CONTENT(ROOT / ".env.backend.local.example")
         AUDIT_CONTENT(ROOT / ".env.auth-server.local.example")
         AUDIT_CONTENT(ROOT / ".env.admin-server.local.example")
         AUDIT_CONTENT(ROOT / ".env.hr-server.local.example")
         AUDIT_CONTENT(ROOT / ".env.approval-server.local.example")
+        AUDIT_CONTENT(ROOT / ".env.gallery-server.local.example")
 
         for relative in (
             ".env.frontend.local",

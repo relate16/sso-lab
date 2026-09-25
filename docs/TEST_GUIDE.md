@@ -8,7 +8,7 @@
 .\gradlew.bat clean test
 ```
 
-Docker가 없으면 Testcontainers test가 skip될 수 있으므로 완료 판정에는 Docker가 있는 Linux/CI에서 같은 명령을 다시 실행하고 XML의 failure/error/skip 수를 확인합니다. PostgreSQL 17 Testcontainers는 Flyway V1-V7, FK/cascade, repository, OIDC, logout, admin과 self-service를 실제 DB에서 검증합니다. H2로 대체하지 않습니다.
+Docker가 없으면 Testcontainers test가 skip될 수 있으므로 완료 판정에는 Docker가 있는 Linux/CI에서 같은 명령을 다시 실행하고 XML의 failure/error/skip 수를 확인합니다. PostgreSQL 17 Testcontainers는 Auth Flyway V1-V8과 Gallery V1, FK/cascade, repository, OIDC, logout, admin과 self-service를 실제 DB에서 검증합니다. H2로 대체하지 않습니다.
 
 주요 suite:
 
@@ -19,6 +19,7 @@ Docker가 없으면 Testcontainers test가 skip될 수 있으므로 완료 판�
 - RP/Back-Channel/Global Logout integration
 - Profile/username/email 변경/Hard Delete PostgreSQL integration
 - Rate limit, Turnstile, enumeration, log redaction security test
+- Gallery 공개/비공개 조회, Studio `ROLE_ADMIN`, CSRF, 문의 상태와 업로드 storage test
 
 ## Frontend
 
@@ -33,13 +34,25 @@ npm run build
 
 Node 내장 test runner로 API adapter의 credential 포함, CSRF header, empty response와 오류 처리를 검증하고 TypeScript/Vite production build를 수행합니다.
 
+Gallery만 빠르게 검증하려면 다음을 실행합니다.
+
+```powershell
+.\gradlew.bat :backend:gallery-server:test
+npm --prefix frontend/gallery-web test
+npm --prefix frontend/gallery-web run lint
+npm --prefix frontend/gallery-web run build
+```
+
+Gallery frontend test에는 Scene `1→2→3→1`, invalid deep link fallback, 실제 크기 기반 scale,
+공개 API 경로, 문의 접근성·동의, 네 frame type과 reduced-motion 계약이 포함됩니다.
+
 ## OpenAPI
 
 ```sh
 python3 scripts/test/validate-openapi.py
 ```
 
-`docs/openapi`의 Auth public/internal, Admin, HR, Approval OpenAPI 3.1 문서가 JSON으로 parse되고 필수 operation, public/internal 분리, 민감 예시 금지를 검사합니다. Production Caddy는 Auth Internal Admin endpoint와 문서를 외부에 노출하지 않습니다.
+`docs/openapi`의 Auth public/internal, Admin, HR, Approval OpenAPI 3.1 문서가 JSON으로 parse되고 필수 operation, public/internal 분리, 민감 예시 금지를 검사합니다. Gallery API는 controller/security test와 frontend contract test로 검증하며 OpenAPI 편입은 Known Limitation이다. Production Caddy는 Auth Internal Admin endpoint와 문서를 외부에 노출하지 않습니다.
 
 ## 격리 Browser E2E
 
@@ -78,7 +91,7 @@ docker compose ps
 
 ## GitHub Actions
 
-CI는 Backend `./gradlew --no-daemon clean build`, 네 Frontend test/lint/build, OpenAPI validator와 Compose/Caddy 검증을 수행합니다. Release workflow는 test와 별개이며 immutable tag를 publish합니다. Production deploy는 protected environment 승인과 deploy-only workflow가 필요합니다.
+CI는 Backend `./gradlew --no-daemon clean build`, 다섯 Frontend test/lint/build, OpenAPI validator와 Compose/Caddy 검증을 수행합니다. Release workflow는 Gallery를 포함한 10개 immutable image를 publish합니다. Production deploy는 protected environment 승인과 deploy-only workflow가 필요합니다.
 
 ## 최종 감사
 

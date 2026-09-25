@@ -23,6 +23,7 @@ ALLOWED_ENV_EXAMPLE_PATHS = {
     ".env.admin-server.local.example",
     ".env.hr-server.local.example",
     ".env.approval-server.local.example",
+    ".env.gallery-server.local.example",
 }
 SECRET_PATTERNS = {
     "private-key": re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
@@ -42,6 +43,7 @@ SERVICE_SCHEMA_OWNERS = {
     "admin-server": frozenset({"admin"}),
     "hr-server": frozenset({"hr"}),
     "approval-server": frozenset({"approval"}),
+    "gallery-server": frozenset({"gallery"}),
 }
 OWNED_SCHEMA_NAMES = frozenset(
     schema
@@ -252,6 +254,7 @@ def require_example_env_placeholders() -> None:
         "SSO_EMAIL_LOOKUP_HMAC_KEY", "SSO_OTP_HMAC_KEY", "SSO_TOTP_ENCRYPTION_KEY",
         "HR_CLIENT_SECRET", "APPROVAL_CLIENT_SECRET", "ADMIN_CLIENT_SECRET",
         "ADMIN_INTERNAL_API_SECRET", "TURNSTILE_SECRET_KEY", "GMAIL_APP_PASSWORD",
+        "GALLERY_CLIENT_SECRET",
     }
     values: dict[str, str] = {}
     for line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():

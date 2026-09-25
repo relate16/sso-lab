@@ -16,6 +16,8 @@ Redis와 분산 Rate Limit은 v1 범위가 아니다.
 - 향후 HR/Admin/Approval persistence는 같은 PostgreSQL database를 사용할 수 있지만 각각
   `hr`, `admin`, `approval` 자체 schema와 전용 DB role만 사용한다. 다른 서비스 schema의
   `USAGE`와 table 권한은 부여하지 않는다.
+- Gallery는 자체 `gallery` schema와 image volume만 사용하고 Auth의 table이나 datasource를
+  직접 사용하지 않는다. Studio identity와 권한은 Gallery 전용 OIDC claim으로만 확인한다.
 - JPA/JDBC/Flyway 사용 자체는 금지하지 않는다. Auth 구현 module/package, Auth 전용
   datasource 설정 또는 다른 서비스의 schema/table을 직접 사용하는 것을 금지한다.
 - 서비스 간 data는 소유 서비스의 API/integration contract로 교환하고 transaction 편의를
@@ -89,6 +91,20 @@ Cookie 기반 Auth/BFF API는 Spring Security CSRF를 유지한다. React는 `/a
 - `/internal/oidc/backchannel-logout`: RS256 Logout Token 검증
 
 Session cookie는 HttpOnly, SameSite=Lax이며 Production에서는 Secure이다.
+
+## Gallery 공개/Studio 경계
+
+- Home, Works, 공개 작품 상세와 web/thumbnail image는 anonymous read를 허용하되
+  `published=true`인 작품과 연결된 image만 반환한다.
+- Studio API와 비공개 media는 OIDC 로그인과 서버 측 `ROLE_ADMIN`을 모두 요구한다.
+- 공개 문의 POST도 cookie 기반 CSRF token을 요구하고 IP/작품 기준 rate limit을 적용한다.
+- 작품명과 설명은 raw HTML로 렌더링하지 않는다. React의 text rendering을 유지하며
+  `dangerouslySetInnerHTML`을 사용하지 않는다.
+- 업로드는 JPEG/PNG/WebP만 허용하고 실제 image decode, byte/pixel 한도, UUID storage key,
+  정규화된 경로 경계를 검증한다. SVG와 undecodable payload는 거부하고 public variant는
+  서버에서 JPEG로 재인코딩한다.
+- 문의 이름, email, phone, message는 request/application log와 audit detail에 남기지 않는다.
+  동의 checkbox는 저장 전에 필수지만 실제 개인정보처리방침의 법적 완결성을 대신하지 않는다.
 
 ## Self-service 변경과 삭제
 

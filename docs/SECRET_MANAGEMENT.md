@@ -38,9 +38,10 @@ secret만 제공한다.
 
 Domain/service는 `SecretProviderRegistry`에 provider와 reference만 전달한다.
 `system_config`에는 policy와 reference만 저장하며 원문 Secret을 저장하지 않는다.
-Environment는 Local/Test 선택지이고 Production Compose는 12개 file-backed Docker
+Environment는 Local/Test 선택지이고 Production Compose는 13개 file-backed Docker
 Secret을 Auth에 최소 범위로 mount한다. 각 BFF에는 자기 client secret만, Admin
-BFF에는 추가로 Internal API secret만 mount한다.
+BFF에는 추가로 Internal API secret만 mount한다. Gallery Server에는 Gallery client
+secret만 mount한다.
 
 ## Audit
 

@@ -22,15 +22,15 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 
 services = model["services"]
 application_services = (
-    "auth-server", "admin-server", "hr-server", "approval-server",
-    "auth-web", "admin-web", "hr-web", "approval-web",
+    "auth-server", "admin-server", "hr-server", "approval-server", "gallery-server",
+    "auth-web", "admin-web", "hr-web", "approval-web", "gallery-web",
 )
 
 for service in application_services:
     expected = f"ghcr.io/relate16/sso-lab-{service}:v1.0.0"
     assert services[service]["image"] == expected, (service, services[service]["image"])
 
-for service in ("auth-server", "admin-server", "hr-server", "approval-server"):
+for service in ("auth-server", "admin-server", "hr-server", "approval-server", "gallery-server"):
     assert services[service].get("user") == "1000:1000", service
 
 for service in ("postgres",) + application_services:
@@ -50,6 +50,22 @@ assert any(
     for mount in postgres_mounts
 )
 
+gallery_mounts = services["gallery-server"].get("volumes", [])
+assert any(
+    mount.get("source") == "gallery-storage"
+    and mount.get("target") == "/var/lib/quiet-winter-gallery"
+    for mount in gallery_mounts
+)
+gallery_init = services["gallery-storage-init"]
+assert gallery_init.get("user") == "0:0"
+assert gallery_init.get("restart") == "no"
+assert gallery_init.get("network_mode") == "none"
+assert any(
+    mount.get("source") == "gallery-storage" and mount.get("target") == "/storage"
+    for mount in gallery_init.get("volumes", [])
+)
+assert services["gallery-server"]["depends_on"]["gallery-storage-init"]["condition"] == "service_completed_successfully"
+
 networks = model["networks"]
 assert networks["db-network"].get("internal") is True
 assert networks["internal-network"].get("internal") is True
@@ -64,6 +80,7 @@ assert memberships("auth-server") == {"db-network", "internal-network", "public-
 assert "db-network" not in memberships("admin-server")
 assert "db-network" not in memberships("hr-server")
 assert "db-network" not in memberships("approval-server")
+assert memberships("gallery-server") == {"db-network", "public-network"}
 assert memberships("caddy") == {"public-network"}
 
 auth_web_environment = services["auth-web"].get("environment", {})
@@ -90,6 +107,7 @@ expected_bff_secret_targets = {
     },
     "hr-server": {"hr-client-secret": "HR_CLIENT_SECRET"},
     "approval-server": {"approval-client-secret": "APPROVAL_CLIENT_SECRET"},
+    "gallery-server": {"gallery-client-secret": "GALLERY_CLIENT_SECRET"},
 }
 for service, expected_targets in expected_bff_secret_targets.items():
     actual_targets = {
@@ -103,7 +121,7 @@ expected_secret_files = {
     for name in (
         "email-encryption-key", "email-lookup-hmac-key", "otp-hmac-key",
         "totp-encryption-key", "oidc-private-key", "oidc-public-key",
-        "hr-client-secret", "approval-client-secret", "admin-client-secret",
+        "hr-client-secret", "approval-client-secret", "admin-client-secret", "gallery-client-secret",
         "admin-internal-api-secret", "turnstile-secret", "gmail-app-password",
     )
 }
@@ -121,6 +139,8 @@ expected_urls = {
     "HR_POST_LOGOUT_REDIRECT_URI": "https://hr.example.invalid/",
     "APPROVAL_POST_LOGOUT_REDIRECT_URI": "https://approval.example.invalid/",
     "ADMIN_POST_LOGOUT_REDIRECT_URI": "https://admin.example.invalid/",
+    "GALLERY_REDIRECT_URI": "https://gallery.example.invalid/login/oauth2/code/gallery-client",
+    "GALLERY_POST_LOGOUT_REDIRECT_URI": "https://gallery.example.invalid/",
 }
 for key, expected in expected_urls.items():
     actual = auth_environment.get(key)
@@ -133,6 +153,7 @@ print("production_release_images|pass")
 print("production_port_boundary|pass")
 print("production_network_boundary|pass")
 print("production_postgres_volume_contract|pass")
+print("production_gallery_storage_contract|pass")
 print("production_turnstile_secret_boundary|pass")
 print("production_backend_secret_runtime_identity|pass")
 print("production_bff_secret_mount_targets|pass")

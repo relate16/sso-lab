@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [auth-web, admin-web, hr-web, approval-web]
+        app: [auth-web, admin-web, hr-web, approval-web, gallery-web]
     defaults:
       run:
         working-directory: frontend/${{ matrix.app }}

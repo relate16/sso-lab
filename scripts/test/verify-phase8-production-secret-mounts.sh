@@ -12,7 +12,7 @@ base_image_tag=${PHASE8_BASE_IMAGE_TAG:-latest}
 release_tag=phase8-secret-mount-test
 image_registry=phase8.local
 image_namespace=sso-lab
-backend_services="auth-server admin-server hr-server approval-server"
+backend_services="auth-server admin-server hr-server approval-server gallery-server"
 temporary_refs=""
 temporary_containers=""
 
@@ -52,7 +52,7 @@ trap cleanup EXIT INT TERM
 
 for name in email-encryption-key email-lookup-hmac-key otp-hmac-key \
   totp-encryption-key oidc-private-key oidc-public-key hr-client-secret \
-  approval-client-secret admin-client-secret admin-internal-api-secret \
+  approval-client-secret admin-client-secret gallery-client-secret admin-internal-api-secret \
   turnstile-secret gmail-app-password; do
   install -m 600 /dev/null "$secret_dir/$name"
   printf 'phase8-test-only\n' > "$secret_dir/$name"
@@ -90,7 +90,7 @@ for service in $backend_services; do
     auth-server)
       for name in email-encryption-key email-lookup-hmac-key otp-hmac-key \
         totp-encryption-key oidc-private-key oidc-public-key hr-client-secret \
-        approval-client-secret admin-client-secret admin-internal-api-secret \
+        approval-client-secret admin-client-secret gallery-client-secret admin-internal-api-secret \
         turnstile-secret gmail-app-password; do
         assert_mount "$container" "$name" "/run/secrets/$name"
       done
@@ -107,6 +107,10 @@ for service in $backend_services; do
     approval-server)
       assert_mount "$container" approval-client-secret \
         /run/secrets/APPROVAL_CLIENT_SECRET
+      ;;
+    gallery-server)
+      assert_mount "$container" gallery-client-secret \
+        /run/secrets/GALLERY_CLIENT_SECRET
       ;;
   esac
   printf 'production_secret_mount|%s|readable_non_root|pass\n' "$service"

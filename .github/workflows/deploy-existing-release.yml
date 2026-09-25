@@ -85,8 +85,8 @@ jobs:
         run: |
           namespace=${GITHUB_REPOSITORY_OWNER,,}
           images=(
-            auth-server admin-server hr-server approval-server
-            auth-web admin-web hr-web approval-web
+            auth-server admin-server hr-server approval-server gallery-server
+            auth-web admin-web hr-web approval-web gallery-web
           )
           {
             echo '### Verified production image manifests'
@@ -241,8 +241,8 @@ jobs:
           compose config --quiet
           compose config --images > "$state_dir/compose-images.txt"
           for image in \
-            auth-server admin-server hr-server approval-server \
-            auth-web admin-web hr-web approval-web; do
+            auth-server admin-server hr-server approval-server gallery-server \
+            auth-web admin-web hr-web approval-web gallery-web; do
             expected="ghcr.io/relate16/sso-lab-$image:$image_tag"
             grep -Fxq "$expected" "$state_dir/compose-images.txt"
           done

@@ -40,7 +40,7 @@ openssl pkey -in "$fixture/private.pem" -pubout -outform DER \
   | base64 -w 0 > "$secret_dir/oidc-public-key"
 printf '\n' >> "$secret_dir/oidc-public-key"
 
-for name in hr-client-secret approval-client-secret admin-client-secret \
+for name in hr-client-secret approval-client-secret admin-client-secret gallery-client-secret \
   admin-internal-api-secret turnstile-secret gmail-app-password; do
   printf 'phase8-test-only-%s\n' "$name" > "$secret_dir/$name"
 done

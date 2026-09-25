@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/relate16/sso-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/relate16/sso-lab/actions/workflows/ci.yml)
 
-SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비밀번호 없이 로그인하고 여러 업무 서비스에 다시 인증하지 않고 접근하는 과정을 보여주는 프로젝트입니다. 단순 로그인 화면에 그치지 않고 사용자·권한 관리, 세션 폐기, 중앙 로그아웃, 보안 통제와 배포 자동화까지 하나의 흐름으로 구성했습니다.
+SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비밀번호 없이 로그인하고 여러 업무 서비스에 다시 인증하지 않고 접근하는 과정을 보여주는 프로젝트입니다. 단순 로그인 화면에 그치지 않고 사용자·권한 관리, 세션 폐기, 중앙 로그아웃, 보안 통제와 배포 자동화까지 하나의 흐름으로 구성했습니다. `Quiet Winter Gallery`는 이 인증 구조를 실제 공개 서비스와 관리자 Studio에 적용한 2D 가상 전시 모듈입니다.
 
 **Live:** [Admin](https://today-sso-admin.duckdns.org) · [HR](https://today-sso-hr.duckdns.org) · [Approval](https://today-sso-approval.duckdns.org) · [Auth](https://today-sso-auth.duckdns.org)
 
@@ -90,6 +90,20 @@ HR 포털에서 로그인 버튼 클릭 시, 이미 인증 포털에서 인증�
 
 HR과 Approval은 SSO를 사용하는 업무 Client의 예시입니다. 이 프로젝트의 핵심은 업무 데이터 자체가 아니라 **서비스가 분리되어 있어도 중앙 인증과 보안 경계를 일관되게 유지하는 구조**에 있습니다.
 
+## Quiet Winter Gallery
+
+`Quiet Winter Gallery`는 로그인 없이 작품을 탐색하고 문의할 수 있는 공개 갤러리와, 기존 Auth의 OIDC SSO로 보호되는 관리자 Studio를 함께 제공합니다. 작품 상세는 일반 상품 페이지 대신 **공간 + 작품 + 벽면 설명**을 중심으로 한 세 개의 2D Scene을 순환합니다.
+
+- Home: 최근 공개 작품 최대 4점을 전시장 입구처럼 구성
+- Works: 작품명·설명 검색, 가격·크기·판매 상태 필터, 최신·가격 정렬
+- Scene Viewer: 정면 벽, 코너 공간, 긴 측면 복도를 `?scene=1~3`으로 재현
+- Studio: `ROLE_ADMIN` 서버 검증 후 작품·다중 이미지·대표 이미지·공개 순서·문의 상태 관리
+- Image pipeline: 비공개 원본과 재인코딩된 web/thumbnail JPEG를 분리 저장
+
+판매 상태와 가격은 작품 안내와 문의를 위한 정보이며 결제·주문·배송 기능은 포함하지 않습니다.
+
+Gallery 공개 화면은 `GALLERY_HOSTNAME`으로 배포 주소를 설정하며, 로컬에서는 `http://127.0.0.1:5177`에서 확인할 수 있습니다. 자세한 설계는 [Gallery Architecture](docs/gallery/ARCHITECTURE.md)를 참고하세요.
+
 ## 사용자 관점의 SSO 흐름
 
 ```mermaid
@@ -127,6 +141,7 @@ flowchart TB
     AdminWeb[Admin Web]
     HRWeb[HR Web]
     ApprovalWeb[Approval Web]
+    GalleryWeb[Gallery Web]
   end
 
   subgraph Backend[Spring Boot]
@@ -134,33 +149,41 @@ flowchart TB
     Admin[Admin BFF]
     HR[HR BFF]
     Approval[Approval BFF]
+    Gallery[Gallery BFF · Public API · Studio]
   end
 
   Caddy --> AuthWeb
   Caddy --> AdminWeb
   Caddy --> HRWeb
   Caddy --> ApprovalWeb
+  Caddy --> GalleryWeb
   Caddy --> Auth
   Caddy --> Admin
   Caddy --> HR
   Caddy --> Approval
+  Caddy --> Gallery
 
   AuthWeb -->|same-origin API| Auth
   AdminWeb -->|same-origin API| Admin
   HRWeb -->|same-origin API| HR
   ApprovalWeb -->|same-origin API| Approval
+  GalleryWeb -->|same-origin API| Gallery
 
   Admin -->|OIDC + Internal Admin API| Auth
   HR -->|OIDC| Auth
   Approval -->|OIDC| Auth
+  Gallery -->|Studio OIDC| Auth
   Auth -.->|signed Back-Channel Logout| Admin
   Auth -.->|signed Back-Channel Logout| HR
   Auth -.->|signed Back-Channel Logout| Approval
+  Auth -.->|signed Back-Channel Logout| Gallery
   Auth -->|JPA · Flyway| DB[(PostgreSQL<br/>auth schema)]
+  Gallery -->|JPA · Flyway| GalleryDB[(PostgreSQL<br/>gallery schema)]
+  Gallery -->|original · web · thumbnail| Storage[(Gallery image volume)]
 ```
 
 - 외부 요청은 Caddy의 HTTPS endpoint로만 진입합니다.
-- Admin/HR/Approval은 Authorization Code + PKCE S256를 사용하는 confidential BFF입니다.
+- Admin/HR/Approval/Gallery Studio는 Authorization Code + PKCE S256를 사용하는 confidential BFF입니다.
 - Access/Refresh Token은 Browser Storage가 아니라 각 BFF의 서버 Session에 보관합니다.
 - Identity 데이터와 `auth` schema에는 Auth Server만 직접 접근합니다. 다른 서비스는 OIDC Claim, UserInfo 또는 Internal API 경계를 사용합니다.
 - `/internal/**`, Backend `8080`, PostgreSQL `5432`, Caddy Admin API는 외부에 공개하지 않습니다.
@@ -195,6 +218,14 @@ flowchart TB
 - Bootstrap Admin one-shot claim과 마지막 ACTIVE ADMIN 보호
 - actor/target/source/trace를 포함한 Admin·Security Audit
 
+### Gallery
+
+- 로그인 없이 공개 작품 Home/Works/About/Scene Viewer와 CSRF 보호 문의 제공
+- Gallery 전용 OIDC client와 서버 측 `ROLE_ADMIN` 검증으로 Studio 보호
+- 작품 CRUD, 공개/추천/판매 상태/가격/액자/순서 및 문의 상태 관리
+- 다중 이미지 구조, 대표 이미지 선택, 원본·web·thumbnail 분리 저장
+- MIME/decode/크기/pixel 검증, SVG 거부, UUID storage key와 경로 이탈 방지
+
 ## Security Highlights
 
 | 영역 | 적용 내용 |
@@ -205,6 +236,7 @@ flowchart TB
 | Browser | Secure/HttpOnly/SameSite=Lax host-only cookie, CSRF 유지, Token Storage 금지 |
 | Abuse 방어 | OTP 재발송·시도 제한, Rate Limit, Cloudflare Turnstile, Enumeration 완화 |
 | 운영 Secret | SecretProvider와 Docker Secret, 목적별 key 분리, log redaction |
+| Gallery | Public/Studio API 분리, 저장 XSS 방어, 업로드 재인코딩, 문의 개인정보 log 금지 |
 | 네트워크 | Caddy trusted proxy, 외부 공개 port 최소화, Identity DB 직접 접근 제한 |
 
 위협 모델과 상세 정책은 [Security](docs/SECURITY.md)를 참고하세요.
@@ -224,13 +256,13 @@ flowchart TB
 
 GitHub Actions는 Pull Request와 `main` push에서 다음을 자동 검증합니다.
 
-- 네 Backend 전체 Gradle build와 PostgreSQL Testcontainers
-- 네 Frontend의 unit test, lint, production build
+- 다섯 Backend 전체 Gradle build와 PostgreSQL Testcontainers
+- 다섯 Frontend의 unit test, lint, production build
 - OpenAPI/필수 문서 계약
 - Secret·PII·Browser Storage·서비스 경계 Audit
 - Production Compose rendering, Docker image build, Secret mount와 health
 
-Release workflow는 기존 tag를 덮어쓰지 않는 immutable GHCR image 8개를 생성합니다. Production 배포는 별도의 수동 workflow와 GitHub `production` Environment 승인을 통과해야 하며, 기존 서버의 `.env`와 Docker Secret을 GitHub로 복사하지 않습니다.
+Release workflow는 기존 tag를 덮어쓰지 않는 immutable GHCR image 10개를 생성합니다. Production 배포는 별도의 수동 workflow와 GitHub `production` Environment 승인을 통과해야 하며, 기존 서버의 `.env`와 Docker Secret을 GitHub로 복사하지 않습니다.
 
 - [Test Guide](docs/TEST_GUIDE.md)
 - [Deployment](docs/DEPLOYMENT.md)
@@ -240,7 +272,7 @@ Release workflow는 기존 tag를 덮어쓰지 않는 immutable GHCR image 8개�
 
 ### Frontend 일괄 실행
 
-Repository root에서 전역 npm package 없이 네 Vite 개발 서버를 함께 실행할 수 있습니다.
+Repository root에서 전역 npm package 없이 다섯 Vite 개발 서버를 함께 실행할 수 있습니다.
 
 ```powershell
 npm ci
@@ -253,6 +285,7 @@ npm run dev:all
 | Admin | `http://127.0.0.1:5174` |
 | HR | `http://127.0.0.1:5175` |
 | Approval | `http://127.0.0.1:5176` |
+| Gallery | `http://127.0.0.1:5177` |
 
 ```powershell
 npm run test:all
@@ -265,8 +298,8 @@ Backend와 Secret 준비, 격리된 local DB, SSH tunnel을 이용한 선택적 
 ## Repository 구조
 
 ```text
-backend/                 Auth/Admin/HR/Approval 및 shared infrastructure
-frontend/                네 React Web과 공통 Vite 개발 설정
+backend/                 Auth/Admin/HR/Approval/Gallery 및 shared infrastructure
+frontend/                다섯 React Web과 공통 Vite 개발 설정
 docs/images/demo/        README용 SSO 화면 흐름
 docs/openapi/            public/internal OpenAPI 3.1 계약
 e2e/                     Playwright Browser E2E

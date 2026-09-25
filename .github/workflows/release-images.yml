@@ -56,6 +56,9 @@ jobs:
           - image: approval-server
             kind: backend
             service: approval-server
+          - image: gallery-server
+            kind: backend
+            service: gallery-server
           - image: auth-web
             kind: frontend
             service: auth-web
@@ -68,6 +71,9 @@ jobs:
           - image: approval-web
             kind: frontend
             service: approval-web
+          - image: gallery-web
+            kind: frontend
+            service: gallery-web
     steps:
       - uses: actions/checkout@v4
       - name: Normalize OCI namespace

@@ -21,6 +21,7 @@ EXPECTED_SECRETS = (
     "hr-client-secret",
     "approval-client-secret",
     "admin-client-secret",
+    "gallery-client-secret",
     "admin-internal-api-secret",
     "turnstile-secret",
     "gmail-app-password",
@@ -205,7 +206,7 @@ def main() -> int:
     if (private_modulus, private_exponent) != (public_modulus, public_exponent):
         raise ValidationError("OIDC private/public keys are not a matching pair")
 
-    print("production_secret_metadata|all_12|pass")
+    print("production_secret_metadata|all_13|pass")
     print("production_symmetric_key_formats|all_4|pass")
     print("production_oidc_private_key|base64_pkcs8_rsa_der|pass")
     print("production_oidc_public_key|base64_x509_rsa_der|pass")

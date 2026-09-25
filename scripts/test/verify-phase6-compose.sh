@@ -25,7 +25,7 @@ dc exec -T auth-server sh -c \
      grep -q '\"backchannel_logout_supported\":true'"
 printf 'backchannel_discovery|pass\n'
 
-for service in hr-server approval-server admin-server; do
+for service in hr-server approval-server admin-server gallery-server; do
   if dc exec -T "$service" sh -c \
     "wget -qO- --post-data='logout_token=malformed' \
       http://127.0.0.1:8080/internal/oidc/backchannel-logout"; then
@@ -35,8 +35,8 @@ for service in hr-server approval-server admin-server; do
   printf 'malformed_logout_token|%s|rejected\n' "$service"
 done
 
-for service in postgres auth-server admin-server hr-server approval-server \
-  auth-web admin-web hr-web approval-web; do
+for service in postgres auth-server admin-server hr-server approval-server gallery-server \
+  auth-web admin-web hr-web approval-web gallery-web; do
   container_id=$(dc ps -q "$service")
   container_name=$(docker inspect --format '{{.Name}}' "$container_id" | sed 's#^/##')
   health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")

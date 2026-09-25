@@ -41,7 +41,7 @@ AUTH_PUBLIC_URL=https://<auth-hostname>
 IMAGE_TAG=<immutable-tag-not-latest>
 ```
 
-네 hostname, exact redirect/post-logout URI, trusted Caddy subnet은 VM 가이드와 동일합니다. 환경 차이는 profile/env/SecretProvider/system_config/Caddy/Compose override에만 둡니다.
+다섯 hostname, exact redirect/post-logout URI, trusted Caddy subnet은 VM 가이드와 동일합니다. 환경 차이는 profile/env/SecretProvider/system_config/Caddy/Compose override에만 둡니다.
 
 ## 4. SSM SecureString과 IAM
 
@@ -90,13 +90,13 @@ EC2 instance role에는 선택한 prefix의 `ssm:GetParameter`/`ssm:GetParameter
 
 현재 v1에서는 `AwsSsmSecretProvider` activation 값이 없습니다. adapter 구현 시에만 enum/config에 `AWS_SSM`, region, parameter reference를 추가하고 EC2 instance profile credential chain을 사용합니다. static AWS access key를 `.env`에 두지 않습니다. timeout/fail-closed/cache/rotation/log-redaction과 Local unit test를 먼저 갖춘 뒤 문서를 갱신해야 합니다.
 
-현재 배포 가능한 대안은 승인된 bootstrap이 12개 SSM 값을 0700 directory의 0600 file로 원문 출력 없이 쓰고 owner UID/GID를 Backend와 맞춘 뒤 기존 Docker Secret reference를 사용하는 것입니다. instance 종료/재생성 때 재실행되며 temp file과 user-data log에 값을 남기지 않아야 합니다.
+현재 배포 가능한 대안은 승인된 bootstrap이 13개 SSM 값을 0700 directory의 0600 file로 원문 출력 없이 쓰고 owner UID/GID를 Backend와 맞춘 뒤 기존 Docker Secret reference를 사용하는 것입니다. instance 종료/재생성 때 재실행되며 temp file과 user-data log에 값을 남기지 않아야 합니다.
 
 ## 5. Application Secret과 외부 서비스
 
 - OIDC private: Base64 PKCS#8 RSA DER, public: matching Base64 X.509 DER
 - Email/TOTP AES key, email/OTP HMAC key는 목적별 독립 32-byte material
-- HR/Approval/Admin client secret과 Admin Internal secret은 각각 독립
+- HR/Approval/Admin/Gallery client secret과 Admin Internal secret은 각각 독립
 - SMTP App Password와 Turnstile Secret은 Auth에만 공급
 - Turnstile Site Key와 Gmail host/username/from은 non-secret env
 
@@ -104,11 +104,11 @@ AWS KMS direct crypto는 v1에 구현되지 않았습니다. JWT/AES key 처리 
 
 ## 6. DNS, Caddy, Compose
 
-Route 53 또는 기존 DNS에서 네 hostname을 Elastic/Public IP로 연결합니다. Caddy 80/443만 public이고 TLS는 public CA를 사용합니다. Security Group, Caddy hostname, issuer, exact redirect/logout URI가 같은 값을 사용해야 합니다.
+Route 53 또는 기존 DNS에서 다섯 hostname을 Elastic/Public IP로 연결합니다. Caddy 80/443만 public이고 TLS는 public CA를 사용합니다. Security Group, Caddy hostname, issuer, exact redirect/logout URI가 같은 값을 사용해야 합니다.
 
-Compose render 후 GHCR immutable image digest와 port/network를 확인하고 `up -d --wait --no-build`합니다. PostgreSQL은 같은 EC2의 encrypted EBS-backed Docker volume을 기본 예제로 사용하며 Flyway V1-V7을 적용합니다. RDS로 옮길 때는 private subnet/Security Group, TLS JDBC, credential provider, backup/maintenance/latency와 비용을 별도 설계하고 Auth만 DB에 연결합니다.
+Compose render 후 GHCR immutable image digest와 port/network를 확인하고 `up -d --wait --no-build`합니다. PostgreSQL은 같은 EC2의 encrypted EBS-backed Docker volume을 기본 예제로 사용하며 Auth V1-V8과 Gallery V1 migration을 적용합니다. RDS로 옮길 때는 private subnet/Security Group, TLS JDBC, credential provider, backup/maintenance/latency와 비용을 별도 설계하고 Auth와 Gallery가 각자 소유 schema에만 연결되도록 제한합니다.
 
-Health는 네 Backend, PostgreSQL, Caddy, OIDC discovery/JWKS를 확인합니다. Bootstrap Admin, HR→Approval SSO, TOTP, back-channel/global logout smoke를 수행합니다.
+Health는 다섯 Backend, PostgreSQL, Caddy, OIDC discovery/JWKS를 확인합니다. Bootstrap Admin, HR→Approval SSO, Gallery Studio OIDC, TOTP, back-channel/global logout smoke를 수행합니다.
 
 ## 7. CI/CD 선택
 

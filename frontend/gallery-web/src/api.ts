@@ -33,11 +33,11 @@ export const studioApi = {
 }
 
 export const publicApi = {
-  home: async () => responseJson<Artwork[]>(await fetch('/api/v1/gallery/public/home', { cache: 'no-store' })),
-  artworks: async (params: URLSearchParams) => responseJson<Page<Artwork>>(await fetch(`/api/v1/gallery/public/artworks?${params}`, { cache: 'no-store' })),
-  artwork: async (id: string) => responseJson<Artwork>(await fetch(`/api/v1/gallery/public/artworks/${id}`, { cache: 'no-store' })),
+  home: async () => responseJson<Artwork[]>(await fetch('/api/v1/gallery/home', { cache: 'no-store' })),
+  artworks: async (params: URLSearchParams) => responseJson<Page<Artwork>>(await fetch(`/api/v1/gallery/artworks?${params}`, { cache: 'no-store' })),
+  artwork: async (id: string) => responseJson<Artwork>(await fetch(`/api/v1/gallery/artworks/${id}`, { cache: 'no-store' })),
   inquire: async (body: InquiryCreate) => {
     const csrf = await responseJson<Csrf>(await fetch('/api/v1/csrf', { credentials: 'include', cache: 'no-store' }))
-    return mutation<{ id: string }>(csrf, '/api/v1/gallery/public/inquiries', 'POST', body)
+    return mutation<{ id: string }>(csrf, '/api/v1/gallery/inquiries', 'POST', body)
   },
 }
