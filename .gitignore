@@ -8,6 +8,7 @@
 !.env.admin-server.local.example
 !.env.hr-server.local.example
 !.env.approval-server.local.example
+!.env.gallery-server.local.example
 
 # Secret files
 secrets/

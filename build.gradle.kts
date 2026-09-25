@@ -18,6 +18,7 @@ val backendServicePaths = setOf(
     ":backend:admin-server",
     ":backend:hr-server",
     ":backend:approval-server",
+    ":backend:gallery-server",
 )
 
 val backendLibraryPaths = setOf(

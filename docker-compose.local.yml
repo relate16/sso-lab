@@ -70,6 +70,20 @@ services:
       APPROVAL_REDIRECT_URI: http://127.0.0.1:${SSO_LOCAL_APPROVAL_WEB_PORT:?SSO_LOCAL_APPROVAL_WEB_PORT must be set}/login/oauth2/code/approval-client
       APPROVAL_POST_LOGOUT_REDIRECT_URI: http://127.0.0.1:${SSO_LOCAL_APPROVAL_WEB_PORT:?SSO_LOCAL_APPROVAL_WEB_PORT must be set}/
 
+  gallery-server:
+    ports:
+      - target: 8080
+        published: "${SSO_LOCAL_GALLERY_SERVER_PORT:?SSO_LOCAL_GALLERY_SERVER_PORT must be set}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SERVER_FORWARD_HEADERS_STRATEGY: none
+      TRUSTED_PROXY_CIDRS: 127.0.0.1/32
+      SESSION_COOKIE_SECURE: "false"
+      SERVER_SERVLET_SESSION_COOKIE_NAME: QUIET_WINTER_GALLERY_SESSION
+      GALLERY_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB must be set}
+
   auth-web:
     environment:
       TURNSTILE_ENABLED: "false"

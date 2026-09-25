@@ -31,6 +31,13 @@
 	}
 }
 
+(proxy_gallery) {
+	reverse_proxy gallery-server:8080 {
+		header_up -Forwarded
+		header_up -X-Real-IP
+	}
+}
+
 {$AUTH_HOSTNAME} {
 	header -Server
 	route {
@@ -91,6 +98,22 @@
 
 		handle {
 			reverse_proxy approval-web:8080
+		}
+	}
+}
+
+{$GALLERY_HOSTNAME} {
+	header -Server
+	route {
+		import deny_internal
+
+		@backend path /api/* /oauth2/* /login/* /logout /actuator/health /actuator/health/* /error
+		handle @backend {
+			import proxy_gallery
+		}
+
+		handle {
+			reverse_proxy gallery-web:8080
 		}
 	}
 }

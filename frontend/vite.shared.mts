@@ -1,4 +1,4 @@
-type FrontendService = 'auth' | 'admin' | 'hr' | 'approval'
+type FrontendService = 'auth' | 'admin' | 'hr' | 'approval' | 'gallery'
 
 type LoadEnv = (
   mode: string,
@@ -52,6 +52,17 @@ const serviceSettings = {
   approval: {
     targetKey: 'SSO_LOCAL_APPROVAL_SERVER_URL',
     portKey: 'SSO_LOCAL_APPROVAL_WEB_PORT',
+    proxyPaths: [
+      '^/api/',
+      '^/oauth2/',
+      '^/login/',
+      '^/logout(?:\\?|$)',
+      '^/error(?:\\?|$)',
+    ],
+  },
+  gallery: {
+    targetKey: 'SSO_LOCAL_GALLERY_SERVER_URL',
+    portKey: 'SSO_LOCAL_GALLERY_WEB_PORT',
     proxyPaths: [
       '^/api/',
       '^/oauth2/',

@@ -89,6 +89,10 @@ services:
       - source: approval-client-secret
         target: APPROVAL_CLIENT_SECRET
 
+  gallery-server:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-gallery-server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    user: "${BACKEND_RUNTIME_UID:-1000}:${BACKEND_RUNTIME_GID:-1000}"
+
   auth-web:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-auth-web:${IMAGE_TAG:?IMAGE_TAG must be set}
 
@@ -100,6 +104,9 @@ services:
 
   approval-web:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-approval-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+
+  gallery-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-gallery-web:${IMAGE_TAG:?IMAGE_TAG must be set}
 
   caddy:
     image: caddy:2.11.4-alpine
@@ -114,6 +121,7 @@ services:
       ADMIN_HOSTNAME: ${ADMIN_HOSTNAME:?ADMIN_HOSTNAME must be set}
       HR_HOSTNAME: ${HR_HOSTNAME:?HR_HOSTNAME must be set}
       APPROVAL_HOSTNAME: ${APPROVAL_HOSTNAME:?APPROVAL_HOSTNAME must be set}
+      GALLERY_HOSTNAME: ${GALLERY_HOSTNAME:?GALLERY_HOSTNAME must be set}
     volumes:
       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./infra/caddy/sites.caddy:/etc/caddy/sites.caddy:ro
@@ -138,6 +146,10 @@ services:
       hr-web:
         condition: service_healthy
       approval-web:
+        condition: service_healthy
+      gallery-server:
+        condition: service_healthy
+      gallery-web:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]

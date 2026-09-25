@@ -192,6 +192,29 @@ services:
     networks:
       - public-network
 
+  gallery-server:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        SERVICE_NAME: gallery-server
+    environment:
+      <<: *backend-environment
+      GALLERY_DB_URL: ${GALLERY_DB_URL:-jdbc:postgresql://postgres:5432/sso_lab}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      GALLERY_STORAGE_ROOT: /var/lib/quiet-winter-gallery
+    volumes:
+      - gallery-storage:/var/lib/quiet-winter-gallery
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - public-network
+      - db-network
+
   auth-web:
     <<: *frontend-common
     build:
@@ -227,6 +250,14 @@ services:
     networks:
       - public-network
 
+  gallery-web:
+    <<: *frontend-common
+    build:
+      context: frontend/gallery-web
+      dockerfile: ../../infra/docker/frontend.Dockerfile
+    networks:
+      - public-network
+
 networks:
   public-network:
     ipam:
@@ -239,3 +270,4 @@ networks:
 
 volumes:
   postgres-data:
+  gallery-storage:

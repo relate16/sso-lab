@@ -16,5 +16,6 @@ include(
     "backend:admin-server",
     "backend:hr-server",
     "backend:approval-server",
+    "backend:gallery-server",
     "backend:shared-infrastructure",
 )

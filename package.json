@@ -6,10 +6,10 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow --kill-others-on-fail \"npm --prefix frontend/auth-web run dev\" \"npm --prefix frontend/admin-web run dev\" \"npm --prefix frontend/hr-web run dev\" \"npm --prefix frontend/approval-web run dev\"",
-    "test:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow \"npm --prefix frontend/auth-web run test\" \"npm --prefix frontend/admin-web run test\" \"npm --prefix frontend/hr-web run test\" \"npm --prefix frontend/approval-web run test\"",
-    "lint:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow \"npm --prefix frontend/auth-web run lint\" \"npm --prefix frontend/admin-web run lint\" \"npm --prefix frontend/hr-web run lint\" \"npm --prefix frontend/approval-web run lint\"",
-    "build:all": "concurrently --names auth,admin,hr,approval --prefix-colors blue,magenta,green,yellow \"npm --prefix frontend/auth-web run build\" \"npm --prefix frontend/admin-web run build\" \"npm --prefix frontend/hr-web run build\" \"npm --prefix frontend/approval-web run build\""
+    "dev:all": "concurrently --names auth,admin,hr,approval,gallery --prefix-colors blue,magenta,green,yellow,cyan --kill-others-on-fail \"npm --prefix frontend/auth-web run dev\" \"npm --prefix frontend/admin-web run dev\" \"npm --prefix frontend/hr-web run dev\" \"npm --prefix frontend/approval-web run dev\" \"npm --prefix frontend/gallery-web run dev\"",
+    "test:all": "concurrently --names auth,admin,hr,approval,gallery --prefix-colors blue,magenta,green,yellow,cyan \"npm --prefix frontend/auth-web run test\" \"npm --prefix frontend/admin-web run test\" \"npm --prefix frontend/hr-web run test\" \"npm --prefix frontend/approval-web run test\" \"npm --prefix frontend/gallery-web run test\"",
+    "lint:all": "concurrently --names auth,admin,hr,approval,gallery --prefix-colors blue,magenta,green,yellow,cyan \"npm --prefix frontend/auth-web run lint\" \"npm --prefix frontend/admin-web run lint\" \"npm --prefix frontend/hr-web run lint\" \"npm --prefix frontend/approval-web run lint\" \"npm --prefix frontend/gallery-web run lint\"",
+    "build:all": "concurrently --names auth,admin,hr,approval,gallery --prefix-colors blue,magenta,green,yellow,cyan \"npm --prefix frontend/auth-web run build\" \"npm --prefix frontend/admin-web run build\" \"npm --prefix frontend/hr-web run build\" \"npm --prefix frontend/approval-web run build\" \"npm --prefix frontend/gallery-web run build\""
   },
   "devDependencies": {
     "concurrently": "10.0.5"
