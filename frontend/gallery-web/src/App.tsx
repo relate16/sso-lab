@@ -1,5 +1,6 @@
 import { Link, Route, Routes } from 'react-router-dom'
 import { AboutPage, HomePage, WorksPage } from './gallery/PublicPages'
+import { GalleryScene } from './gallery/GalleryScene'
 import { StudioApp } from './studio/StudioApp'
 
 function GalleryShell({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,7 @@ export function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/works" element={<WorksPage />} />
       <Route path="/about" element={<AboutPage />} />
+      <Route path="/artworks/:id" element={<GalleryScene />} />
     </Routes></GalleryShell>} />
   </Routes>
 }

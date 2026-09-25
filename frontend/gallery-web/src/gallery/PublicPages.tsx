@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { publicApi } from '../api'
 import type { Artwork, Page } from '../types'
 import { ArtworkCard, primaryImage } from './ArtworkCard'
@@ -21,7 +21,7 @@ export function HomePage() {
       {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
       {!loading && !error && data.length === 0 && <p className="public-status">현재 공개 중인 작품이 없습니다.</p>}
       <div className={`exhibition-wall count-${data.length}`}>{data.map((artwork, index) => { const image = primaryImage(artwork); return <article className="hung-work" key={artwork.id} style={{ '--hang-index': index } as React.CSSProperties}>
-        <div className={`hanging-frame frame-${artwork.frameType.toLowerCase()}`}>{image ? <img src={image.webUrl} alt={`${artwork.title} 작품`} /> : <span>Image awaiting</span>}</div>
+        <Link className={`hanging-frame frame-${artwork.frameType.toLowerCase()}`} to={`/artworks/${artwork.id}?scene=1`}>{image ? <img src={image.webUrl} alt={`${artwork.title} 작품`} /> : <span>Image awaiting</span>}</Link>
         <div className="wall-label"><strong>{artwork.title}</strong><span>{artwork.year ?? '연도 미상'} · {artwork.widthCm} × {artwork.heightCm} cm</span><button type="button" onClick={() => setInquiry(artwork)}>문의</button></div>
       </article>})}</div>
     </section>
@@ -35,6 +35,7 @@ export function WorksPage() {
   const [result, setResult] = useState<Page<Artwork> | null>(null)
   const [error, setError] = useState(false)
   const [inquiry, setInquiry] = useState<Artwork | null>(null)
+  const navigate = useNavigate()
   const queryKey = params.toString()
   useEffect(() => { let active = true; setError(false); publicApi.artworks(new URLSearchParams(queryKey)).then((data) => active && setResult(data)).catch(() => active && setError(true)); return () => { active = false } }, [queryKey])
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const next = new URLSearchParams(); for (const [key, value] of form) if (String(value).trim()) next.set(key, String(value).trim()); setParams(next) }
@@ -52,7 +53,7 @@ export function WorksPage() {
     <div className="works-summary"><span>{result ? `${result.totalElements} works` : 'Loading'}</span></div>
     {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
     {!error && result?.content.length === 0 && <p className="public-status">조건에 맞는 작품이 없습니다.</p>}
-    <div className="works-grid">{result?.content.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onInquiry={setInquiry} />)}</div>
+    <div className="works-grid">{result?.content.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onInquiry={setInquiry} onView={(selected) => navigate(`/artworks/${selected.id}?scene=1`)} />)}</div>
     {result && result.totalPages > 1 && <nav className="pagination" aria-label="작품 목록 페이지">{Array.from({ length: result.totalPages }, (_, page) => <button key={page} type="button" aria-current={result.page === page ? 'page' : undefined} onClick={() => { const next = new URLSearchParams(params); next.set('page', String(page)); setParams(next) }}>{page + 1}</button>)}</nav>}
     <InquiryDrawer artwork={inquiry} onClose={() => setInquiry(null)} />
   </section>

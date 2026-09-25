@@ -73,3 +73,34 @@ Design decisions:
 
 Remaining after Phase 3: the three exhibition scenes and artwork-detail route are delivered in
 Phase 4, followed by final security, performance, CI/CD and documentation verification.
+
+## Phase 4 — Three-scene exhibition viewer
+
+- Added a URL-addressable artwork viewer with front-wall, architectural corner, and long-gallery
+  scenes. Each scene uses distinct wall, floor, ceiling, vanishing-point and lighting geometry rather
+  than a color-only variation.
+- One selected artwork remains the visual protagonist. Its centimetre dimensions determine relative
+  on-screen size while preserving aspect ratio, and all four frame types have separate treatments.
+- Added a wall caption and a keyboard-accessible long-description drawer that becomes a bottom sheet
+  on mobile, with a direct path into the artwork inquiry flow.
+- Added a thumbnail rail. Every selection—including selecting the current artwork again—advances
+  `1 → 2 → 3 → 1` and pushes `/artworks/{id}?scene={n}` into browser history.
+- Invalid scene values canonicalize to Scene 1; refresh, deep links and browser back/forward derive
+  their state from the URL.
+
+Validation:
+
+- Scene-state tests cover cycling, invalid URL fallback and dimension scaling.
+- Gallery frontend TypeScript lint and production build — passed.
+- Browser preview with test-only artwork fixtures confirmed distinct front-wall, corner and
+  corridor geometry, same-artwork `3 → 1` cycling, and browser-back `1 → 3` restoration.
+
+Design decisions:
+
+- The viewer is implemented with semantic HTML and CSS 2D perspective only. It introduces no
+  Three.js, WebGL, free camera or 3D navigation dependency.
+- Artwork records and imagery always come from the public API; the scenes contain no fake collection
+  data or decorative substitute paintings.
+
+Remaining after Phase 4: complete accessibility and security verification, CI/CD coverage and final
+documentation in Phase 5. A final deployed-data smoke test remains an operational follow-up.
