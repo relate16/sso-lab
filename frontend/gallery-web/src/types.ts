@@ -6,3 +6,5 @@ export type Session = { authenticated: boolean; name?: string; preferred_usernam
 export type ArtworkImage = { id: string; storageKey: string; webUrl: string; thumbnailUrl: string; widthPx: number; heightPx: number; sortOrder: number; primary: boolean }
 export type Artwork = { id: string; title: string; description: string; year: number | null; material: string | null; widthCm: number; heightCm: number; price: number | null; saleStatus: SaleStatus; frameType: FrameType; published: boolean; featured: boolean; displayOrder: number; publishedAt: string | null; images: ArtworkImage[] }
 export type Inquiry = { id: string; artworkId: string; artworkTitle: string; name: string; email: string; phone: string | null; message: string; status: InquiryStatus; createdAt: string }
+export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number }
+export type InquiryCreate = { artworkId: string; name: string; email: string; phone: string; message: string; privacyAgreed: boolean }

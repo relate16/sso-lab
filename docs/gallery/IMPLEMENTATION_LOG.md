@@ -44,3 +44,32 @@ Validation:
 
 Remaining after Phase 2: complete public Home/Works/About experience, exhibition Scenes and public
 inquiry UI, then accessibility/security/CI documentation polish.
+
+## Phase 3 — Public Gallery UI
+
+- Replaced the placeholder public pages with the Quiet Winter Gallery home exhibition, searchable
+  Works collection, and editorial About page.
+- The home wall renders only the latest published records returned by the API and never pads the
+  wall with sample artwork.
+- Added URL-backed title/description search, sale-state, physical-size and price filters, sorting,
+  pagination, loading/error/empty states.
+- Added an artwork inquiry drawer with keyboard focus containment, Escape close, privacy consent
+  and CSRF-protected submission.
+- Added responsive two/one-column collection layouts and a mobile bottom-sheet presentation for
+  inquiries.
+
+Validation:
+
+- Gallery frontend tests — passed (3 tests)
+- Gallery frontend TypeScript lint and production build — passed
+
+Design decisions:
+
+- Query parameters are the source of truth for Works filters so browser refresh and shared URLs
+  preserve discovery state.
+- The public UI contains no hard-coded artwork records; empty and error states are explicit.
+- Scene navigation is intentionally introduced in Phase 4, while Phase 3 focuses on discovery and
+  inquiry.
+
+Remaining after Phase 3: the three exhibition scenes and artwork-detail route are delivered in
+Phase 4, followed by final security, performance, CI/CD and documentation verification.

@@ -1,4 +1,4 @@
-import type { Artwork, Csrf, Inquiry, InquiryStatus, Session } from './types'
+import type { Artwork, Csrf, Inquiry, InquiryCreate, InquiryStatus, Page, Session } from './types'
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 async function responseJson<T>(response: Response): Promise<T> {
@@ -30,4 +30,14 @@ export const studioApi = {
   removeImage: (csrf: Csrf, id: string, imageId: string) => mutation<void>(csrf, `/api/v1/gallery/studio/artworks/${id}/images/${imageId}`, 'DELETE'),
   inquiries: async () => responseJson<{ content: Inquiry[] }>(await fetch('/api/v1/gallery/studio/inquiries', { credentials: 'include', cache: 'no-store' })),
   inquiryStatus: (csrf: Csrf, id: string, status: InquiryStatus) => mutation<void>(csrf, `/api/v1/gallery/studio/inquiries/${id}`, 'PATCH', { status }),
+}
+
+export const publicApi = {
+  home: async () => responseJson<Artwork[]>(await fetch('/api/v1/gallery/public/home', { cache: 'no-store' })),
+  artworks: async (params: URLSearchParams) => responseJson<Page<Artwork>>(await fetch(`/api/v1/gallery/public/artworks?${params}`, { cache: 'no-store' })),
+  artwork: async (id: string) => responseJson<Artwork>(await fetch(`/api/v1/gallery/public/artworks/${id}`, { cache: 'no-store' })),
+  inquire: async (body: InquiryCreate) => {
+    const csrf = await responseJson<Csrf>(await fetch('/api/v1/csrf', { credentials: 'include', cache: 'no-store' }))
+    return mutation<{ id: string }>(csrf, '/api/v1/gallery/public/inquiries', 'POST', body)
+  },
 }
