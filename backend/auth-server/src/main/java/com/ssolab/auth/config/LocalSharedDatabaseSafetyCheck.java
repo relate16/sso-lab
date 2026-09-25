@@ -20,7 +20,7 @@ public class LocalSharedDatabaseSafetyCheck implements ApplicationRunner, Ordere
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LocalSharedDatabaseSafetyCheck.class);
     private static final Set<String> PRODUCTION_CLIENT_IDS = Set.of(
-        "hr-client", "approval-client", "admin-client"
+        "hr-client", "approval-client", "admin-client", "gallery-client"
     );
 
     private final Environment environment;

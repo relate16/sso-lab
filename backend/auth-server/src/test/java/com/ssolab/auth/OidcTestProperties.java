@@ -11,6 +11,7 @@ final class OidcTestProperties {
     static final String HR_SECRET = "hr-oidc-test-secret-only";
     static final String APPROVAL_SECRET = "approval-oidc-test-secret-only";
     static final String ADMIN_SECRET = "admin-oidc-test-secret-only";
+    static final String GALLERY_SECRET = "gallery-oidc-test-secret-only";
     static final String INTERNAL_ADMIN_SECRET = "internal-admin-test-secret-only";
     private static final KeyPair KEY_PAIR = keyPair();
 
@@ -25,6 +26,7 @@ final class OidcTestProperties {
         registry.add("HR_CLIENT_SECRET", () -> HR_SECRET);
         registry.add("APPROVAL_CLIENT_SECRET", () -> APPROVAL_SECRET);
         registry.add("ADMIN_CLIENT_SECRET", () -> ADMIN_SECRET);
+        registry.add("GALLERY_CLIENT_SECRET", () -> GALLERY_SECRET);
         registry.add("ADMIN_INTERNAL_API_SECRET", () -> INTERNAL_ADMIN_SECRET);
         registry.add("AUTH_PUBLIC_URL", () -> "http://localhost:8080");
         registry.add("HR_REDIRECT_URI",
@@ -33,12 +35,16 @@ final class OidcTestProperties {
             () -> "http://localhost:8082/login/oauth2/code/approval-client");
         registry.add("ADMIN_REDIRECT_URI",
             () -> "http://localhost:8083/login/oauth2/code/admin-client");
+        registry.add("GALLERY_REDIRECT_URI",
+            () -> "http://localhost:8084/login/oauth2/code/gallery-client");
         registry.add("HR_POST_LOGOUT_REDIRECT_URI", () -> "http://localhost:8081/");
         registry.add("APPROVAL_POST_LOGOUT_REDIRECT_URI", () -> "http://localhost:8082/");
         registry.add("ADMIN_POST_LOGOUT_REDIRECT_URI", () -> "http://localhost:8083/");
+        registry.add("GALLERY_POST_LOGOUT_REDIRECT_URI", () -> "http://localhost:8084/");
         registry.add("HR_BACKCHANNEL_LOGOUT_URI", () -> "http://127.0.0.1:1/hr");
         registry.add("APPROVAL_BACKCHANNEL_LOGOUT_URI", () -> "http://127.0.0.1:1/approval");
         registry.add("ADMIN_BACKCHANNEL_LOGOUT_URI", () -> "http://127.0.0.1:1/admin");
+        registry.add("GALLERY_BACKCHANNEL_LOGOUT_URI", () -> "http://127.0.0.1:1/gallery");
     }
 
     private static KeyPair keyPair() {

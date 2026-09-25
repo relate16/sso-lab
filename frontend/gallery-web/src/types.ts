@@ -1,0 +1,8 @@
+export type SaleStatus = 'NOT_FOR_SALE' | 'AVAILABLE' | 'RESERVED' | 'SOLD'
+export type FrameType = 'NONE' | 'MAT_BOARD' | 'ACRYLIC_BOX' | 'FLOATING_FRAME'
+export type InquiryStatus = 'NEW' | 'READ' | 'CLOSED'
+export type Csrf = { headerName: string; parameterName: string; token: string }
+export type Session = { authenticated: boolean; name?: string; preferred_username?: string; roles?: string[] }
+export type ArtworkImage = { id: string; storageKey: string; webUrl: string; thumbnailUrl: string; widthPx: number; heightPx: number; sortOrder: number; primary: boolean }
+export type Artwork = { id: string; title: string; description: string; year: number | null; material: string | null; widthCm: number; heightCm: number; price: number | null; saleStatus: SaleStatus; frameType: FrameType; published: boolean; featured: boolean; displayOrder: number; publishedAt: string | null; images: ArtworkImage[] }
+export type Inquiry = { id: string; artworkId: string; artworkTitle: string; name: string; email: string; phone: string | null; message: string; status: InquiryStatus; createdAt: string }

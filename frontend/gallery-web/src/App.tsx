@@ -1,4 +1,5 @@
 import { Link, Route, Routes } from 'react-router-dom'
+import { StudioApp } from './studio/StudioApp'
 
 function GalleryShell({ children }: { children: React.ReactNode }) {
   return <div className="gallery-shell">
@@ -24,12 +25,12 @@ function FoundationPage({ title, copy }: { title: string; copy: string }) {
 }
 
 export function App() {
-  return <GalleryShell>
-    <Routes>
+  return <Routes>
+    <Route path="/studio/*" element={<StudioApp />} />
+    <Route path="*" element={<GalleryShell><Routes>
       <Route path="/" element={<FoundationPage title="A quiet place for winter light." copy="작품과 공간, 벽면의 설명이 함께 머무는 온라인 전시를 준비하고 있습니다." />} />
       <Route path="/works" element={<FoundationPage title="Works" copy="공개 작품을 빠르게 찾고 전시장 장면으로 이동하는 공간입니다." />} />
       <Route path="/about" element={<FoundationPage title="About" copy="작업 방식과 작품에 관한 이야기를 전합니다." />} />
-      <Route path="/studio/*" element={<FoundationPage title="Studio" copy="관리자 전용 작품 관리 영역입니다." />} />
-    </Routes>
-  </GalleryShell>
+    </Routes></GalleryShell>} />
+  </Routes>
 }

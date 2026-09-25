@@ -14,6 +14,7 @@ services:
       HR_CLIENT_SECRET: ""
       APPROVAL_CLIENT_SECRET: ""
       ADMIN_CLIENT_SECRET: ""
+      GALLERY_CLIENT_SECRET: ""
       ADMIN_INTERNAL_API_SECRET: ""
       TURNSTILE_SECRET_KEY: ""
       GMAIL_APP_PASSWORD: ""
@@ -34,6 +35,8 @@ services:
       APPROVAL_CLIENT_SECRET_REF: approval-client-secret
       ADMIN_CLIENT_SECRET_PROVIDER: DOCKER_SECRET
       ADMIN_CLIENT_SECRET_REF: admin-client-secret
+      GALLERY_CLIENT_SECRET_PROVIDER: DOCKER_SECRET
+      GALLERY_CLIENT_SECRET_REF: gallery-client-secret
       ADMIN_INTERNAL_SECRET_PROVIDER: DOCKER_SECRET
       ADMIN_INTERNAL_SECRET_REF: admin-internal-api-secret
       TURNSTILE_SECRET_PROVIDER: DOCKER_SECRET
@@ -51,6 +54,7 @@ services:
       - hr-client-secret
       - approval-client-secret
       - admin-client-secret
+      - gallery-client-secret
       - admin-internal-api-secret
       - turnstile-secret
       - gmail-app-password
@@ -92,6 +96,12 @@ services:
   gallery-server:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-gallery-server:${IMAGE_TAG:?IMAGE_TAG must be set}
     user: "${BACKEND_RUNTIME_UID:-1000}:${BACKEND_RUNTIME_GID:-1000}"
+    environment:
+      GALLERY_CLIENT_SECRET: ""
+      GALLERY_CLIENT_SECRET_FILE: /run/secrets/GALLERY_CLIENT_SECRET
+    secrets:
+      - source: gallery-client-secret
+        target: GALLERY_CLIENT_SECRET
 
   auth-web:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY must be set}/${IMAGE_NAMESPACE:?IMAGE_NAMESPACE must be set}/sso-lab-auth-web:${IMAGE_TAG:?IMAGE_TAG must be set}
@@ -177,6 +187,8 @@ secrets:
     file: ${PRODUCTION_SECRET_DIR:-./secrets}/approval-client-secret
   admin-client-secret:
     file: ${PRODUCTION_SECRET_DIR:-./secrets}/admin-client-secret
+  gallery-client-secret:
+    file: ${PRODUCTION_SECRET_DIR:-./secrets}/gallery-client-secret
   admin-internal-api-secret:
     file: ${PRODUCTION_SECRET_DIR:-./secrets}/admin-internal-api-secret
   turnstile-secret:

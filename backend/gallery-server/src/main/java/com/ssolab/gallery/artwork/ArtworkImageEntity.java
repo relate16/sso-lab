@@ -55,6 +55,24 @@ public class ArtworkImageEntity {
 
     protected ArtworkImageEntity() { }
 
+    public ArtworkImageEntity(ArtworkEntity artwork, String storageKey, String originalPath,
+        String webImagePath, String thumbnailPath, String originalFilename, String contentType,
+        int widthPx, int heightPx, int sortOrder, boolean primary, Instant createdAt) {
+        this.id = UUID.randomUUID();
+        this.artwork = artwork;
+        this.storageKey = storageKey;
+        this.originalPath = originalPath;
+        this.webImagePath = webImagePath;
+        this.thumbnailPath = thumbnailPath;
+        this.originalFilename = originalFilename;
+        this.contentType = contentType;
+        this.widthPx = widthPx;
+        this.heightPx = heightPx;
+        this.sortOrder = sortOrder;
+        this.primary = primary;
+        this.createdAt = createdAt;
+    }
+
     public UUID getId() { return id; }
     public ArtworkEntity getArtwork() { return artwork; }
     public String getStorageKey() { return storageKey; }
@@ -68,4 +86,7 @@ public class ArtworkImageEntity {
     public int getSortOrder() { return sortOrder; }
     public boolean isPrimary() { return primary; }
     public Instant getCreatedAt() { return createdAt; }
+    public void makePrimary() { primary = true; }
+    public void clearPrimary() { primary = false; }
+    public void reorder(int order) { sortOrder = order; }
 }

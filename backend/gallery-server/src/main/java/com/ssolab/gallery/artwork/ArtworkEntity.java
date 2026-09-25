@@ -119,4 +119,27 @@ public class ArtworkEntity {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public List<ArtworkImageEntity> getImages() { return Collections.unmodifiableList(images); }
+
+    public void update(String title, String description, Integer year, String material,
+        BigDecimal widthCm, BigDecimal heightCm, BigDecimal price, SaleStatus saleStatus,
+        FrameType frameType, boolean featured, boolean publish, Instant now) {
+        this.title = Objects.requireNonNull(title);
+        this.description = Objects.requireNonNull(description);
+        this.year = year;
+        this.material = material;
+        this.widthCm = Objects.requireNonNull(widthCm);
+        this.heightCm = Objects.requireNonNull(heightCm);
+        this.price = price;
+        this.saleStatus = Objects.requireNonNull(saleStatus);
+        this.frameType = Objects.requireNonNull(frameType);
+        this.featured = featured;
+        if (publish && !published) this.publishedAt = now;
+        if (!publish) this.publishedAt = null;
+        this.published = publish;
+        this.updatedAt = Objects.requireNonNull(now);
+    }
+
+    public void addImage(ArtworkImageEntity image) { images.add(Objects.requireNonNull(image)); }
+    public void removeImage(ArtworkImageEntity image) { images.remove(image); }
+    public void reorder(int order, Instant now) { displayOrder = order; updatedAt = now; }
 }

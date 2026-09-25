@@ -83,6 +83,7 @@ class LocalSharedDatabaseSafetyCheckTest {
         clients.put("hr", client("sso-local-hr-client", 5175, "hr-client"));
         clients.put("approval", client("sso-local-approval-client", 5176, "approval-client"));
         clients.put("admin", client("sso-local-admin-client", 5174, "admin-client"));
+        clients.put("gallery", client("sso-local-gallery-client", 5177, "gallery-client"));
         properties.setClients(clients);
         return properties;
     }

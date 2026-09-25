@@ -159,6 +159,15 @@ sso:
         post-logout-redirect-uri: ${ADMIN_POST_LOGOUT_REDIRECT_URI:http://localhost:8083/}
         back-channel-logout-uri: ${ADMIN_BACKCHANNEL_LOGOUT_URI:http://localhost:8083/internal/oidc/backchannel-logout}
         scopes: [openid, profile, email]
+      gallery:
+        client-id: ${GALLERY_CLIENT_ID:gallery-client}
+        client-name: Quiet Winter Gallery Studio
+        secret-provider: ${GALLERY_CLIENT_SECRET_PROVIDER:ENVIRONMENT}
+        secret-reference: ${GALLERY_CLIENT_SECRET_REF:GALLERY_CLIENT_SECRET}
+        redirect-uri: ${GALLERY_REDIRECT_URI:http://localhost:8084/login/oauth2/code/gallery-client}
+        post-logout-redirect-uri: ${GALLERY_POST_LOGOUT_REDIRECT_URI:http://localhost:8084/}
+        back-channel-logout-uri: ${GALLERY_BACKCHANNEL_LOGOUT_URI:http://localhost:8084/internal/oidc/backchannel-logout}
+        scopes: [openid, profile, email]
 
 logging:
   level:

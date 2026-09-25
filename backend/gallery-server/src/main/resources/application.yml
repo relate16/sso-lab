@@ -20,6 +20,10 @@ spring:
     properties:
       hibernate:
         default_schema: gallery
+  servlet:
+    multipart:
+      max-file-size: ${GALLERY_MAX_UPLOAD_BYTES:12MB}
+      max-request-size: ${GALLERY_MAX_UPLOAD_BYTES:12MB}
 
 server:
   port: 8080
@@ -42,6 +46,23 @@ server:
 gallery:
   storage:
     root: ${GALLERY_STORAGE_ROOT:./.tooling/gallery-storage}
+    max-upload-bytes: ${GALLERY_MAX_UPLOAD_BYTES:12582912}
+    web-max-pixels: ${GALLERY_WEB_MAX_PIXELS:2400}
+    thumbnail-max-pixels: ${GALLERY_THUMBNAIL_MAX_PIXELS:640}
+
+sso:
+  oidc-client:
+    registration-id: ${GALLERY_REGISTRATION_ID:${GALLERY_CLIENT_ID:gallery-client}}
+    client-id: ${GALLERY_CLIENT_ID:gallery-client}
+    client-secret: ${GALLERY_CLIENT_SECRET:}
+    client-secret-file: ${GALLERY_CLIENT_SECRET_FILE:}
+    issuer: ${AUTH_PUBLIC_URL:http://localhost:8080}
+    authorization-uri: ${AUTH_PUBLIC_URL:http://localhost:8080}/oauth2/authorize
+    token-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/oauth2/token
+    jwk-set-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/oauth2/jwks
+    user-info-uri: ${AUTH_INTERNAL_URL:http://localhost:8080}/userinfo
+    redirect-uri: ${GALLERY_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+    post-logout-redirect-uri: ${GALLERY_POST_LOGOUT_REDIRECT_URI:http://localhost:8084/}
 
 management:
   endpoints:

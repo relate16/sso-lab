@@ -104,9 +104,9 @@ public class OidcProperties {
         if (logoutTokenTtl == null || logoutTokenTtl.isNegative() || logoutTokenTtl.isZero()) {
             throw new IllegalStateException("logout token TTL must be positive");
         }
-        if (clients.size() != 3
-            || !clients.keySet().containsAll(Set.of("hr", "approval", "admin"))) {
-            throw new IllegalStateException("exactly hr, approval and admin OIDC clients are required");
+        if (clients.size() != 4
+            || !clients.keySet().containsAll(Set.of("hr", "approval", "admin", "gallery"))) {
+            throw new IllegalStateException("exactly hr, approval, admin and gallery OIDC clients are required");
         }
         clients.forEach((name, client) -> client.validate(name));
     }

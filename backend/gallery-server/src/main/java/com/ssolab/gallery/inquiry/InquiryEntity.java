@@ -47,6 +47,19 @@ public class InquiryEntity {
 
     protected InquiryEntity() { }
 
+    public InquiryEntity(ArtworkEntity artwork, String name, String email, String phone,
+        String message, Instant now) {
+        this.id = UUID.randomUUID();
+        this.artwork = artwork;
+        this.name = name;
+        this.email = email;
+        this.phone = phone;
+        this.message = message;
+        this.status = InquiryStatus.NEW;
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
     public UUID getId() { return id; }
     public ArtworkEntity getArtwork() { return artwork; }
     public String getName() { return name; }
@@ -56,4 +69,8 @@ public class InquiryEntity {
     public InquiryStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public void changeStatus(InquiryStatus status, Instant now) {
+        this.status = status;
+        this.updatedAt = now;
+    }
 }
