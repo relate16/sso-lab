@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { publicApi } from '../api'
 import type { Artwork, Page } from '../types'
-import { ArtworkCard, primaryImage } from './ArtworkCard'
+import { ArtworkCard } from './ArtworkCard'
 import { InquiryDrawer } from './InquiryDrawer'
+import { HomeExhibition } from './HomeExhibition'
 
 function useHomeArtworks() {
   const [state, setState] = useState<{ loading: boolean; error: boolean; data: Artwork[] }>({ loading: true, error: false, data: [] })
@@ -13,20 +14,15 @@ function useHomeArtworks() {
 
 export function HomePage() {
   const { loading, error, data } = useHomeArtworks()
-  const [inquiry, setInquiry] = useState<Artwork | null>(null)
   return <>
     <section className="home-intro"><div><p className="eyebrow">Online exhibition · Seoul</p><h1>Quiet Winter<br />Gallery</h1></div><p>겨울의 고요와 빛을 기록한 작품을, 벽과 여백이 있는 하나의 전시 공간으로 소개합니다.</p></section>
     <section className="home-exhibition" aria-labelledby="recent-works"><header><div><p className="eyebrow">Current wall</p><h2 id="recent-works">최근 공개 작품</h2></div><Link to="/works">모든 작품 보기 <span aria-hidden="true">→</span></Link></header>
       {loading && <p className="public-status">전시장을 준비하고 있습니다…</p>}
       {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
       {!loading && !error && data.length === 0 && <p className="public-status">현재 공개 중인 작품이 없습니다.</p>}
-      <div className={`exhibition-wall count-${data.length}`}>{data.map((artwork, index) => { const image = primaryImage(artwork); return <article className="hung-work" key={artwork.id} style={{ '--hang-index': index } as React.CSSProperties}>
-        <Link className={`hanging-frame frame-${artwork.frameType.toLowerCase()}`} to={`/artworks/${artwork.id}?scene=1`}>{image ? <img src={image.thumbnailUrl} alt={`${artwork.title} 작품`} width={image.widthPx} height={image.heightPx} loading={index > 1 ? 'lazy' : 'eager'} /> : <span>Image awaiting</span>}</Link>
-        <div className="wall-label"><strong>{artwork.title}</strong><span>{artwork.year ?? '연도 미상'} · {artwork.widthCm} × {artwork.heightCm} cm</span><button type="button" onClick={() => setInquiry(artwork)}>문의</button></div>
-      </article>})}</div>
+      {!loading && !error && <HomeExhibition artworks={data} />}
     </section>
     <section className="home-note"><p className="eyebrow">Viewing note</p><p>작품을 선택하면 서로 다른 세 개의 전시 장면에서 크기와 액자, 벽면 설명을 함께 살펴볼 수 있습니다.</p><Link to="/works">전시 작품 탐색</Link></section>
-    <InquiryDrawer artwork={inquiry} onClose={() => setInquiry(null)} />
   </>
 }
 

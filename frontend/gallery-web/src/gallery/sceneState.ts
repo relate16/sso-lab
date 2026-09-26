@@ -21,3 +21,22 @@ export function artworkDisplaySize(widthCm: number, heightCm: number) {
   const scale = Math.min(maximumScale, Math.min(6, Math.max(3, minimumScale)))
   return { width: Math.round(safeWidth * scale), height: Math.round(safeHeight * scale) }
 }
+
+export function artworkMountPercent(
+  widthCm: number,
+  heightCm: number,
+  mountWidthPx: number,
+  mountHeightPx: number,
+  mode: 'relative' | 'fill' = 'relative',
+) {
+  const safeWidth = Math.max(.1, widthCm)
+  const safeHeight = Math.max(.1, heightCm)
+  const source = mode === 'relative'
+    ? artworkDisplaySize(safeWidth, safeHeight)
+    : { width: safeWidth, height: safeHeight }
+  const scale = Math.min((mountWidthPx * .84) / source.width, (mountHeightPx * .84) / source.height, mode === 'relative' ? 1 : Number.POSITIVE_INFINITY)
+  return {
+    width: (source.width * scale / mountWidthPx) * 100,
+    height: (source.height * scale / mountHeightPx) * 100,
+  }
+}
