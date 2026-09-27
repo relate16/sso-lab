@@ -60,7 +60,6 @@ exact AUTH_PUBLIC_URL https://today-sso-auth.duckdns.org
 exact ADMIN_PUBLIC_URL https://today-sso-admin.duckdns.org
 exact HR_PUBLIC_URL https://today-sso-hr.duckdns.org
 exact APPROVAL_PUBLIC_URL https://today-sso-approval.duckdns.org
-presence GALLERY_PUBLIC_URL
 exact HR_REDIRECT_URI https://today-sso-hr.duckdns.org/login/oauth2/code/hr-client
 exact APPROVAL_REDIRECT_URI https://today-sso-approval.duckdns.org/login/oauth2/code/approval-client
 exact ADMIN_REDIRECT_URI https://today-sso-admin.duckdns.org/login/oauth2/code/admin-client
