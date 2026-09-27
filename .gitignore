@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.local.example
 !.env.frontend.local.example
 !.env.backend.local.example
 !.env.auth-server.local.example

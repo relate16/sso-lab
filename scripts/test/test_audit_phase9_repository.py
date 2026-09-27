@@ -20,6 +20,7 @@ class RepositoryEnvironmentFileAuditTest(unittest.TestCase):
 
     def test_only_root_environment_examples_are_allowed_and_content_is_audited(self) -> None:
         REQUIRE_SAFE_PATH(ROOT / ".env.example")
+        REQUIRE_SAFE_PATH(ROOT / ".env.local.example")
         REQUIRE_SAFE_PATH(ROOT / ".env.frontend.local.example")
         REQUIRE_SAFE_PATH(ROOT / ".env.backend.local.example")
         REQUIRE_SAFE_PATH(ROOT / ".env.auth-server.local.example")
@@ -34,6 +35,7 @@ class RepositoryEnvironmentFileAuditTest(unittest.TestCase):
         AUDIT_CONTENT(ROOT / ".env.hr-server.local.example")
         AUDIT_CONTENT(ROOT / ".env.approval-server.local.example")
         AUDIT_CONTENT(ROOT / ".env.gallery-server.local.example")
+        AUDIT_CONTENT(ROOT / ".env.local.example")
 
         for relative in (
             ".env.frontend.local",
@@ -45,6 +47,34 @@ class RepositoryEnvironmentFileAuditTest(unittest.TestCase):
             with self.subTest(relative=relative):
                 with self.assertRaisesRegex(AssertionError, "runtime environment file"):
                     REQUIRE_SAFE_PATH(ROOT / relative)
+
+    def test_production_environment_contract_separates_runtime_and_secret_keys(self) -> None:
+        values = {}
+        for raw_line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                values[key] = value
+
+        required_gallery_keys = {
+            "GALLERY_HOSTNAME",
+            "GALLERY_DB_URL",
+            "GALLERY_CLIENT_ID",
+            "GALLERY_REDIRECT_URI",
+            "GALLERY_POST_LOGOUT_REDIRECT_URI",
+        }
+        self.assertTrue(required_gallery_keys.issubset(values))
+
+        production_secret_or_fixed_topology_keys = {
+            "GALLERY_PUBLIC_URL",
+            "GALLERY_STORAGE_ROOT",
+            "GALLERY_CLIENT_SECRET_PROVIDER",
+            "GALLERY_CLIENT_SECRET_REF",
+            "GALLERY_CLIENT_SECRET",
+            "GALLERY_CLIENT_SECRET_FILE",
+            "GALLERY_BACKCHANNEL_LOGOUT_URI",
+        }
+        self.assertTrue(production_secret_or_fixed_topology_keys.isdisjoint(values))
 
 
 class ServiceSchemaOwnershipAuditTest(unittest.TestCase):

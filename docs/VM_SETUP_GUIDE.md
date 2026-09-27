@@ -67,11 +67,14 @@ git checkout --detach <approved-source-commit>
 
 운영 `.env`와 `secrets/`는 Git 밖의 파일로 보존합니다.
 
-## 3. `.env`와 네 domain
+## 3. `.env`와 다섯 domain
 
-`.env.example`을 `/opt/sso-lab/.env`로 복사해 non-secret만 확정합니다.
+`.env.example`을 `/opt/sso-lab/.env`로 복사해 운영 키를 확정합니다.
+`.env.local.example`은 로컬/base Compose용이므로 운영 서버와 키 개수를 비교하는
+기준으로 사용하지 않습니다.
 
-- 다섯 `*_HOSTNAME`과 다섯 `*_PUBLIC_URL=https://<hostname>`
+- 다섯 `*_HOSTNAME`, `AUTH_PUBLIC_URL`, 기존 세 서비스의 audit용
+  `*_PUBLIC_URL`, Gallery exact redirect/post-logout URI
 - Auth issuer인 `AUTH_PUBLIC_URL`
 - HR/Approval/Admin/Gallery exact `/login/oauth2/code/<client>` redirect URI
 - 각 exact post-logout root URI

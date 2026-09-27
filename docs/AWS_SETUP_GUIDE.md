@@ -32,7 +32,7 @@ Session Manager에는 `AmazonSSMManagedInstanceCore` 수준을 검토하되 광�
 
 ## 3. Docker와 source
 
-Docker 공식 Ubuntu 절차로 Engine/Compose plugin을 설치하고 `docker info`, `docker compose version`을 확인합니다. 승인된 repository commit을 `/opt/sso-lab`에 clone하고 `.env.example`에서 Git-ignored `.env`를 작성합니다.
+Docker 공식 Ubuntu 절차로 Engine/Compose plugin을 설치하고 `docker info`, `docker compose version`을 확인합니다. 승인된 repository commit을 `/opt/sso-lab`에 clone하고 `.env.example`에서 Git-ignored 운영 `.env`를 작성합니다. `.env.local.example`은 로컬/base Compose용입니다.
 
 ```text
 SPRING_PROFILES_ACTIVE=prod

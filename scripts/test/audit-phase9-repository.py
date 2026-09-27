@@ -17,6 +17,7 @@ FORBIDDEN_PATH_PARTS = {
 FORBIDDEN_SUFFIXES = {".pem", ".key", ".p12", ".jks", ".log"}
 ALLOWED_ENV_EXAMPLE_PATHS = {
     ".env.example",
+    ".env.local.example",
     ".env.frontend.local.example",
     ".env.backend.local.example",
     ".env.auth-server.local.example",
@@ -257,16 +258,25 @@ def require_example_env_placeholders() -> None:
         "GALLERY_CLIENT_SECRET",
     }
     values: dict[str, str] = {}
-    for line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+    for line in (ROOT / ".env.local.example").read_text(encoding="utf-8").splitlines():
         if "=" in line and not line.lstrip().startswith("#"):
             key, value = line.split("=", 1)
             values[key] = value
     for key in sensitive:
         value = values.get(key)
         if value is None:
-            raise AssertionError(f".env.example is missing {key}")
+            raise AssertionError(f".env.local.example is missing {key}")
         if value and not value.startswith("CHANGE_ME"):
-            raise AssertionError(f".env.example contains a non-placeholder value for {key}")
+            raise AssertionError(f".env.local.example contains a non-placeholder value for {key}")
+
+    production_values: dict[str, str] = {}
+    for line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key, value = line.split("=", 1)
+            production_values[key] = value
+    database_password = production_values.get("POSTGRES_PASSWORD")
+    if database_password is None or not database_password.startswith("CHANGE_ME"):
+        raise AssertionError(".env.example must contain only a POSTGRES_PASSWORD placeholder")
 
 
 def main() -> int:

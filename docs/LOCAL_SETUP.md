@@ -14,12 +14,12 @@ Gradle 8.14.3은 Wrapper가 사용합니다. Windows에서는 `gradlew.bat`, Lin
 Repository root에서 예제 파일을 Git-ignored 로컬 파일로 복사합니다.
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item .env.local.example .env
 Copy-Item .env.frontend.local.example .env.frontend.local
 ```
 
 ```sh
-cp .env.example .env
+cp .env.local.example .env
 cp .env.frontend.local.example .env.frontend.local
 ```
 

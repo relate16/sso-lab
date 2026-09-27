@@ -57,7 +57,8 @@ workflow secret으로 두지 않는다.
 
 1. 승인된 release의 Git commit에 포함된 Compose/Caddy 파일을 `/opt/sso-lab`에
    checkout한다.
-2. `.env.example`을 참고해 Git-ignored `/opt/sso-lab/.env`를 작성한다.
+2. `.env.example`을 복사해 Git-ignored `/opt/sso-lab/.env`를 작성한다.
+   로컬 개발용 `.env.local.example`과 혼동하지 않는다.
 3. `/opt/sso-lab/secrets`를 `0700`, 각 Secret 파일을 `0600`으로 생성한다.
    file-backed Compose Secret은 Host numeric ownership을 유지하므로 `.env`의
    `BACKEND_RUNTIME_UID`/`BACKEND_RUNTIME_GID`를 Secret 파일의 `%u:%g`와 일치시킨다.
