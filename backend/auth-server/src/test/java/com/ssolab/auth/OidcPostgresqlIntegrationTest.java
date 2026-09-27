@@ -193,14 +193,16 @@ class OidcPostgresqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM auth.flyway_schema_history WHERE version='4'", Integer.class
         )).isEqualTo(1);
-        assertThat(jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM auth.oauth2_registered_client", Integer.class
-        )).isEqualTo(3);
+        assertThat(jdbcTemplate.queryForList(
+            "SELECT client_id FROM auth.oauth2_registered_client", String.class
+        )).containsExactlyInAnyOrder(
+            "hr-client", "approval-client", "admin-client", "gallery-client");
         assertThat(jdbcTemplate.queryForList(
             "SELECT client_secret FROM auth.oauth2_registered_client", String.class
         )).allMatch(secret -> secret.startsWith("{bcrypt}"))
             .doesNotContain(OidcTestProperties.HR_SECRET,
-                OidcTestProperties.APPROVAL_SECRET, OidcTestProperties.ADMIN_SECRET);
+                OidcTestProperties.APPROVAL_SECRET, OidcTestProperties.ADMIN_SECRET,
+                OidcTestProperties.GALLERY_SECRET);
 
         jdbcTemplate.update("UPDATE auth.users SET account_status='SUSPENDED' WHERE id=?", user.getId());
         mvc.perform(get("/oauth2/authorize").cookie(authSession)
