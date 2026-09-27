@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { artworkDisplaySize, artworkMountPercent, isValidScene, nextScene, parseScene } from '../src/gallery/sceneState.ts'
+import { artworkDisplaySize, artworkMountPercent, fitArtworkInCanonicalPlane, isValidScene, nextScene, normalizedQuadPlacement, parseScene, projectHomographyPoint, rectangleToQuadHomography, rectangleToQuadMatrix } from '../src/gallery/sceneState.ts'
 import { HOME_SLOTS, SCENE_DEFINITIONS } from '../src/gallery/sceneDefinitions.ts'
 
 test('scene selection cycles deterministically', () => {
@@ -28,6 +28,8 @@ test('relative artwork sizing preserves the original aspect ratio', () => {
 test('approved assets map to all three URL-backed scenes', () => {
   for (const scene of [1, 2, 3]) {
     assert.match(SCENE_DEFINITIONS[scene].asset, new RegExp(`gallery-detail-scene-${scene}\\.webp$`))
+    assert.ok(SCENE_DEFINITIONS[scene].mount.centerX > 0)
+    assert.ok(SCENE_DEFINITIONS[scene].mount.centerY > 0)
     assert.ok(SCENE_DEFINITIONS[scene].mount.width > 0)
     assert.ok(SCENE_DEFINITIONS[scene].mount.height > 0)
   }
@@ -35,8 +37,47 @@ test('approved assets map to all three URL-backed scenes', () => {
 
 test('Home exposes exactly four configured exhibition slots', () => {
   assert.deepEqual(HOME_SLOTS.map((slot) => slot.id), ['leftWall', 'centerLeft', 'centerRight', 'rightWall'])
-  assert.notEqual(HOME_SLOTS[0].transform, HOME_SLOTS[1].transform)
-  assert.notEqual(HOME_SLOTS[3].transform, HOME_SLOTS[2].transform)
+  assert.deepEqual(HOME_SLOTS.map((slot) => slot.cornersPx), [
+    { topLeft: [151, 248], topRight: [322, 278.7744], bottomRight: [321, 540.6849], bottomLeft: [154, 552] },
+    { topLeft: [638, 317], topRight: [910, 305], bottomRight: [907, 531], bottomLeft: [637, 527] },
+    { topLeft: [1032, 303], topRight: [1226, 292], bottomRight: [1223, 537], bottomLeft: [1036, 533] },
+    { topLeft: [1363, 225], topRight: [1509, 169.6521], bottomRight: [1506, 590.5759], bottomLeft: [1368, 569] },
+  ])
+  assert.ok(HOME_SLOTS.every((slot) => Object.values(slot.corners).flat().every((value) => value > 0 && value < 1)))
+  assert.ok(HOME_SLOTS.every((slot) => slot.mountCenter.x > 0 && slot.mountCenter.y > 0))
+  assert.ok(HOME_SLOTS.every((slot) => Math.abs(slot.mountCenter.x - slot.lightCenter.x) < .01))
+  assert.ok(HOME_SLOTS.every((slot) => slot.lightCenter.y < slot.mountCenter.y))
+  assert.equal(HOME_SLOTS[0].shadowPreset, 'leftWall')
+  assert.equal(HOME_SLOTS[3].shadowPreset, 'rightWall')
+  assert.deepEqual(HOME_SLOTS[0].artworkCenter, { x: .5, y: .6 })
+  assert.deepEqual(HOME_SLOTS[3].sizeClamp, { minFill: .8, maxFill: .86 })
+  assert.deepEqual(HOME_SLOTS[3].artworkCenter, { x: .5, y: .62 })
+  assert.deepEqual(HOME_SLOTS[0].horizontalVanishingPointPx, [1379, 469])
+  assert.deepEqual(HOME_SLOTS[3].horizontalVanishingPointPx, [722, 468])
+})
+
+test('Home wall planes project all four rectangle corners onto configured geometry', () => {
+  const width = 400
+  const height = 280
+  HOME_SLOTS.forEach((slot) => {
+    const placement = normalizedQuadPlacement(slot.corners, slot.mountCenter)
+    const matrix = rectangleToQuadMatrix(width, height, placement.localCorners)
+    const values = matrix.slice('matrix3d('.length, -1).split(',').map(Number)
+    const project = (x, y) => {
+      const denominator = values[3] * x + values[7] * y + values[15]
+      return [
+        (values[0] * x + values[4] * y + values[12]) / denominator,
+        (values[1] * x + values[5] * y + values[13]) / denominator,
+      ]
+    }
+    const sources = [[0, 0], [width, 0], [width, height], [0, height]]
+    const targets = Object.values(placement.localCorners).map(([x, y]) => [x * width, y * height])
+    sources.forEach(([x, y], index) => {
+      const projected = project(x, y)
+      assert.ok(Math.abs(projected[0] - targets[index][0]) < .001, `${slot.id} x corner ${index}`)
+      assert.ok(Math.abs(projected[1] - targets[index][1]) < .001, `${slot.id} y corner ${index}`)
+    })
+  })
 })
 
 test('mounted sizing preserves aspect and clamps artwork to its guide', () => {
@@ -44,8 +85,66 @@ test('mounted sizing preserves aspect and clamps artwork to its guide', () => {
   const landscape = artworkMountPercent(100, 50, 500, 330)
   assert.ok(portrait.height > portrait.width)
   assert.ok(landscape.width > landscape.height)
-  assert.ok(portrait.height <= 84)
-  assert.ok(landscape.width <= 84)
+  assert.ok(portrait.height <= 88)
+  assert.ok(landscape.width <= 88)
   assert.ok(Math.abs((portrait.width * 500) / (portrait.height * 330) - .5) < .001)
   assert.ok(Math.abs((landscape.width * 500) / (landscape.height * 330) - 2) < .001)
+})
+
+test('Home sizing keeps physical differences subtle enough for one exhibition wall', () => {
+  const small = artworkMountPercent(30, 45, 300, 240, 'home')
+  const large = artworkMountPercent(120, 180, 300, 240, 'home')
+  assert.ok(large.height > small.height)
+  assert.ok(small.height >= 60)
+  assert.ok(large.height <= 82.001)
+  assert.ok(Math.abs((small.width * 300) / (small.height * 240) - 2 / 3) < .001)
+})
+
+test('Home slot-specific clamps preserve composition without flattening size differences', () => {
+  const range = HOME_SLOTS[0].sizeClamp
+  const small = artworkMountPercent(30, 45, 300, 240, 'home', range)
+  const large = artworkMountPercent(120, 180, 300, 240, 'home', range)
+  assert.ok(small.height < large.height)
+  assert.ok(small.height >= range.minFill * 100 - .001)
+  assert.ok(large.height <= range.maxFill * 100 + .001)
+})
+
+test('Home fits artwork before homography and preserves each wall plane vanishing point', () => {
+  const artworkSizes = [[48, 72], [90, 60], [120, 150], [32, 32]]
+  const intersection = (a, b, c, d) => {
+    const determinant = (a[0] - b[0]) * (c[1] - d[1]) - (a[1] - b[1]) * (c[0] - d[0])
+    return [
+      ((a[0] * b[1] - a[1] * b[0]) * (c[0] - d[0]) - (a[0] - b[0]) * (c[0] * d[1] - c[1] * d[0])) / determinant,
+      ((a[0] * b[1] - a[1] * b[0]) * (c[1] - d[1]) - (a[1] - b[1]) * (c[0] * d[1] - c[1] * d[0])) / determinant,
+    ]
+  }
+
+  HOME_SLOTS.forEach((slot, index) => {
+    const xs = Object.values(slot.cornersPx).map(([x]) => x)
+    const ys = Object.values(slot.cornersPx).map(([, y]) => y)
+    const width = Math.max(...xs) - Math.min(...xs)
+    const height = Math.max(...ys) - Math.min(...ys)
+    const placement = normalizedQuadPlacement(slot.corners, slot.mountCenter)
+    const homography = rectangleToQuadHomography(width, height, placement.localCorners)
+    assert.ok(homography)
+    const [artworkWidth, artworkHeight] = artworkSizes[index]
+    const rect = fitArtworkInCanonicalPlane(artworkWidth, artworkHeight, width, height, 'home', slot.sizeClamp, slot.artworkCenter)
+    const actual = {
+      topLeft: projectHomographyPoint(homography, [rect.left, rect.top]),
+      topRight: projectHomographyPoint(homography, [rect.left + rect.width, rect.top]),
+      bottomRight: projectHomographyPoint(homography, [rect.left + rect.width, rect.top + rect.height]),
+      bottomLeft: projectHomographyPoint(homography, [rect.left, rect.top + rect.height]),
+    }
+    const target = Object.fromEntries(Object.entries(placement.localCorners).map(([name, [x, y]]) => [name, [x * width, y * height]]))
+    const wallVanishingPoint = intersection(target.topLeft, target.topRight, target.bottomLeft, target.bottomRight)
+    const artworkVanishingPoint = intersection(actual.topLeft, actual.topRight, actual.bottomLeft, actual.bottomRight)
+    assert.ok(Math.hypot(wallVanishingPoint[0] - artworkVanishingPoint[0], wallVanishingPoint[1] - artworkVanishingPoint[1]) < .01, `${slot.id} horizontal vanishing point`)
+    if (slot.horizontalVanishingPointPx) {
+      const sourceVanishingPoint = intersection(slot.cornersPx.topLeft, slot.cornersPx.topRight, slot.cornersPx.bottomLeft, slot.cornersPx.bottomRight)
+      assert.ok(Math.hypot(sourceVanishingPoint[0] - slot.horizontalVanishingPointPx[0], sourceVanishingPoint[1] - slot.horizontalVanishingPointPx[1]) < .01, `${slot.id} matches measured wall vanishing point`)
+    }
+    assert.ok(rect.left >= 0 && rect.top >= 0)
+    assert.ok(rect.left + rect.width <= width + .001)
+    assert.ok(rect.top + rect.height <= height + .001)
+  })
 })
