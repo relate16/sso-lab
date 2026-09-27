@@ -19,6 +19,18 @@ def sanitize(value: str) -> str:
     return SECRET_VALUE.sub(r"\1\2[REDACTED]", compact)[:1500]
 
 
+def failure_detail(failure: ET.Element) -> str:
+    summary = failure.get("message") or "JUnit test failed"
+    causes = [
+        line.strip()
+        for line in (failure.text or "").splitlines()
+        if line.lstrip().startswith("Caused by:")
+    ]
+    if causes:
+        return f"{summary} | {' | '.join(causes[-3:])}"
+    return summary
+
+
 def main() -> int:
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "backend")
     failures = 0
@@ -32,7 +44,7 @@ def main() -> int:
                 continue
             failures += 1
             test_name = f"{case.get('classname', '')}.{case.get('name', '')}".strip(".")
-            detail = failure.get("message") or failure.text or "JUnit test failed"
+            detail = failure_detail(failure)
             print(f"::error title=Backend test failed: {sanitize(test_name)}::{sanitize(detail)}")
     if failures == 0:
         print("backend_test_report|no_junit_failure_details")

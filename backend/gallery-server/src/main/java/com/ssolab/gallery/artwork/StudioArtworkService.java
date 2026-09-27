@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ public class StudioArtworkService {
     private final ArtworkImageStorage storage;
     private final Clock clock;
 
+    @Autowired
     public StudioArtworkService(ArtworkRepository artworks, ArtworkImageRepository images,
         ArtworkImageStorage storage) {
         this(artworks, images, storage, Clock.systemUTC());
