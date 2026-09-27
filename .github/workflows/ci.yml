@@ -21,6 +21,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and test all backend services
         run: ./gradlew --no-daemon clean build
+      - name: Report backend test failures
+        if: failure()
+        run: python3 scripts/test/report-junit-failures.py backend
       - name: Validate OpenAPI contracts
         run: python3 scripts/test/validate-openapi.py
       - name: Validate required Phase 9 documentation

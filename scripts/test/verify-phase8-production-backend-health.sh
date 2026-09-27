@@ -38,10 +38,18 @@ cleanup() {
   set +e
   if [ "$exit_code" -ne 0 ]; then
     compose ps --all
-    compose logs --no-color auth-server admin-server hr-server approval-server gallery-server \
+    backend_diagnostic=$(compose logs --no-color \
+      auth-server admin-server hr-server approval-server gallery-server \
       | grep -E 'ERROR|Caused by:|Exception|unavailable|failed|Failure' \
       | tail -80 \
-      | sed -E 's/(secret|token|password|code)=[^ ,]+/\1=[REDACTED]/Ig'
+      | sed -E 's/(secret|token|password|code)=[^ ,]+/\1=[REDACTED]/Ig')
+    printf '%s\n' "$backend_diagnostic"
+    if [ -n "${GITHUB_ACTIONS:-}" ] && [ -n "$backend_diagnostic" ]; then
+      annotation=$(printf '%s' "$backend_diagnostic" \
+        | sed 's/%/%25/g; s/\r/%0D/g' \
+        | awk 'BEGIN { first=1 } { if (!first) printf "%%0A"; printf "%s", $0; first=0 }')
+      printf '::error title=Production backend startup diagnostics::%s\n' "$annotation"
+    fi
   fi
   compose down --remove-orphans >/dev/null 2>&1
   temporary_volume="${project}_postgres-data"
