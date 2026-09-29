@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -95,8 +97,10 @@ public class StudioArtworkService {
             stored.originalPath(), stored.webImagePath(), stored.thumbnailPath(),
             safeFilename(file.getOriginalFilename()), stored.contentType(), stored.widthPx(),
             stored.heightPx(), artwork.getImages().size(), primary, clock.instant());
+        registerRollbackCleanup(stored);
         artwork.addImage(image);
-        return GalleryDtos.Image.from(images.save(image));
+        artworks.flush();
+        return GalleryDtos.Image.from(image);
     }
 
     @Transactional
@@ -139,5 +143,16 @@ public class StudioArtworkService {
 
     private String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void registerRollbackCleanup(StoredArtworkImage stored) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_COMMITTED) return;
+                try { storage.delete(stored); } catch (IOException ignored) { }
+            }
+        });
     }
 }

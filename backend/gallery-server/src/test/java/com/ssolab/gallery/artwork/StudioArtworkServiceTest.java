@@ -2,11 +2,16 @@ package com.ssolab.gallery.artwork;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ssolab.gallery.api.GalleryDtos;
 import com.ssolab.gallery.api.GalleryValidationException;
 import com.ssolab.gallery.storage.ArtworkImageStorage;
+import com.ssolab.gallery.storage.StoredArtworkImage;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -17,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class StudioArtworkServiceTest {
@@ -48,6 +54,23 @@ class StudioArtworkServiceTest {
             new GalleryDtos.ReorderItem(second.getPublicId(), 0))));
         assertThat(first.getDisplayOrder()).isEqualTo(1);
         assertThat(second.getDisplayOrder()).isZero();
+    }
+
+    @Test
+    void uploadPersistsImageThroughTheArtworkAggregateOnly() throws IOException {
+        ArtworkEntity existing = artwork("Draft", 0);
+        var stored = new StoredArtworkImage("12345678-1234-1234-1234-123456789abc",
+            "original.jpg", "web.jpg", "thumbnail.jpg", "image/jpeg", 1200, 800);
+        var file = new MockMultipartFile("file", "winter.jpg", "image/jpeg", new byte[] { 1 });
+        when(artworks.findByPublicId(existing.getPublicId())).thenReturn(Optional.of(existing));
+        when(storage.store(file)).thenReturn(stored);
+
+        GalleryDtos.Image uploaded = service().upload(existing.getPublicId(), file);
+
+        assertThat(uploaded.primary()).isTrue();
+        assertThat(existing.getImages()).hasSize(1);
+        verify(artworks).flush();
+        verify(images, never()).save(any());
     }
 
     private StudioArtworkService service() {

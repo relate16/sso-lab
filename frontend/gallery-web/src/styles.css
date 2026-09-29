@@ -95,12 +95,15 @@ button, .primary-action { cursor: pointer; }
 .studio-row-main { display: grid; gap: 5px; }.studio-row-main span { font-size: .78rem; color: #6b6962; }.drag-handle { cursor: grab; }
 .order-actions { display: flex; gap: 4px; }.order-actions button { width: 34px; height: 34px; background: transparent; border: 1px solid #bbb7ad; }
 .artwork-form { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 22px; }
-.artwork-form label, .image-manager label { display: grid; gap: 8px; font-size: .82rem; }
+.artwork-form label { display: grid; gap: 8px; font-size: .82rem; }
 .artwork-form input, .artwork-form textarea, .artwork-form select, .inquiry-list select { width: 100%; padding: 12px; border: 1px solid #bdb9af; background: #fff; color: #282824; }
 .artwork-form .full { grid-column: 1 / -1; }.artwork-form .check { display: flex; align-items: center; }.artwork-form .check input { width: auto; }
 .form-actions { display: flex; flex-direction: row !important; justify-content: space-between; margin-top: 10px; }
-.image-manager { margin-top: 54px; padding-top: 34px; border-top: 1px solid #cbc8c0; }.upload-control { width: max-content; padding: 12px 16px; border: 1px solid #8d897f; }.upload-control input { max-width: 240px; }
-.image-list { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; }.image-list article { display: grid; gap: 8px; width: 150px; }.image-list img { width: 150px; height: 110px; object-fit: cover; }
+.artwork-image-field { margin-top: 12px; padding: 20px; border: 1px solid #cbc8c0; background: #f0eee7; }
+.artwork-image-field input[type="file"] { border: 0; padding: 0; background: transparent; }
+.field-help, .selected-files, .check-help { color: #706d65; font-size: .76rem; font-weight: 400; }
+.selected-files { overflow-wrap: anywhere; }
+.image-list { display: flex; flex-wrap: wrap; gap: 16px; margin: 0; padding: 18px; border: 1px solid #d8d5cc; border-top: 0; }.image-list article { display: grid; gap: 8px; width: 150px; }.image-list img { width: 150px; height: 110px; object-fit: cover; }
 .dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(30,30,27,.42); }.confirm-dialog { max-width: 430px; padding: 30px; background: #fff; }.confirm-dialog > div { display: flex; justify-content: end; gap: 10px; }
 .inquiry-list { display: grid; gap: 18px; }.inquiry-list article { padding: 24px; border: 1px solid #d1cec5; background: #fff; }.inquiry-list article header { display: flex; justify-content: space-between; gap: 20px; }.inquiry-list time { color: #747169; font-size: .8rem; }.inquiry-list dl div { display: grid; grid-template-columns: 80px 1fr; }.inquiry-list dt { color: #747169; }.plain-message { white-space: pre-wrap; line-height: 1.7; }
 .empty-copy { padding: 60px 0; color: #747169; }
