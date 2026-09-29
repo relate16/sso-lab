@@ -8,10 +8,10 @@ function GalleryShell({ children }: { children: React.ReactNode }) {
     <header className="gallery-header">
       <Link className="wordmark" to="/">Quiet Winter Gallery</Link>
       <nav aria-label="주요 메뉴">
-        <Link to="/">Home</Link>
-        <Link to="/works">Works</Link>
-        <Link to="/exhibition">Exhibition</Link>
-        <Link to="/about">About</Link>
+        <Link to="/">홈</Link>
+        <Link to="/works">작품</Link>
+        <Link to="/exhibition">전시실</Link>
+        <Link to="/about">소개</Link>
       </nav>
     </header>
     <main>{children}</main>

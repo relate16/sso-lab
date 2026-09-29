@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Gowun Batang";
+  src: url("/fonts/gowun-batang/GowunBatang-Header.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
 :root {
   color: #282824;
   background: #f4f2ec;
@@ -115,7 +123,15 @@ button, .primary-action { cursor: pointer; }
   padding-inline: clamp(20px, 4vw, 64px);
 }
 
-.gallery-header nav { gap: clamp(14px, 2vw, 24px); }
+.gallery-header .wordmark,
+.gallery-header nav {
+  font-family: "Gowun Batang", "Noto Serif KR", Batang, serif;
+  font-weight: 400;
+}
+
+.gallery-header .wordmark { font-size: calc(1.02rem + 2pt); }
+.gallery-header nav { gap: clamp(14px, 2vw, 24px); font-size: calc(1rem + 2pt); }
+.gallery-header nav a { text-decoration: none; }
 
 .home-intro {
   min-height: 31vh;
@@ -822,7 +838,7 @@ footer {
   }
 
   .wordmark { max-width: none; flex-shrink: 0; font-size: .72rem; line-height: 1.2; letter-spacing: .04em; white-space: nowrap; }
-  .gallery-header nav { gap: 10px; font-size: .7rem; }
+  .gallery-header nav { gap: 10px; font-size: calc(.7rem + 2pt); }
   .home-intro {
     min-height: 38vh;
     padding: 48px 22px 32px;
