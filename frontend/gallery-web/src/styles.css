@@ -6,6 +6,14 @@
   font-weight: 400;
 }
 
+@font-face {
+  font-family: "Gowun Batang";
+  src: url("/fonts/gowun-batang/GowunBatang-Header-Bold.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
 :root {
   color: #282824;
   background: #f4f2ec;
@@ -126,7 +134,7 @@ button, .primary-action { cursor: pointer; }
 .gallery-header .wordmark,
 .gallery-header nav {
   font-family: "Gowun Batang", "Noto Serif KR", Batang, serif;
-  font-weight: 400;
+  font-weight: 700;
 }
 
 .gallery-header .wordmark { font-size: calc(1.02rem + 2pt); }
