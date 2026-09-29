@@ -23,7 +23,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.savedrequest.NullRequestCache;
 
 @Configuration
@@ -54,7 +54,7 @@ public class GallerySecurityConfig {
         resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
         var logoutSuccess = new OidcClientInitiatedLogoutSuccessHandler(registrations);
         logoutSuccess.setPostLogoutRedirectUri(properties.postLogoutRedirectUri().toString());
-        var loginSuccess = new SavedRequestAwareAuthenticationSuccessHandler();
+        var loginSuccess = new SimpleUrlAuthenticationSuccessHandler("/studio");
 
         http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
