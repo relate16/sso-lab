@@ -68,6 +68,7 @@ class StudioArtworkServiceTest {
         GalleryDtos.Image uploaded = service().upload(existing.getPublicId(), file);
 
         assertThat(uploaded.primary()).isTrue();
+        assertThat(uploaded.originalUrl()).endsWith("/media/12345678-1234-1234-1234-123456789abc/original");
         assertThat(existing.getImages()).hasSize(1);
         verify(artworks).flush();
         verify(images, never()).save(any());

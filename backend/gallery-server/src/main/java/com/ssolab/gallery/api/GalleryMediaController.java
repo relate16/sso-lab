@@ -29,13 +29,16 @@ public class GalleryMediaController {
         ArtworkImageEntity image = images.findByStorageKeyAndArtworkPublishedTrue(storageKey)
             .orElseThrow(() -> new GalleryNotFoundException("image not found"));
         String path = switch (variant) {
+            case "original" -> image.getOriginalPath();
             case "web" -> image.getWebImagePath();
             case "thumbnail" -> image.getThumbnailPath();
             default -> throw new GalleryNotFoundException("image not found");
         };
         Path resolved = storage.resolve(path);
         if (!Files.isRegularFile(resolved)) throw new GalleryNotFoundException("image not found");
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+        MediaType contentType = variant.equals("original")
+            ? MediaType.parseMediaType(image.getContentType()) : MediaType.IMAGE_JPEG;
+        return ResponseEntity.ok().contentType(contentType)
             .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable())
             .body(new FileSystemResource(resolved));
     }
@@ -46,13 +49,16 @@ public class GalleryMediaController {
         ArtworkImageEntity image = images.findByStorageKey(storageKey)
             .orElseThrow(() -> new GalleryNotFoundException("image not found"));
         String path = switch (variant) {
+            case "original" -> image.getOriginalPath();
             case "web" -> image.getWebImagePath();
             case "thumbnail" -> image.getThumbnailPath();
             default -> throw new GalleryNotFoundException("image not found");
         };
         Path resolved = storage.resolve(path);
         if (!Files.isRegularFile(resolved)) throw new GalleryNotFoundException("image not found");
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+        MediaType contentType = variant.equals("original")
+            ? MediaType.parseMediaType(image.getContentType()) : MediaType.IMAGE_JPEG;
+        return ResponseEntity.ok().contentType(contentType)
             .cacheControl(CacheControl.noStore()).body(new FileSystemResource(resolved));
     }
 }

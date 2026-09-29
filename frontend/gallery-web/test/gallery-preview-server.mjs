@@ -13,7 +13,7 @@ const artworks = ids.map((id, index) => ({
   year: 2024 + index % 2, material: index >= 4 ? 'Pencil on paper' : 'Oil on canvas', widthCm: [48, 90, 120, 32, 100, 70, 100, 70, 100, 70][index], heightCm: [72, 60, 150, 32, 50, 99, 50, 99, 50, 99][index],
   price: 1200000 + index * 450000, saleStatus: index === 2 ? 'SOLD' : 'AVAILABLE', frameType: frames[index],
   published: true, featured: index < 2, displayOrder: index, publishedAt: new Date(2026, 8, 20 - index).toISOString(),
-  images: [{ id, storageKey: `preview-${index}`, webUrl: `/api/v1/gallery/media/preview-${index}/web`, thumbnailUrl: `/api/v1/gallery/media/preview-${index}/thumbnail`, widthPx: imageSizes[index][0], heightPx: imageSizes[index][1], sortOrder: 0, primary: true }],
+  images: [{ id, storageKey: `preview-${index}`, originalUrl: `/api/v1/gallery/media/preview-${index}/original`, webUrl: `/api/v1/gallery/media/preview-${index}/web`, thumbnailUrl: `/api/v1/gallery/media/preview-${index}/thumbnail`, widthPx: imageSizes[index][0], heightPx: imageSizes[index][1], sortOrder: 0, primary: true }],
 }))
 const homeArtworks = [artworks[4], artworks[5], artworks[0], artworks[1]]
 
@@ -25,7 +25,7 @@ function artworkSvg(index) {
 
 createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1')
-  const media = url.pathname.match(/\/media\/preview-(\d)\/(?:web|thumbnail)$/)
+  const media = url.pathname.match(/\/media\/preview-(\d)\/(?:original|web|thumbnail)$/)
   if (media && ['4', '6', '8'].includes(media[1])) { response.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' }); response.end(landscapeExample); return }
   if (media && ['5', '7', '9'].includes(media[1])) { response.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }); response.end(portraitExample); return }
   if (media) { response.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' }); response.end(artworkSvg(Number(media[1]))); return }

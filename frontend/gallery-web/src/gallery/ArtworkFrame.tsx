@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { Artwork } from '../types'
 import type { FrameType } from '../types'
 import { primaryImage } from './ArtworkCard'
@@ -13,6 +14,7 @@ type ArtworkFrameProps = {
   homeFillRange?: { minFill: number; maxFill: number }
   canonicalRect?: { left: number; top: number; width: number; height: number }
   physicalPlaneCm?: { width: number; height: number }
+  zoomLevel?: number
   children?: React.ReactNode
 }
 
@@ -40,8 +42,17 @@ export function framedMountDimensions(width: number, height: number, frameType: 
   return { width: width / opening.width, height: height / opening.height }
 }
 
-export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = 'detail', priority = false, homeFillRange, canonicalRect, physicalPlaneCm, children }: ArtworkFrameProps) {
+export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = 'detail', priority = false, homeFillRange, canonicalRect, physicalPlaneCm, zoomLevel = 1, children }: ArtworkFrameProps) {
   const image = primaryImage(artwork)
+  const [highResolutionImageId, setHighResolutionImageId] = useState<string | null>(null)
+  useEffect(() => {
+    if (variant !== 'detail' || zoomLevel < 4 || !image?.originalUrl || highResolutionImageId === image.id) return
+    let active = true
+    const preload = new Image()
+    preload.onload = () => { if (active) setHighResolutionImageId(image.id) }
+    preload.src = image.originalUrl
+    return () => { active = false }
+  }, [highResolutionImageId, image?.id, image?.originalUrl, variant, zoomLevel])
   const footprint = framedMountDimensions(artwork.widthCm, artwork.heightCm, artwork.frameType)
   const size = physicalPlaneCm
     ? artworkPhysicalMountPercent(footprint.width, footprint.height, physicalPlaneCm.width, physicalPlaneCm.height)
@@ -59,7 +70,7 @@ export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = '
     <FrameRenderer
       alt={`${artwork.title} 작품`}
       artworkHeight={image?.heightPx ?? artwork.heightCm}
-      artworkSrc={image ? (variant === 'home' ? image.thumbnailUrl : image.webUrl) : undefined}
+      artworkSrc={image ? (variant === 'home' ? image.thumbnailUrl : highResolutionImageId === image.id ? image.originalUrl : image.webUrl) : undefined}
       artworkWidth={image?.widthPx ?? artwork.widthCm}
       frameType={artwork.frameType}
       priority={priority}

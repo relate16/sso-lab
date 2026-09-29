@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { publicApi } from '../api'
 import type { Artwork, Page } from '../types'
 import { ArtworkCard } from './ArtworkCard'
 import { ArtworkLightbox } from './ArtworkLightbox'
 import { InquiryDrawer } from './InquiryDrawer'
+import { HomeArtworkRail } from './HomeArtworkRail'
 import { HomeExhibition } from './HomeExhibition'
 
 function useHomeArtworks() {
@@ -13,14 +14,28 @@ function useHomeArtworks() {
   return state
 }
 
+function useArtworkCollection() {
+  const [collection, setCollection] = useState<Artwork[]>([])
+  useEffect(() => {
+    let active = true
+    publicApi.artworks(new URLSearchParams({ pageSize: '60', sort: 'recent' }))
+      .then((page) => { if (active) setCollection(page.content) })
+      .catch(() => { if (active) setCollection([]) })
+    return () => { active = false }
+  }, [])
+  return collection
+}
+
 export function HomePage() {
   const { loading, error, data } = useHomeArtworks()
+  const collection = useArtworkCollection()
   return <>
     <section className="home-intro"><div><p className="eyebrow">Online exhibition · Seoul</p><h1>Quiet Winter<br />Gallery</h1></div><p>겨울의 고요와 빛을 기록한 작품을, 벽과 여백이 있는 하나의 전시 공간으로 소개합니다.</p></section>
     <section className="home-exhibition" aria-labelledby="recent-works"><header><div><p className="eyebrow">Current wall</p><h2 id="recent-works">최근 공개 작품</h2></div><Link to="/works">모든 작품 보기 <span aria-hidden="true">→</span></Link></header>
       {loading && <p className="public-status">전시장을 준비하고 있습니다…</p>}
       {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
       {!loading && !error && data.length === 0 && <p className="public-status">현재 공개 중인 작품이 없습니다.</p>}
+      {!loading && !error && <HomeArtworkRail artworks={collection} />}
       {!loading && !error && <HomeExhibition artworks={data} />}
     </section>
     <section className="home-note"><p className="eyebrow">Viewing note</p><p>작품을 선택하면 서로 다른 세 개의 전시 장면에서 크기와 액자, 벽면 설명을 함께 살펴볼 수 있습니다.</p><Link to="/works">전시 작품 탐색</Link></section>
@@ -46,6 +61,8 @@ export function WorksPage() {
   const [error, setError] = useState(false)
   const [inquiry, setInquiry] = useState<Artwork | null>(null)
   const [directArtwork, setDirectArtwork] = useState<Artwork | null>(null)
+  const artworkCards = useRef(new Map<string, HTMLDivElement>())
+  const pendingRevealArtworkId = useRef<string | null>(null)
   const lightboxId = params.get('artwork')
   const apiParams = new URLSearchParams(params)
   apiParams.delete('artwork')
@@ -59,8 +76,24 @@ export function WorksPage() {
   }, [lightboxId, result])
   const listedIndex = result?.content.findIndex((artwork) => artwork.id === lightboxId) ?? -1
   const selectedArtwork = listedIndex >= 0 ? result!.content[listedIndex] : directArtwork?.id === lightboxId ? directArtwork : null
+  useEffect(() => {
+    const artworkId = pendingRevealArtworkId.current
+    if (lightboxId || !artworkId) return
+    pendingRevealArtworkId.current = null
+    const timer = window.setTimeout(() => {
+      artworkCards.current.get(artworkId)?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [lightboxId])
   function selectArtwork(artwork: Artwork) { const next = new URLSearchParams(params); next.set('artwork', artwork.id); setParams(next) }
-  function closeLightbox() { const next = new URLSearchParams(params); next.delete('artwork'); setParams(next, { replace: true }) }
+  function closeLightbox() {
+    if (selectedArtwork) pendingRevealArtworkId.current = selectedArtwork.id
+    const next = new URLSearchParams(params); next.delete('artwork'); setParams(next, { replace: true })
+  }
   function selectAdjacent(offset: number) { if (!result || listedIndex < 0) return; const next = result.content[listedIndex + offset]; if (next) selectArtwork(next) }
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const next = new URLSearchParams(); for (const [key, value] of form) if (String(value).trim()) next.set(key, String(value).trim()); setParams(next) }
   function clear() { setParams({}) }
@@ -77,7 +110,7 @@ export function WorksPage() {
     <div className="works-summary"><span>{result ? `${result.totalElements} works` : 'Loading'}</span></div>
     {error && <div className="public-status" role="alert"><p>작품을 불러오지 못했습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 시도</button></div>}
     {!error && result?.content.length === 0 && <p className="public-status">조건에 맞는 작품이 없습니다.</p>}
-    <div className="works-grid">{result?.content.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onInquiry={setInquiry} onView={selectArtwork} />)}</div>
+    <div className="works-grid">{result?.content.map((artwork) => <div className="artwork-card-anchor" key={artwork.id} ref={(element) => { if (element) artworkCards.current.set(artwork.id, element); else artworkCards.current.delete(artwork.id) }}><ArtworkCard artwork={artwork} onInquiry={setInquiry} onView={selectArtwork} /></div>)}</div>
     {result && result.totalPages > 1 && <nav className="pagination" aria-label="작품 목록 페이지">{Array.from({ length: result.totalPages }, (_, page) => <button key={page} type="button" aria-current={result.page === page ? 'page' : undefined} onClick={() => { const next = new URLSearchParams(params); next.set('page', String(page)); setParams(next) }}>{page + 1}</button>)}</nav>}
     <InquiryDrawer artwork={inquiry} onClose={() => setInquiry(null)} />
     {selectedArtwork && <ArtworkLightbox artwork={selectedArtwork} hasPrevious={listedIndex > 0} hasNext={Boolean(result && listedIndex >= 0 && listedIndex < result.content.length - 1)} onClose={closeLightbox} onPrevious={() => selectAdjacent(-1)} onNext={() => selectAdjacent(1)} onInquiry={(artwork) => { closeLightbox(); setInquiry(artwork) }} />}

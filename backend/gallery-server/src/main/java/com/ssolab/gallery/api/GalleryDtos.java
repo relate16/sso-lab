@@ -22,11 +22,11 @@ import java.util.UUID;
 public final class GalleryDtos {
     private GalleryDtos() { }
 
-    public record Image(UUID id, String storageKey, String webUrl, String thumbnailUrl,
+    public record Image(UUID id, String storageKey, String originalUrl, String webUrl, String thumbnailUrl,
         int widthPx, int heightPx, int sortOrder, boolean primary) {
         public static Image from(ArtworkImageEntity image) {
             String base = GalleryRoutes.PUBLIC_API + "/media/" + image.getStorageKey();
-            return new Image(image.getId(), image.getStorageKey(), base + "/web",
+            return new Image(image.getId(), image.getStorageKey(), base + "/original", base + "/web",
                 base + "/thumbnail", image.getWidthPx(), image.getHeightPx(),
                 image.getSortOrder(), image.isPrimary());
         }
