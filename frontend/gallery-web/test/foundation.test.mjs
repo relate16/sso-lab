@@ -6,8 +6,10 @@ const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const viteConfig = await readFile(new URL('../vite.config.ts', import.meta.url), 'utf8')
 
 test('gallery foundation keeps the public and Studio routes distinct', () => {
-  for (const route of ['/', '/works', '/about', '/studio/*']) assert.match(app, new RegExp(route.replaceAll('*', '\\*')))
+  for (const route of ['/', '/exhibition', '/works', '/about', '/studio/*']) assert.match(app, new RegExp(route.replaceAll('*', '\\*')))
   assert.match(app, /Quiet Winter Gallery/)
+  assert.match(app, /<Link to="\/exhibition">Exhibition<\/Link>/)
+  assert.match(app, /<Link to="\/">Home<\/Link>[\s\S]*<Link to="\/works">Works<\/Link>[\s\S]*<Link to="\/exhibition">Exhibition<\/Link>[\s\S]*<Link to="\/about">About<\/Link>/)
 })
 
 test('production build does not require files outside the Docker build context', () => {

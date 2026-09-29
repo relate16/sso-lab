@@ -1,6 +1,8 @@
 import type { Artwork } from '../types'
+import type { FrameType } from '../types'
 import { primaryImage } from './ArtworkCard'
-import { artworkMountPercent } from './sceneState'
+import { FrameRenderer } from './FrameRenderer'
+import { artworkMountPercent, artworkPhysicalMountPercent } from './sceneState'
 
 type ArtworkFrameProps = {
   artwork: Artwork
@@ -10,11 +12,40 @@ type ArtworkFrameProps = {
   priority?: boolean
   homeFillRange?: { minFill: number; maxFill: number }
   canonicalRect?: { left: number; top: number; width: number; height: number }
+  physicalPlaneCm?: { width: number; height: number }
+  children?: React.ReactNode
 }
 
-export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = 'detail', priority = false, homeFillRange, canonicalRect }: ArtworkFrameProps) {
+type FrameOpening = { width: number; height: number }
+
+const FRAME_OPENINGS: Record<'landscape' | 'portrait', Partial<Record<FrameType, FrameOpening>>> = {
+  landscape: {
+    // Measured transparent opening of the supplied 1448 × 1086 mat asset.
+    MAT_BOARD: { width: 1052 / 1448, height: 529 / 1086 },
+    // Raised canvas plane: it covers the deep inner bevel while leaving the
+    // front wooden rail visible around the artwork.
+    FLOATING_FRAME: { width: 1218 / 1402, height: 843 / 1122 },
+  },
+  portrait: {
+    // Measured transparent opening of the supplied 1086 × 1448 mat asset.
+    MAT_BOARD: { width: 684 / 1086, height: 964 / 1448 },
+    FLOATING_FRAME: { width: 924 / 1122, height: 1204 / 1402 },
+  },
+}
+
+/** Expands the mounted footprint so the frame opening, not its outer box, matches the artwork. */
+export function framedMountDimensions(width: number, height: number, frameType: FrameType) {
+  const orientation = width >= height ? 'landscape' : 'portrait'
+  const opening = FRAME_OPENINGS[orientation][frameType] ?? { width: 1, height: 1 }
+  return { width: width / opening.width, height: height / opening.height }
+}
+
+export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = 'detail', priority = false, homeFillRange, canonicalRect, physicalPlaneCm, children }: ArtworkFrameProps) {
   const image = primaryImage(artwork)
-  const size = artworkMountPercent(artwork.widthCm, artwork.heightCm, mountWidthPx, mountHeightPx, variant === 'home' ? 'home' : 'relative', homeFillRange)
+  const footprint = framedMountDimensions(artwork.widthCm, artwork.heightCm, artwork.frameType)
+  const size = physicalPlaneCm
+    ? artworkPhysicalMountPercent(footprint.width, footprint.height, physicalPlaneCm.width, physicalPlaneCm.height)
+    : artworkMountPercent(footprint.width, footprint.height, mountWidthPx, mountHeightPx, variant === 'home' ? 'home' : 'relative', homeFillRange)
   const style = canonicalRect ? {
     '--mounted-left': `${canonicalRect.left / mountWidthPx * 100}%`,
     '--mounted-top': `${canonicalRect.top / mountHeightPx * 100}%`,
@@ -25,8 +56,14 @@ export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = '
     className={`mounted-artwork mounted-artwork-${variant} frame-${artwork.frameType.toLowerCase()}`}
     style={style as React.CSSProperties}
   >
-    <div className="mounted-artwork-media">
-      {image ? <img src={variant === 'home' ? image.thumbnailUrl : image.webUrl} alt={`${artwork.title} 작품`} width={image.widthPx} height={image.heightPx} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} /> : <span>Image awaiting</span>}
-    </div>
+    <FrameRenderer
+      alt={`${artwork.title} 작품`}
+      artworkHeight={image?.heightPx ?? artwork.heightCm}
+      artworkSrc={image ? (variant === 'home' ? image.thumbnailUrl : image.webUrl) : undefined}
+      artworkWidth={image?.widthPx ?? artwork.widthCm}
+      frameType={artwork.frameType}
+      priority={priority}
+    />
+    {children}
   </div>
 }

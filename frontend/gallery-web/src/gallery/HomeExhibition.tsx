@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Artwork } from '../types'
-import { ArtworkFrame } from './ArtworkFrame'
+import { ArtworkFrame, framedMountDimensions } from './ArtworkFrame'
 import { HOME_LIGHT_PRESETS, HOME_SCENE, HOME_SHADOW_PRESETS, HOME_SLOTS, SCENE_REFERENCE_SIZE, type HomeSlot } from './sceneDefinitions'
 import {
   fitArtworkInCanonicalPlane,
@@ -185,15 +185,20 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
   const [debugProjection, setDebugProjection] = useState<DebugProjection | null>(null)
   const placement = useMemo(() => normalizedQuadPlacement(geometry.target, geometry.mountCenter), [geometry])
   const canonicalSize = useMemo(() => sourcePlaneSize(slot), [slot])
-  const artworkRect = useMemo(() => fitArtworkInCanonicalPlane(
+  const framedSize = useMemo(() => framedMountDimensions(
     artwork.widthCm,
     artwork.heightCm,
+    artwork.frameType,
+  ), [artwork.frameType, artwork.heightCm, artwork.widthCm])
+  const artworkRect = useMemo(() => fitArtworkInCanonicalPlane(
+    framedSize.width,
+    framedSize.height,
     canonicalSize.width,
     canonicalSize.height,
     'home',
     slot.sizeClamp,
     slot.artworkCenter,
-  ), [artwork.heightCm, artwork.widthCm, canonicalSize, slot.artworkCenter, slot.sizeClamp])
+  ), [canonicalSize, framedSize.height, framedSize.width, slot.artworkCenter, slot.sizeClamp])
   const horizontalVanishing = useMemo(() => geometry.horizontalVanishingPoint && ({
     x: (geometry.horizontalVanishingPoint.x - placement.left) / placement.width,
     y: (geometry.horizontalVanishingPoint.y - placement.top) / placement.height,

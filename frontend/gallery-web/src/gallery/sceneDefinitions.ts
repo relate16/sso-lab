@@ -8,6 +8,7 @@ export type SceneDefinition = {
   asset: string
   mobileAsset: string
   mount: ScenePlacement
+  wallWidthCm: number
   caption: { left: number; top: number }
   zoomControl: { left: number; top: number }
   focalPoint: { x: number; y: number }
@@ -138,6 +139,7 @@ export const SCENE_DEFINITIONS: Record<SceneNumber, SceneDefinition> = {
     asset: '/images/gallery/gallery-detail-scene-1.webp',
     mobileAsset: '/images/gallery/gallery-detail-scene-1-mobile.webp',
     mount: { centerX: 49.95, centerY: 43.65, width: 31.5, height: 35.5 },
+    wallWidthCm: 860,
     caption: { left: 68.2, top: 43 },
     zoomControl: { left: 66.45, top: 43.7 },
     focalPoint: { x: 50, y: 43.5 },
@@ -151,6 +153,7 @@ export const SCENE_DEFINITIONS: Record<SceneNumber, SceneDefinition> = {
     asset: '/images/gallery/gallery-detail-scene-2.webp',
     mobileAsset: '/images/gallery/gallery-detail-scene-2-mobile.webp',
     mount: { centerX: 50, centerY: 42.95, width: 29.6, height: 32.9 },
+    wallWidthCm: 800,
     caption: { left: 67.3, top: 43 },
     zoomControl: { left: 65.55, top: 43.2 },
     focalPoint: { x: 50, y: 42.8 },
@@ -164,6 +167,7 @@ export const SCENE_DEFINITIONS: Record<SceneNumber, SceneDefinition> = {
     asset: '/images/gallery/gallery-detail-scene-3.webp',
     mobileAsset: '/images/gallery/gallery-detail-scene-3-mobile.webp',
     mount: { centerX: 49.9, centerY: 41.75, width: 31.4, height: 33.9 },
+    wallWidthCm: 760,
     caption: { left: 68.2, top: 42 },
     zoomControl: { left: 66.35, top: 42.4 },
     focalPoint: { x: 50, y: 42 },

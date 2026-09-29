@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { artworkDisplaySize, artworkMountPercent, fitArtworkInCanonicalPlane, isValidScene, nextScene, normalizedQuadPlacement, parseScene, projectHomographyPoint, rectangleToQuadHomography, rectangleToQuadMatrix } from '../src/gallery/sceneState.ts'
+import { artworkDisplaySize, artworkMountPercent, artworkPhysicalMountPercent, fitArtworkInCanonicalPlane, isValidScene, nextScene, normalizedQuadPlacement, parseScene, projectHomographyPoint, rectangleToQuadHomography, rectangleToQuadMatrix } from '../src/gallery/sceneState.ts'
 import { HOME_SLOTS, SCENE_DEFINITIONS } from '../src/gallery/sceneDefinitions.ts'
 
 test('scene selection cycles deterministically', () => {
@@ -89,6 +89,17 @@ test('mounted sizing preserves aspect and clamps artwork to its guide', () => {
   assert.ok(landscape.width <= 88)
   assert.ok(Math.abs((portrait.width * 500) / (portrait.height * 330) - .5) < .001)
   assert.ok(Math.abs((landscape.width * 500) / (landscape.height * 330) - 2) < .001)
+})
+
+test('detail wall sizing preserves physical differences and caps oversized mounts', () => {
+  const small = artworkPhysicalMountPercent(48, 72, 420, 267)
+  const medium = artworkPhysicalMountPercent(70, 99, 420, 267)
+  const hundred = artworkPhysicalMountPercent(130.3, 162.2, 420, 267)
+  const oversized = artworkPhysicalMountPercent(300, 400, 420, 267)
+  assert.ok(small.width < medium.width && medium.width < hundred.width)
+  assert.ok(small.height < medium.height && medium.height < hundred.height)
+  assert.ok(Math.abs(small.width / small.height - (48 / 420) / (72 / 267)) < .001)
+  assert.ok(oversized.width <= 40.001 && oversized.height <= 40.001)
 })
 
 test('Home sizing keeps physical differences subtle enough for one exhibition wall', () => {

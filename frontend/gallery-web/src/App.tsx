@@ -1,5 +1,5 @@
 import { Link, Route, Routes } from 'react-router-dom'
-import { AboutPage, HomePage, WorksPage } from './gallery/PublicPages'
+import { AboutPage, ExhibitionEntry, HomePage, WorksPage } from './gallery/PublicPages'
 import { GalleryScene } from './gallery/GalleryScene'
 import { StudioApp } from './studio/StudioApp'
 
@@ -10,6 +10,7 @@ function GalleryShell({ children }: { children: React.ReactNode }) {
       <nav aria-label="주요 메뉴">
         <Link to="/">Home</Link>
         <Link to="/works">Works</Link>
+        <Link to="/exhibition">Exhibition</Link>
         <Link to="/about">About</Link>
       </nav>
     </header>
@@ -23,6 +24,7 @@ export function App() {
     <Route path="/studio/*" element={<StudioApp />} />
     <Route path="*" element={<GalleryShell><Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/exhibition" element={<ExhibitionEntry />} />
       <Route path="/works" element={<WorksPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/artworks/:id" element={<GalleryScene />} />

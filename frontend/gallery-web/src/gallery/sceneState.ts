@@ -150,6 +150,24 @@ export function artworkMountPercent(
   }
 }
 
+/**
+ * Converts a framed artwork's physical dimensions into its share of a Scene's
+ * measured wall plane. Small works stay small; only oversized mounts are
+ * uniformly reduced so frame and artwork keep the same physical relationship.
+ */
+export function artworkPhysicalMountPercent(
+  widthCm: number,
+  heightCm: number,
+  wallWidthCm: number,
+  wallHeightCm: number,
+  maxFill = .4,
+) {
+  const widthPercent = Math.max(.1, widthCm) / Math.max(.1, wallWidthCm) * 100
+  const heightPercent = Math.max(.1, heightCm) / Math.max(.1, wallHeightCm) * 100
+  const fitScale = Math.min(1, maxFill * 100 / widthPercent, maxFill * 100 / heightPercent)
+  return { width: widthPercent * fitScale, height: heightPercent * fitScale }
+}
+
 /** Fits the mounted artwork in canonical wall-plane coordinates before projection. */
 export function fitArtworkInCanonicalPlane(
   widthCm: number,
