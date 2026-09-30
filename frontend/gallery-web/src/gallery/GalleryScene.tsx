@@ -142,7 +142,18 @@ export function GalleryScene() {
         element.scrollLeft = pendingRailScrollLeft.current
         pendingRailScrollLeft.current = null
       } else {
-        activeRailItem.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        const activeItem = activeRailItem.current
+        if (activeItem) {
+          const railRect = element.getBoundingClientRect()
+          const itemRect = activeItem.getBoundingClientRect()
+          const itemLeft = element.scrollLeft + itemRect.left - railRect.left
+          const itemRight = itemLeft + itemRect.width
+          const visibleLeft = element.scrollLeft
+          const visibleRight = visibleLeft + element.clientWidth
+
+          if (itemLeft < visibleLeft) element.scrollLeft = Math.max(0, itemLeft)
+          else if (itemRight > visibleRight) element.scrollLeft = Math.min(element.scrollWidth - element.clientWidth, itemRight - element.clientWidth)
+        }
       }
       updateRailBounds()
     })

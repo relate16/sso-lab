@@ -155,7 +155,7 @@ test('Home exposes a width-matched horizontal artwork rail that opens the select
   assert.match(homeRail, /scrollBy/)
   assert.match(homeRail, /disabled=\{!bounds\.canScrollLeft\}/)
   assert.match(homeRail, /disabled=\{!bounds\.canScrollRight\}/)
-  assert.match(styles, /\.home-artwork-rail \{[\s\S]*max-width: 1500px;/)
+  assert.match(styles, /\.home-artwork-rail \{[\s\S]*max-width: 1350px;/)
   assert.match(styles, /\.home-artwork-rail-viewport \{[\s\S]*overflow-x: auto;[\s\S]*scroll-snap-type: x mandatory;/)
   assert.match(styles, /\.home-artwork-tile \{[\s\S]*aspect-ratio: 16 \/ 9;/)
   assert.match(homeRail, /carouselCropStyle\(createCarouselCropLayout\(/)
@@ -251,7 +251,9 @@ test('closing the Works lightbox reveals the artwork card that was being viewed'
 test('Scene rail preserves context when changing artworks and exposes accurate navigation state', () => {
   assert.match(scene, /pendingRailScrollLeft\.current = rail\.current\?\.scrollLeft/)
   assert.match(scene, /element\.scrollLeft = pendingRailScrollLeft\.current/)
-  assert.match(scene, /activeRailItem\.current\?\.scrollIntoView\(\{ block: 'nearest', inline: 'nearest' \}\)/)
+  assert.doesNotMatch(scene, /activeRailItem\.current\?\.scrollIntoView/)
+  assert.match(scene, /const itemLeft = element\.scrollLeft \+ itemRect\.left - railRect\.left/)
+  assert.match(scene, /itemRight > visibleRight[\s\S]*element\.scrollLeft = Math\.min/)
   assert.match(scene, /navigate\(`\/artworks\/\$\{selectedId\}\?scene=\$\{scene\}`\)/)
   assert.match(scene, /disabled=\{!railBounds\.canScrollLeft\}/)
   assert.match(scene, /disabled=\{!railBounds\.canScrollRight\}/)
@@ -271,4 +273,24 @@ test('mobile scene assets and long-description drawer remain available', () => {
   assert.match(styles, /@media \(max-width: 700px\)/)
   assert.match(story, /story-description/)
   assert.match(story, /role="dialog"/)
+})
+
+test('public gallery contains wide canvases and controls without stretching the mobile page', () => {
+  assert.match(styles, /\.gallery-shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/)
+  assert.match(styles, /\.gallery-shell > main \{ min-width: 0; \}/)
+  for (const selector of ['\\.home-exhibition > header', '\\.home-artwork-rail', '\\.home-scene-shell']) {
+    assert.match(styles, new RegExp(`${selector} \\{[^}]*width: min\\(100%, 85vw\\);[^}]*max-width: 1350px;`))
+  }
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.gallery-shell \{[\s\S]*grid-template-columns: minmax\(0, 1fr\);[\s\S]*overflow-x: clip;/)
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.gallery-shell > main,[\s\S]*\.home-scene-shell,[\s\S]*min-width: 0;/)
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.home-scene-scroll[\s\S]*overscroll-behavior-inline: contain;/)
+  assert.match(styles, /@media \(max-width: 420px\)[\s\S]*\.gallery-header[\s\S]*flex-wrap: wrap;/)
+  assert.match(styles, /@media \(max-width: 420px\)[\s\S]*\.works-filter[\s\S]*grid-template-columns: minmax\(0, 1fr\);/)
+  assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.home-artwork-rail-button[\s\S]*display: none;/)
+})
+
+test('mobile lightbox lets the information panel grow with its content', () => {
+  assert.match(styles, /@media \(max-width: 800px\)[\s\S]*\.artwork-lightbox-dialog[\s\S]*overflow-y: auto;/)
+  assert.match(styles, /@media \(max-width: 800px\)[\s\S]*\.artwork-lightbox-layout[\s\S]*height: auto;[\s\S]*min-height: 100dvh;[\s\S]*overflow: visible;/)
+  assert.match(styles, /@media \(max-width: 800px\)[\s\S]*\.artwork-lightbox-info[\s\S]*min-height: max-content;/)
 })

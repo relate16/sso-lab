@@ -25,7 +25,8 @@
 body { margin: 0; min-width: 320px; }
 a { color: inherit; }
 :focus-visible { outline: 3px solid #8d623f; outline-offset: 4px; }
-.gallery-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+.gallery-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
+.gallery-shell > main { min-width: 0; }
 .gallery-header { height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(24px, 5vw, 80px); border-bottom: 1px solid #d9d6cf; background: rgba(249, 248, 244, .92); }
 .wordmark { text-decoration: none; font-size: 1.02rem; letter-spacing: .08em; }
 nav { display: flex; gap: 28px; }
@@ -34,7 +35,7 @@ nav a, footer a { text-decoration-thickness: 1px; text-underline-offset: 5px; }
 .home-intro h1 { margin: 12px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(4rem, 10vw, 9rem); font-weight: 400; line-height: .82; letter-spacing: -.075em; }
 .home-intro > p { max-width: 430px; margin: 0 0 8px; color: #626058; font-size: clamp(1rem, 1.5vw, 1.22rem); line-height: 1.9; }
 .home-exhibition { padding: clamp(70px, 8vw, 120px) clamp(20px, 5vw, 80px); background: #dedbd2; }
-.home-exhibition > header { display: flex; align-items: end; justify-content: space-between; max-width: 1500px; margin: 0 auto 42px; }
+.home-exhibition > header { display: flex; align-items: end; justify-content: space-between; max-width: 1350px; margin: 0 auto 42px; }
 .home-exhibition h2 { margin: 8px 0 0; font-size: clamp(2rem, 4vw, 4.5rem); font-weight: 360; letter-spacing: -.045em; }
 .home-exhibition > header a, .home-note a, .about-link { text-underline-offset: 6px; }
 .exhibition-wall { position: relative; isolation: isolate; min-height: 570px; max-width: 1500px; margin: auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; gap: clamp(22px, 4vw, 70px); padding: 70px clamp(28px, 5vw, 80px) 85px; overflow: hidden; border-top: 1px solid rgba(67,64,57,.25); background: linear-gradient(180deg, #eeece5 0 78%, #c7c2b7 78%); box-shadow: inset 0 22px 40px rgba(255,255,255,.35); perspective: 1100px; }
@@ -180,7 +181,8 @@ button, .primary-action { cursor: pointer; }
 }
 
 .home-exhibition > header {
-  max-width: 1500px;
+  width: min(100%, 85vw);
+  max-width: 1350px;
   margin-bottom: 18px;
 }
 
@@ -188,7 +190,8 @@ button, .primary-action { cursor: pointer; }
 
 .home-artwork-rail {
   position: relative;
-  max-width: 1500px;
+  width: min(100%, 85vw);
+  max-width: 1350px;
   margin: 0 auto 18px;
 }
 
@@ -297,7 +300,8 @@ button, .primary-action { cursor: pointer; }
 
 .home-scene-shell {
   position: relative;
-  max-width: 1500px;
+  width: min(100%, 85vw);
+  max-width: 1350px;
   margin: auto;
 }
 
@@ -1283,4 +1287,352 @@ footer {
 
 @media (prefers-reduced-motion: reduce) {
   .artwork-lightbox-image-fit { transition: none; }
+}
+
+/* Mobile gallery layout
+ * Keep wide exhibition canvases inside their own scrollers instead of letting
+ * a grid item's min-content width stretch the mobile page. Desktop keeps its
+ * original composition and intrinsic sizing. */
+@media (max-width: 800px) {
+  .artwork-lightbox-dialog {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .artwork-lightbox-layout {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-rows: minmax(260px, 56dvh) auto;
+    overflow: visible;
+  }
+
+  .artwork-lightbox-info {
+    min-height: max-content;
+  }
+}
+
+@media (max-width: 700px) {
+  .gallery-shell {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .gallery-shell > header,
+  .gallery-shell > main,
+  .gallery-shell > footer,
+  .home-exhibition,
+  .home-artwork-rail,
+  .home-scene-shell,
+  .works-page,
+  .about-page,
+  .scene-viewer {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .gallery-header {
+    padding-inline: 16px;
+  }
+
+  .gallery-header nav a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .home-intro {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    gap: 22px;
+    min-height: auto;
+    padding: 54px 20px 42px;
+  }
+
+  .home-intro h1 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .home-intro > p {
+    max-width: 34rem;
+    margin-top: 0;
+  }
+
+  .home-exhibition > header {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 14px 24px;
+  }
+
+  .home-exhibition > header a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .home-artwork-rail,
+  .home-artwork-rail-viewport {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .home-artwork-rail-viewport {
+    touch-action: pan-x pan-y;
+  }
+
+  .home-scene-scroll {
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  .home-scene-canvas {
+    width: max(700px, 190vw);
+  }
+
+  .home-note {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 38px 20px;
+  }
+
+  .home-note > p:nth-child(2) {
+    max-width: 100%;
+  }
+
+  .public-page-header > p:last-child {
+    max-width: 100%;
+  }
+
+  .works-filter,
+  .works-grid,
+  .works-summary {
+    min-width: 0;
+  }
+
+  .works-filter input,
+  .works-filter select,
+  .inquiry-drawer input:not([type="checkbox"]),
+  .inquiry-drawer textarea {
+    font-size: 16px;
+  }
+
+  .artwork-card-copy > div {
+    flex-wrap: wrap;
+  }
+
+  .about-story,
+  .about-introduction,
+  .about-story > div {
+    min-width: 0;
+  }
+
+  .about-page .public-page-header h1,
+  .about-lead,
+  .about-story p {
+    overflow-wrap: anywhere;
+  }
+
+  .scene-space {
+    height: clamp(430px, 68svh, 620px);
+    min-height: 0;
+  }
+
+  .scene-rail {
+    min-width: 0;
+    padding: 10px 12px 12px;
+  }
+
+  .scene-rail-tools {
+    flex-wrap: wrap;
+  }
+
+  .rail-browser,
+  .scene-thumbnails {
+    min-width: 0;
+  }
+
+  .scene-thumbnails {
+    touch-action: pan-x pan-y;
+  }
+
+  .story-drawer,
+  .inquiry-drawer {
+    height: min(90dvh, 800px);
+    padding: 28px 20px max(28px, env(safe-area-inset-bottom));
+  }
+
+  .story-drawer > .drawer-close {
+    top: 18px;
+    right: 18px;
+  }
+
+  .artwork-lightbox-dialog,
+  .artwork-lightbox-layout {
+    max-width: 100%;
+  }
+
+  .artwork-lightbox-layout {
+    overscroll-behavior: contain;
+  }
+
+  .artwork-lightbox-stage {
+    min-height: clamp(260px, 52dvh, 520px);
+    padding: 24px 36px;
+  }
+
+  .artwork-lightbox-image-fit {
+    inset: 24px 36px;
+  }
+
+  .artwork-lightbox-info {
+    padding-bottom: max(34px, env(safe-area-inset-bottom));
+  }
+
+  footer {
+    gap: 18px;
+    padding-block: 16px;
+  }
+}
+
+@media (max-width: 420px) {
+  .gallery-header {
+    min-height: 92px;
+    height: auto;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 5px 12px;
+    padding-block: 9px;
+  }
+
+  .gallery-header .wordmark {
+    width: 100%;
+    font-size: .82rem;
+  }
+
+  .gallery-header nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0;
+    font-size: .88rem;
+  }
+
+  .gallery-header nav a {
+    min-height: 34px;
+  }
+
+  .home-intro {
+    padding-inline: 16px;
+  }
+
+  .home-intro h1 {
+    font-size: clamp(2.55rem, 14vw, 3.35rem);
+  }
+
+  .home-exhibition > header,
+  .home-artwork-rail-viewport {
+    padding-inline: 16px;
+  }
+
+  .home-artwork-tile {
+    flex-basis: min(78vw, 236px);
+  }
+
+  .public-page-header {
+    padding-inline: 16px;
+  }
+
+  .public-page-header h1,
+  .about-page .public-page-header h1 {
+    font-size: clamp(2.45rem, 13vw, 3.45rem);
+  }
+
+  .works-filter {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: 16px;
+  }
+
+  .works-filter .search-field,
+  .filter-actions {
+    grid-column: auto;
+  }
+
+  .filter-actions > button:first-child {
+    flex: 1;
+  }
+
+  .works-grid,
+  .works-summary {
+    padding-inline: 16px;
+  }
+
+  .artwork-card-copy > div {
+    align-items: flex-start;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 4px;
+  }
+
+  .about-story {
+    padding-inline: 18px;
+  }
+
+  .scene-rail-tools {
+    align-items: stretch;
+  }
+
+  .scene-rail-tools .rail-search {
+    flex: 1 1 100%;
+  }
+
+  .scene-rail-tools .rail-search input {
+    width: 100%;
+  }
+
+  .artwork-lightbox-header {
+    padding-left: 14px;
+    padding-right: max(10px, env(safe-area-inset-right));
+  }
+
+  .artwork-lightbox-stage {
+    padding-inline: 30px;
+  }
+
+  .artwork-lightbox-image-fit {
+    inset-inline: 30px;
+  }
+
+  .artwork-lightbox-info {
+    padding-inline: 18px;
+  }
+
+  .artwork-lightbox-info h2 {
+    font-size: clamp(2rem, 12vw, 2.8rem);
+    overflow-wrap: anywhere;
+  }
+
+  .artwork-lightbox-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  footer {
+    flex-wrap: wrap;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .home-artwork-rail-button {
+    display: none;
+  }
+
+  .home-artwork-tile:hover {
+    transform: none;
+  }
 }
