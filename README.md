@@ -6,7 +6,7 @@
 
 SSO Lab은 중앙 인증 서비스와 서비스별 BFF를 직접 구현해, 비밀번호 없이 로그인하고 여러 업무 서비스에 다시 인증하지 않고 접근하는 과정을 보여주는 프로젝트입니다. 단순 로그인 화면에 그치지 않고 사용자·권한 관리, 세션 폐기, 중앙 로그아웃, 보안 통제와 배포 자동화까지 하나의 흐름으로 구성했습니다. `Quiet Winter Gallery`는 이 인증 구조를 실제 공개 서비스와 관리자 Studio에 적용한 2D 가상 전시 모듈입니다.
 
-**Live:** [Admin](https://today-sso-admin.duckdns.org) · [HR](https://today-sso-hr.duckdns.org) · [Approval](https://today-sso-approval.duckdns.org) · [Auth](https://today-sso-auth.duckdns.org)
+**Live:** [Admin](https://today-sso-admin.duckdns.org) · [HR](https://today-sso-hr.duckdns.org) · [Auth](https://today-sso-auth.duckdns.org)
 
 > 별도의 공용 계정은 제공하지 않습니다. Auth에서 이메일 인증으로 직접 회원가입한 뒤 Passwordless 로그인과 HR·Approval SSO를 체험할 수 있습니다. 일반 가입자는 `USER` 권한을 받으며, 관리자 기능은 아래 화면을 통해 확인할 수 있습니다. 개인 시연 서버이므로 점검 중에는 접속이 일시적으로 제한될 수 있습니다.
 
