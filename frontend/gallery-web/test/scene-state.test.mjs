@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { artworkDisplaySize, artworkMountPercent, artworkPhysicalMountPercent, fitPhysicalArtworkInPlane, isValidScene, nextScene, normalizedQuadPlacement, parseScene, projectHomographyPoint, rectangleToQuadHomography, rectangleToQuadMatrix } from '../src/gallery/sceneState.ts'
+import { artworkDisplaySize, artworkMountPercent, artworkPhysicalMountPercent, fitPhysicalArtworkInPlane, fitPhysicalArtworkInWallRegion, isValidScene, nextScene, normalizedQuadPlacement, parseScene, projectHomographyPoint, rectangleToQuadHomography, rectangleToQuadMatrix } from '../src/gallery/sceneState.ts'
 import { EXHIBITION_WALL_SIZE_CM, HOME_SLOTS, SCENE_DEFINITIONS } from '../src/gallery/sceneDefinitions.ts'
 
 test('scene selection cycles deterministically', () => {
@@ -51,7 +51,7 @@ test('Home exposes exactly four configured exhibition slots', () => {
   assert.equal(HOME_SLOTS[3].shadowPreset, 'rightWall')
   assert.deepEqual(HOME_SLOTS[0].artworkCenter, { x: .5, y: .6 })
   assert.deepEqual(EXHIBITION_WALL_SIZE_CM, { width: 450, height: 300 })
-  assert.ok(HOME_SLOTS.every((slot) => slot.wallSizeCm === EXHIBITION_WALL_SIZE_CM))
+  assert.ok(HOME_SLOTS.every((slot) => slot.wallRegionCm.width < EXHIBITION_WALL_SIZE_CM.width && slot.wallRegionCm.height < EXHIBITION_WALL_SIZE_CM.height))
   assert.deepEqual(HOME_SLOTS[3].artworkCenter, { x: .5, y: .62 })
   assert.deepEqual(HOME_SLOTS[0].horizontalVanishingPointPx, [1379, 469])
   assert.deepEqual(HOME_SLOTS[3].horizontalVanishingPointPx, [722, 468])
@@ -113,14 +113,31 @@ test('detail wall sizing preserves physical differences for tiny works without m
 })
 
 test('Home wall sizing preserves exact physical ratios through 100-size works', () => {
-  const small = fitPhysicalArtworkInPlane(30, 40, 300, 240, 450, 300)
-  const large = fitPhysicalArtworkInPlane(120, 160, 300, 240, 450, 300)
-  const hundred = fitPhysicalArtworkInPlane(130.3, 162.2, 300, 240, 450, 300)
+  const small = fitPhysicalArtworkInWallRegion(30, 40, 300, 240, 173.33, 147.74, 450, 300)
+  const large = fitPhysicalArtworkInWallRegion(120, 160, 300, 240, 173.33, 147.74, 450, 300)
+  const hundred = fitPhysicalArtworkInWallRegion(130.3, 162.2, 300, 240, 173.33, 147.74, 450, 300)
   assert.ok(Math.abs(large.width / small.width - 4) < .001)
   assert.ok(Math.abs(large.height / small.height - 4) < .001)
-  assert.ok(hundred.width / 300 < .9)
-  assert.ok(hundred.height / 240 < .9)
-  assert.ok(Math.abs(small.width / small.height - 30 / 40) < .001)
+  assert.ok(hundred.width > small.width)
+  assert.ok(hundred.height > small.height)
+  assert.ok(Math.abs((small.width / 300) / (small.height / 240) - (30 / 173.33) / (40 / 147.74)) < .001)
+})
+
+test('Home calibrates a small artwork against the full three-metre wall instead of the local slot', () => {
+  const slot = HOME_SLOTS[1]
+  const xs = Object.values(slot.cornersPx).map(([x]) => x)
+  const ys = Object.values(slot.cornersPx).map(([, y]) => y)
+  const rect = fitPhysicalArtworkInWallRegion(
+    15.8,
+    22.7,
+    Math.max(...xs) - Math.min(...xs),
+    Math.max(...ys) - Math.min(...ys),
+    slot.wallRegionCm.width,
+    slot.wallRegionCm.height,
+    EXHIBITION_WALL_SIZE_CM.width,
+    EXHIBITION_WALL_SIZE_CM.height,
+  )
+  assert.ok(rect.height > 30)
 })
 
 test('Home fits artwork before homography and preserves each wall plane vanishing point', () => {
@@ -142,7 +159,7 @@ test('Home fits artwork before homography and preserves each wall plane vanishin
     const homography = rectangleToQuadHomography(width, height, placement.localCorners)
     assert.ok(homography)
     const [artworkWidth, artworkHeight] = artworkSizes[index]
-    const rect = fitPhysicalArtworkInPlane(artworkWidth, artworkHeight, width, height, slot.wallSizeCm.width, slot.wallSizeCm.height, .9, slot.artworkCenter)
+    const rect = fitPhysicalArtworkInWallRegion(artworkWidth, artworkHeight, width, height, slot.wallRegionCm.width, slot.wallRegionCm.height, EXHIBITION_WALL_SIZE_CM.width, EXHIBITION_WALL_SIZE_CM.height, slot.artworkCenter)
     const actual = {
       topLeft: projectHomographyPoint(homography, [rect.left, rect.top]),
       topRight: projectHomographyPoint(homography, [rect.left + rect.width, rect.top]),
@@ -157,8 +174,8 @@ test('Home fits artwork before homography and preserves each wall plane vanishin
       const sourceVanishingPoint = intersection(slot.cornersPx.topLeft, slot.cornersPx.topRight, slot.cornersPx.bottomLeft, slot.cornersPx.bottomRight)
       assert.ok(Math.hypot(sourceVanishingPoint[0] - slot.horizontalVanishingPointPx[0], sourceVanishingPoint[1] - slot.horizontalVanishingPointPx[1]) < .01, `${slot.id} matches measured wall vanishing point`)
     }
-    assert.ok(rect.left >= 0 && rect.top >= 0)
-    assert.ok(rect.left + rect.width <= width + .001)
-    assert.ok(rect.top + rect.height <= height + .001)
+    const center = slot.artworkCenter ?? { x: .5, y: .5 }
+    assert.ok(Math.abs(rect.left + rect.width / 2 - width * center.x) < .001)
+    assert.ok(Math.abs(rect.top + rect.height / 2 - height * center.y) < .001)
   })
 })

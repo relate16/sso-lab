@@ -187,7 +187,9 @@ export function fitPhysicalArtworkInPlane(
   maxFill = .9,
   center: { x: number; y: number } = { x: .5, y: .5 },
 ): PlaneRect {
-  const size = artworkPhysicalMountPercent(widthCm, heightCm, wallWidthCm, wallHeightCm, maxFill, planeWidthPx, planeHeightPx)
+  // A projected plane uses physical x/y proportions as canonical coordinates;
+  // its homography supplies the visible perspective afterwards.
+  const size = artworkPhysicalMountPercent(widthCm, heightCm, wallWidthCm, wallHeightCm, maxFill)
   const width = planeWidthPx * size.width / 100
   const height = planeHeightPx * size.height / 100
   return {
@@ -196,6 +198,33 @@ export function fitPhysicalArtworkInPlane(
     width,
     height,
   }
+}
+
+/** Fits an artwork to the full wall, then places it inside a projected local wall region. */
+export function fitPhysicalArtworkInWallRegion(
+  widthCm: number,
+  heightCm: number,
+  planeWidthPx: number,
+  planeHeightPx: number,
+  regionWidthCm: number,
+  regionHeightCm: number,
+  wallWidthCm: number,
+  wallHeightCm: number,
+  center: { x: number; y: number } = { x: .5, y: .5 },
+): PlaneRect {
+  const wallSize = artworkPhysicalMountPercent(widthCm, heightCm, wallWidthCm, wallHeightCm)
+  const fittedWidthCm = wallSize.width / 100 * wallWidthCm
+  const fittedHeightCm = wallSize.height / 100 * wallHeightCm
+  return fitPhysicalArtworkInPlane(
+    fittedWidthCm,
+    fittedHeightCm,
+    planeWidthPx,
+    planeHeightPx,
+    regionWidthCm,
+    regionHeightCm,
+    Number.POSITIVE_INFINITY,
+    center,
+  )
 }
 
 /** Fits the mounted artwork in canonical wall-plane coordinates before projection. */

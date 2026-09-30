@@ -38,7 +38,7 @@ export type HomeSlot = {
   lightCenter: NormalizedCenter
   horizontalVanishingPointPx?: PixelPoint
   horizontalVanishingPoint?: NormalizedCenter
-  wallSizeCm: { width: number; height: number }
+  wallRegionCm: { width: number; height: number }
   artworkCenter?: { x: number; y: number }
   shadowPreset: 'leftWall' | 'backWall' | 'rightWall'
   lightPreset: 'leftWall' | 'backWall' | 'rightWall'
@@ -89,8 +89,9 @@ function homeSlot(source: HomeSlotSource): HomeSlot {
 }
 
 // Every coordinate is normalized against the approved 1672 x 941 Home asset.
-// The four corners describe the actual wall plane. Artwork, frame and shadow
-// are composed first, then projected onto this plane as one mounted object.
+// The four corners describe a local placement region on a 450 x 300 cm wall.
+// wallRegionCm was measured by inverse-projecting that region against the
+// ceiling-to-floor wall plane, so it is deliberately smaller than the full wall.
 export const HOME_SLOTS: HomeSlot[] = [
   homeSlot({
     id: 'leftWall',
@@ -98,7 +99,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     mountCenterPx: [237, 405.75],
     lightCenterPx: [247, 297],
     horizontalVanishingPointPx: [1379, 469],
-    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
+    wallRegionCm: { width: 134.64, height: 154.82 },
     artworkCenter: { x: .5, y: .6 },
     shadowPreset: 'leftWall', lightPreset: 'leftWall',
   }),
@@ -107,7 +108,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     cornersPx: { topLeft: [638, 317], topRight: [910, 305], bottomRight: [907, 531], bottomLeft: [637, 527] },
     mountCenterPx: [773, 420],
     lightCenterPx: [762, 323],
-    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
+    wallRegionCm: { width: 173.33, height: 147.74 },
     shadowPreset: 'backWall', lightPreset: 'backWall',
   }),
   homeSlot({
@@ -115,7 +116,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     cornersPx: { topLeft: [1032, 303], topRight: [1226, 292], bottomRight: [1223, 537], bottomLeft: [1036, 533] },
     mountCenterPx: [1129.25, 416.25],
     lightCenterPx: [1127, 309],
-    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
+    wallRegionCm: { width: 96.34, height: 140.51 },
     shadowPreset: 'backWall', lightPreset: 'backWall',
   }),
   homeSlot({
@@ -124,7 +125,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     mountCenterPx: [1436.5, 388.25],
     lightCenterPx: [1431, 240],
     horizontalVanishingPointPx: [722, 468],
-    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
+    wallRegionCm: { width: 207.64, height: 169.22 },
     artworkCenter: { x: .5, y: .62 },
     shadowPreset: 'rightWall', lightPreset: 'rightWall',
   }),

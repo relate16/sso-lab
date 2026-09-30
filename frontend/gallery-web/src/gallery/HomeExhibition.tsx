@@ -2,9 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Artwork } from '../types'
 import { ArtworkFrame, framedMountDimensions } from './ArtworkFrame'
-import { HOME_LIGHT_PRESETS, HOME_SCENE, HOME_SHADOW_PRESETS, HOME_SLOTS, SCENE_REFERENCE_SIZE, type HomeSlot } from './sceneDefinitions'
+import { EXHIBITION_WALL_SIZE_CM, HOME_LIGHT_PRESETS, HOME_SCENE, HOME_SHADOW_PRESETS, HOME_SLOTS, SCENE_REFERENCE_SIZE, type HomeSlot } from './sceneDefinitions'
 import {
-  fitPhysicalArtworkInPlane,
+  fitPhysicalArtworkInWallRegion,
   homographyToMatrix3d,
   normalizedQuadPlacement,
   projectHomographyPoint,
@@ -190,16 +190,17 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
     artwork.heightCm,
     artwork.frameType,
   ), [artwork.frameType, artwork.heightCm, artwork.widthCm])
-  const artworkRect = useMemo(() => fitPhysicalArtworkInPlane(
+  const artworkRect = useMemo(() => fitPhysicalArtworkInWallRegion(
     framedSize.width,
     framedSize.height,
     canonicalSize.width,
     canonicalSize.height,
-    slot.wallSizeCm.width,
-    slot.wallSizeCm.height,
-    .9,
+    slot.wallRegionCm.width,
+    slot.wallRegionCm.height,
+    EXHIBITION_WALL_SIZE_CM.width,
+    EXHIBITION_WALL_SIZE_CM.height,
     slot.artworkCenter,
-  ), [canonicalSize, framedSize.height, framedSize.width, slot.artworkCenter, slot.wallSizeCm])
+  ), [canonicalSize, framedSize.height, framedSize.width, slot.artworkCenter, slot.wallRegionCm])
   const horizontalVanishing = useMemo(() => geometry.horizontalVanishingPoint && ({
     x: (geometry.horizontalVanishingPoint.x - placement.left) / placement.width,
     y: (geometry.horizontalVanishingPoint.y - placement.top) / placement.height,
