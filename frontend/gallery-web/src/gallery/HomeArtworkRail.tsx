@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Artwork } from '../types'
 import { primaryImage } from './ArtworkCard'
+import { carouselCropStyle, createCarouselCropLayout } from './carouselCrop'
 
 const WORKS_PAGE_SIZE = 24
 
@@ -49,11 +50,13 @@ export function HomeArtworkRail({ artworks }: { artworks: Artwork[] }) {
         const focalX = Number.isFinite(artwork.carouselFocalX) ? artwork.carouselFocalX : .5
         const focalY = Number.isFinite(artwork.carouselFocalY) ? artwork.carouselFocalY : .5
         const zoom = Number.isFinite(artwork.carouselZoom) ? artwork.carouselZoom : 1
-        const cropStyle = {
-          '--carousel-focal-x': `${focalX * 100}%`,
-          '--carousel-focal-y': `${focalY * 100}%`,
-          '--carousel-zoom': zoom,
-        } as CSSProperties
+        const cropStyle = carouselCropStyle(createCarouselCropLayout(
+          image?.widthPx ?? 16,
+          image?.heightPx ?? 9,
+          focalX,
+          focalY,
+          zoom,
+        ))
         return <Link className="home-artwork-tile" style={cropStyle} to={`/works?${targetParams}`} key={artwork.id} aria-label={`${artwork.title} 작품 메뉴에서 보기`}>
           <span className="home-artwork-tile-media">
             {image ? <img src={image.thumbnailUrl} alt="" loading="lazy" width={image.widthPx} height={image.heightPx} /> : <span className="home-artwork-tile-empty">이미지 준비 중</span>}

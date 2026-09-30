@@ -1,6 +1,7 @@
-import { FormEvent, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { FormEvent, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studioApi } from '../api'
+import { carouselCropStyle, createCarouselCropLayout, dragCarouselCrop, type CarouselCropLayout } from '../gallery/carouselCrop'
 import type { Artwork, Csrf, FrameType, SaleStatus } from '../types'
 
 const empty = {
@@ -16,6 +17,7 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
   const [artwork, setArtwork] = useState<Artwork | null>(null)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState('')
+  const [previewImageSize, setPreviewImageSize] = useState<{ width: number; height: number } | null>(null)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -24,8 +26,7 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
     pointerId: number
     startX: number
     startY: number
-    focalX: number
-    focalY: number
+    layout: CarouselCropLayout
   } | null>(null)
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
   }, [id])
 
   useEffect(() => {
+    setPreviewImageSize(null)
     const file = pendingFiles[0]
     if (!file) {
       setPendingPreviewUrl('')
@@ -65,6 +67,26 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
   const set = (key: keyof typeof form, value: string | boolean) => {
     setForm(previous => ({ ...previous, [key]: value }))
   }
+  const hasPrimaryImage = Boolean(artwork?.images.some(image => image.primary))
+  const canPublish = hasPrimaryImage || pendingFiles.length > 0
+  const primary = artwork?.images.find(image => image.primary) ?? artwork?.images[0]
+  const carouselPreviewUrl = pendingPreviewUrl
+    || primary?.webUrl.replace('/media/', '/studio/media/')
+    || ''
+  const previewWidth = previewImageSize?.width ?? primary?.widthPx ?? 16
+  const previewHeight = previewImageSize?.height ?? primary?.heightPx ?? 9
+  const carouselCrop = createCarouselCropLayout(
+    previewWidth,
+    previewHeight,
+    Number(form.carouselFocalX) / 100,
+    Number(form.carouselFocalY) / 100,
+    Number(form.carouselZoom),
+  )
+  const cropStyle = carouselCropStyle(carouselCrop)
+  const percent = (value: number) => String(Math.round(value * 10000) / 100)
+  const focalXPercent = carouselCrop.focalX * 100
+  const focalYPercent = carouselCrop.focalY * 100
+
   const body = (published = form.published) => ({
     ...form,
     published,
@@ -73,21 +95,10 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
     widthCm: Number(form.widthCm),
     heightCm: Number(form.heightCm),
     price: form.price ? Number(form.price) : null,
-    carouselFocalX: Number(form.carouselFocalX) / 100,
-    carouselFocalY: Number(form.carouselFocalY) / 100,
-    carouselZoom: Number(form.carouselZoom),
+    carouselFocalX: carouselCrop.focalX,
+    carouselFocalY: carouselCrop.focalY,
+    carouselZoom: carouselCrop.zoom,
   })
-  const hasPrimaryImage = Boolean(artwork?.images.some(image => image.primary))
-  const canPublish = hasPrimaryImage || pendingFiles.length > 0
-  const primary = artwork?.images.find(image => image.primary) ?? artwork?.images[0]
-  const carouselPreviewUrl = pendingPreviewUrl
-    || primary?.webUrl.replace('/media/', '/studio/media/')
-    || ''
-  const carouselCropStyle = {
-    '--carousel-focal-x': `${form.carouselFocalX}%`,
-    '--carousel-focal-y': `${form.carouselFocalY}%`,
-    '--carousel-zoom': form.carouselZoom,
-  } as CSSProperties
 
   const startCarouselDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!carouselPreviewUrl) return
@@ -95,8 +106,7 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      focalX: Number(form.carouselFocalX),
-      focalY: Number(form.carouselFocalY),
+      layout: carouselCrop,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
     setDraggingCrop(true)
@@ -106,12 +116,15 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
     const drag = cropDrag.current
     if (!drag || drag.pointerId !== event.pointerId) return
     const bounds = event.currentTarget.getBoundingClientRect()
-    const x = Math.max(0, Math.min(100, drag.focalX - ((event.clientX - drag.startX) / bounds.width) * 100))
-    const y = Math.max(0, Math.min(100, drag.focalY - ((event.clientY - drag.startY) / bounds.height) * 100))
+    const next = dragCarouselCrop(
+      drag.layout,
+      (event.clientX - drag.startX) / bounds.width,
+      (event.clientY - drag.startY) / bounds.height,
+    )
     setForm(previous => ({
       ...previous,
-      carouselFocalX: String(Math.round(x)),
-      carouselFocalY: String(Math.round(y)),
+      carouselFocalX: percent(next.focalX),
+      carouselFocalY: percent(next.focalY),
     }))
   }
 
@@ -206,20 +219,31 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
         <p className="field-help">이미지를 잡아 끌어 원하는 부분을 가운데 십자선에 맞춘 뒤 확대 정도를 조정하세요.</p>
         <div
           className={`carousel-crop-preview${carouselPreviewUrl ? '' : ' empty'}${draggingCrop ? ' dragging' : ''}`}
-          style={carouselCropStyle}
+          style={cropStyle}
           onPointerDown={startCarouselDrag}
           onPointerMove={moveCarouselCrop}
           onPointerUp={finishCarouselDrag}
           onPointerCancel={finishCarouselDrag}
         >
           {carouselPreviewUrl
-            ? <><img src={carouselPreviewUrl} alt="캐러셀 잘림 영역 미리보기" /><span className="carousel-focus-marker" aria-hidden="true" /></>
+            ? <><img
+                src={carouselPreviewUrl}
+                alt="캐러셀 잘림 영역 미리보기"
+                draggable={false}
+                onLoad={event => setPreviewImageSize({
+                  width: event.currentTarget.naturalWidth,
+                  height: event.currentTarget.naturalHeight,
+                })}
+              /><span className="carousel-focus-marker" aria-hidden="true" /></>
             : <span>작품 이미지를 선택하면 미리보기가 표시됩니다.</span>}
         </div>
         <div className="carousel-crop-controls">
-          <label>가로 초점 <output>{form.carouselFocalX}%</output><input type="range" min="0" max="100" step="1" value={form.carouselFocalX} onChange={event => set('carouselFocalX', event.target.value)} /></label>
-          <label>세로 초점 <output>{form.carouselFocalY}%</output><input type="range" min="0" max="100" step="1" value={form.carouselFocalY} onChange={event => set('carouselFocalY', event.target.value)} /></label>
-          <label>확대 <output>{Number(form.carouselZoom).toFixed(2)}×</output><input type="range" min="1" max="3" step="0.05" value={form.carouselZoom} onChange={event => set('carouselZoom', event.target.value)} /></label>
+          <label>가로 위치 <output>{Math.round(focalXPercent)}%</output><input type="range" min={carouselCrop.minFocalX * 100} max={carouselCrop.maxFocalX * 100} step="0.1" value={focalXPercent} disabled={carouselCrop.minFocalX === carouselCrop.maxFocalX} onChange={event => set('carouselFocalX', event.target.value)} /></label>
+          <label>세로 위치 <output>{Math.round(focalYPercent)}%</output><input type="range" min={carouselCrop.minFocalY * 100} max={carouselCrop.maxFocalY * 100} step="0.1" value={focalYPercent} disabled={carouselCrop.minFocalY === carouselCrop.maxFocalY} onChange={event => set('carouselFocalY', event.target.value)} /></label>
+          <label>확대 <output>{carouselCrop.zoom.toFixed(2)}×</output><input type="range" min="1" max="3" step="0.05" value={carouselCrop.zoom} onChange={event => {
+            const next = createCarouselCropLayout(previewWidth, previewHeight, carouselCrop.focalX, carouselCrop.focalY, Number(event.target.value))
+            setForm(previous => ({ ...previous, carouselFocalX: percent(next.focalX), carouselFocalY: percent(next.focalY), carouselZoom: event.target.value }))
+          }} /></label>
         </div>
         <button className="crop-reset-button" type="button" onClick={() => setForm(previous => ({ ...previous, carouselFocalX: '50', carouselFocalY: '50', carouselZoom: '1' }))}>가운데로 초기화</button>
       </fieldset>

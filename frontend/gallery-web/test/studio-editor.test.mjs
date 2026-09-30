@@ -16,11 +16,12 @@ test('Studio artwork form edits and saves a 16:9 carousel focal crop', () => {
   assert.match(editor, /className=\{`carousel-crop-preview/)
   assert.match(editor, /startCarouselDrag/)
   assert.match(editor, /moveCarouselCrop/)
-  assert.match(editor, /drag\.focalY - \(\(event\.clientY - drag\.startY\) \/ bounds\.height\) \* 100/)
+  assert.match(editor, /dragCarouselCrop\(/)
+  assert.match(editor, /\(event\.clientY - drag\.startY\) \/ bounds\.height/)
   assert.match(editor, /onPointerCancel=\{finishCarouselDrag\}/)
-  assert.match(editor, /carouselFocalX: Number\(form\.carouselFocalX\) \/ 100/)
-  assert.match(editor, /carouselFocalY: Number\(form\.carouselFocalY\) \/ 100/)
-  assert.match(editor, /carouselZoom: Number\(form\.carouselZoom\)/)
+  assert.match(editor, /carouselFocalX: carouselCrop\.focalX/)
+  assert.match(editor, /carouselFocalY: carouselCrop\.focalY/)
+  assert.match(editor, /carouselZoom: carouselCrop\.zoom/)
 })
 
 test('image upload persists through the artwork aggregate without a duplicate repository save', () => {
