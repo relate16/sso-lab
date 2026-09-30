@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { FormEvent, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studioApi } from '../api'
 import type { Artwork, Csrf, FrameType, SaleStatus } from '../types'
@@ -19,6 +19,14 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [draggingCrop, setDraggingCrop] = useState(false)
+  const cropDrag = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    focalX: number
+    focalY: number
+  } | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -81,15 +89,39 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
     '--carousel-zoom': form.carouselZoom,
   } as CSSProperties
 
-  const moveCarouselFocus = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const startCarouselDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!carouselPreviewUrl) return
+    cropDrag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      focalX: Number(form.carouselFocalX),
+      focalY: Number(form.carouselFocalY),
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setDraggingCrop(true)
+  }
+
+  const moveCarouselCrop = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = cropDrag.current
+    if (!drag || drag.pointerId !== event.pointerId) return
     const bounds = event.currentTarget.getBoundingClientRect()
-    const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100))
-    const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100))
+    const x = Math.max(0, Math.min(100, drag.focalX - ((event.clientX - drag.startX) / bounds.width) * 100))
+    const y = Math.max(0, Math.min(100, drag.focalY - ((event.clientY - drag.startY) / bounds.height) * 100))
     setForm(previous => ({
       ...previous,
       carouselFocalX: String(Math.round(x)),
       carouselFocalY: String(Math.round(y)),
     }))
+  }
+
+  const finishCarouselDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (cropDrag.current?.pointerId !== event.pointerId) return
+    cropDrag.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    setDraggingCrop(false)
   }
 
   const submit = async (event: FormEvent) => {
@@ -171,18 +203,14 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
 
       <fieldset className="full carousel-crop-editor">
         <legend>홈 캐러셀 대표 영역</legend>
-        <p className="field-help">16:9 미리보기를 클릭하거나 드래그해 초점을 옮긴 뒤 확대 정도를 조정하세요.</p>
+        <p className="field-help">이미지를 잡아 끌어 원하는 부분을 가운데 십자선에 맞춘 뒤 확대 정도를 조정하세요.</p>
         <div
-          className={`carousel-crop-preview${carouselPreviewUrl ? '' : ' empty'}`}
+          className={`carousel-crop-preview${carouselPreviewUrl ? '' : ' empty'}${draggingCrop ? ' dragging' : ''}`}
           style={carouselCropStyle}
-          onPointerDown={event => {
-            if (!carouselPreviewUrl) return
-            event.currentTarget.setPointerCapture(event.pointerId)
-            moveCarouselFocus(event)
-          }}
-          onPointerMove={event => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) moveCarouselFocus(event)
-          }}
+          onPointerDown={startCarouselDrag}
+          onPointerMove={moveCarouselCrop}
+          onPointerUp={finishCarouselDrag}
+          onPointerCancel={finishCarouselDrag}
         >
           {carouselPreviewUrl
             ? <><img src={carouselPreviewUrl} alt="캐러셀 잘림 영역 미리보기" /><span className="carousel-focus-marker" aria-hidden="true" /></>
