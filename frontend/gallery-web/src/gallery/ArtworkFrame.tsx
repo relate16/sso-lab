@@ -3,6 +3,7 @@ import type { Artwork } from '../types'
 import type { FrameType } from '../types'
 import { primaryImage } from './ArtworkCard'
 import { FrameRenderer } from './FrameRenderer'
+import { frameDepthCm } from './frameGeometry'
 import { artworkMountPercent, artworkPhysicalMountPercent } from './sceneState'
 
 type ArtworkFrameProps = {
@@ -62,9 +63,11 @@ export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = '
     '--mounted-top': `${canonicalRect.top / mountHeightPx * 100}%`,
     '--mounted-width': `${canonicalRect.width / mountWidthPx * 100}%`,
     '--mounted-height': `${canonicalRect.height / mountHeightPx * 100}%`,
-  } : { '--mounted-width': `${size.width}%`, '--mounted-height': `${size.height}%` }
+    '--frame-depth-cm': frameDepthCm(artwork.frameType),
+  } : { '--mounted-width': `${size.width}%`, '--mounted-height': `${size.height}%`, '--frame-depth-cm': frameDepthCm(artwork.frameType) }
   return <div
     className={`mounted-artwork mounted-artwork-${variant} frame-${artwork.frameType.toLowerCase()}`}
+    data-frame-depth-cm={frameDepthCm(artwork.frameType)}
     style={style as React.CSSProperties}
   >
     <FrameRenderer

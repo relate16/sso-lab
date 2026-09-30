@@ -22,6 +22,14 @@ test('public gallery exposes URL-backed discovery controls and the four-work exh
   for (const filter of ['saleStatus', 'size', 'minPrice', 'maxPrice', 'sort']) assert.match(pages, new RegExp(`name="${filter}"`))
 })
 
+test('Home and About expose the approved gallery copy and artist Instagram', () => {
+  assert.match(pages, /작품을 천천히 마주할 수 있는 하나의 전시 공간입니다\./)
+  assert.match(pages, /Quiet Winter Gallery는 한 사람의 작업을 담은 온라인 전시 공간입니다\./)
+  assert.match(pages, /href="https:\/\/www\.instagram\.com\/jongbok30\?utm_source=ig_web_button_share_sheet&stkn=ZDNlZDc0MzIxNw=="/)
+  assert.match(pages, />@jongbok30<\/a>/)
+  assert.doesNotMatch(pages, /계절의 적막, 남겨진 빛, 오래 바라본 풍경/)
+})
+
 test('artwork inquiry remains accessible and requires privacy consent', () => {
   assert.match(inquiry, /role="dialog"/)
   assert.match(inquiry, /aria-modal="true"/)
@@ -122,6 +130,19 @@ test('Home maps only the latest four artworks into configured image slots', () =
   assert.match(homeScene, /cropOffsetX/)
   assert.doesNotMatch(styles, /slot-responsive-scale/)
   assert.doesNotMatch(styles, /mounted-artwork-home[^}]*transform:\s*scale/)
+  assert.match(homeScene, /frameDepthCm/)
+  assert.match(homeScene, /frameVisibleBounds/)
+  assert.match(homeScene, /HOME_FRAME_DEPTH_COLORS/)
+  assert.match(homeScene, /function HomeFrameDepth/)
+  assert.match(homeScene, /horizontalVanishing/)
+  assert.match(homeScene, /projectedDepth/)
+  assert.match(homeScene, /<linearGradient/)
+  assert.match(homeScene, /home-frame-depth__shadow/)
+  assert.match(homeScene, /home-frame-depth__cap/)
+  assert.match(homeScene, /home-frame-depth__side/)
+  assert.match(homeScene, /slot\.id === 'leftWall' \? 'left' : 'right'/)
+  assert.match(styles, /\.home-frame-depth/)
+  assert.doesNotMatch(styles, /home-artwork-slot[^}]*mounted-artwork::after/)
 })
 
 test('Home exposes a width-matched horizontal artwork rail that opens the selected work in Works', () => {

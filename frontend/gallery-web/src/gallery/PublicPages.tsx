@@ -30,7 +30,7 @@ export function HomePage() {
   const { loading, error, data } = useHomeArtworks()
   const collection = useArtworkCollection()
   return <>
-    <section className="home-intro"><div><p className="eyebrow">Online exhibition · Seoul</p><h1>Quiet Winter<br />Gallery</h1></div><p>겨울의 고요와 빛을 기록한 작품을, 벽과 여백이 있는 하나의 전시 공간으로 소개합니다.</p></section>
+    <section className="home-intro"><div><p className="eyebrow">Online exhibition · Seoul</p><h1>Quiet Winter<br />Gallery</h1></div><p>작품을 천천히 마주할 수 있는 하나의 전시 공간입니다.</p></section>
     <section className="home-exhibition" aria-labelledby="recent-works"><header><div><p className="eyebrow">Current wall</p><h2 id="recent-works">최근 공개 작품</h2></div><Link to="/works">모든 작품 보기 <span aria-hidden="true">→</span></Link></header>
       {loading && <p className="public-status">전시장을 준비하고 있습니다…</p>}
       {error && <p className="public-status" role="alert">작품을 불러오지 못했습니다.</p>}
@@ -118,5 +118,5 @@ export function WorksPage() {
 }
 
 export function AboutPage() {
-  return <section className="about-page"><header className="public-page-header"><p className="eyebrow">About the gallery</p><h1>Quiet moments,<br />held in paint.</h1></header><div className="about-story"><p className="about-lead">Quiet Winter Gallery는 계절의 적막, 남겨진 빛, 오래 바라본 풍경을 그리는 한 작가의 온라인 전시 공간입니다.</p><div><h2>작품과 공간 사이</h2><p>화면 안에서도 작품이 놓이는 높이와 주변의 여백, 실제 크기의 관계를 느낄 수 있도록 구성했습니다. 작품 정보는 필요한 만큼만 벽면에 두고, 더 긴 이야기는 별도의 설명으로 이어집니다.</p></div><div><h2>작품과 연락</h2><p>각 작품의 재료와 크기, 판매 상태는 작품 페이지에서 확인할 수 있습니다. 소장, 전시, 작업에 관한 연락은 작품별 문의를 통해 남겨주세요.</p></div><Link className="about-link" to="/works">작품 보러 가기 <span aria-hidden="true">→</span></Link></div></section>
+  return <section className="about-page"><header className="public-page-header"><p className="eyebrow">About the gallery</p><h1>Quiet moments,<br />held in paint.</h1></header><div className="about-story"><div className="about-introduction"><p className="about-lead">Quiet Winter Gallery는 한 사람의 작업을 담은 온라인 전시 공간입니다.</p><a className="about-instagram" href="https://www.instagram.com/jongbok30?utm_source=ig_web_button_share_sheet&stkn=ZDNlZDc0MzIxNw==" target="_blank" rel="noreferrer" aria-label="Instagram @jongbok30 새 창에서 열기">@jongbok30</a></div><div><h2>작품과 공간 사이</h2><p>화면 안에서도 작품이 놓이는 높이와 주변의 여백, 실제 크기의 관계를 느낄 수 있도록 구성했습니다. 작품 정보는 필요한 만큼만 벽면에 두고, 더 긴 이야기는 별도의 설명으로 이어집니다.</p></div><div><h2>작품과 연락</h2><p>각 작품의 재료와 크기, 판매 상태는 작품 페이지에서 확인할 수 있습니다. 소장, 전시, 작업에 관한 연락은 작품별 문의를 통해 남겨주세요.</p></div><Link className="about-link" to="/works">작품 보러 가기 <span aria-hidden="true">→</span></Link></div></section>
 }

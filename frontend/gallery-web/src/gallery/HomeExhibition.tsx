@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Artwork } from '../types'
 import { ArtworkFrame, framedMountDimensions } from './ArtworkFrame'
+import { frameDepthCm, frameVisibleBounds, type FrameOrientation } from './frameGeometry'
 import { EXHIBITION_WALL_SIZE_CM, HOME_LIGHT_PRESETS, HOME_SCENE, HOME_SHADOW_PRESETS, HOME_SLOTS, SCENE_REFERENCE_SIZE, type HomeSlot } from './sceneDefinitions'
 import {
   fitPhysicalArtworkInWallRegion,
@@ -41,6 +42,11 @@ type DebugProjection = {
   maxErrorPx: number
 }
 
+type FrameProjection = {
+  aspectRatio: number
+  quad: NormalizedQuad
+}
+
 type MappedSlot = {
   mountCenter: NormalizedCenter
   lightCenter: NormalizedCenter
@@ -52,6 +58,12 @@ type BrowserQuad = { p1: DOMPoint; p2: DOMPoint; p3: DOMPoint; p4: DOMPoint }
 type QuadElement = HTMLElement & { getBoxQuads?: () => BrowserQuad[] }
 
 const CORNERS: CornerName[] = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft']
+const HOME_FRAME_DEPTH_COLORS: Record<Artwork['frameType'], { front: string; wall: string; opacity: number }> = {
+  NONE: { front: 'transparent', wall: 'transparent', opacity: 0 },
+  MAT_BOARD: { front: '#262421', wall: '#4c4842', opacity: .96 },
+  ACRYLIC_BOX: { front: '#dedbd2', wall: '#9b9992', opacity: .62 },
+  FLOATING_FRAME: { front: '#533928', wall: '#78543d', opacity: .96 },
+}
 const DEFAULT_IMAGE_MAPPING: ImageMapping = {
   naturalWidth: SCENE_REFERENCE_SIZE.width,
   naturalHeight: SCENE_REFERENCE_SIZE.height,
@@ -138,6 +150,100 @@ function pointLineDistance(point: NormalizedPoint, start: NormalizedPoint, end: 
   return Math.abs((end[1] - start[1]) * point[0] - (end[0] - start[0]) * point[1] + end[0] * start[1] - end[1] * start[0]) / length
 }
 
+function sameFrameProjection(current: FrameProjection | null, next: FrameProjection) {
+  if (!current || Math.abs(current.aspectRatio - next.aspectRatio) > .000001) return false
+  return CORNERS.every((corner) => Math.abs(current.quad[corner][0] - next.quad[corner][0]) < .000001
+    && Math.abs(current.quad[corner][1] - next.quad[corner][1]) < .000001)
+}
+
+function mixPoint(start: NormalizedPoint, end: NormalizedPoint, amount: number): NormalizedPoint {
+  return [start[0] + (end[0] - start[0]) * amount, start[1] + (end[1] - start[1]) * amount]
+}
+
+function pointInsideQuad(quad: NormalizedQuad, x: number, y: number) {
+  return mixPoint(mixPoint(quad.topLeft, quad.bottomLeft, y), mixPoint(quad.topRight, quad.bottomRight, y), x)
+}
+
+function HomeFrameDepth({ aspectRatio, frameHeightCm, frameType, horizontalVanishing, orientation, quad, side, slotId }: {
+  aspectRatio: number
+  frameHeightCm: number
+  frameType: Artwork['frameType']
+  horizontalVanishing?: NormalizedCenter
+  orientation: FrameOrientation
+  quad: NormalizedQuad
+  side: 'left' | 'right'
+  slotId: HomeSlot['id']
+}) {
+  const depthCm = frameDepthCm(frameType)
+  if (!depthCm || !horizontalVanishing || !frameHeightCm) return null
+
+  const bounds = frameVisibleBounds(frameType, orientation)
+  const frontTopLeft = pointInsideQuad(quad, bounds.left, bounds.top)
+  const frontTopRight = pointInsideQuad(quad, bounds.right, bounds.top)
+  const frontBottomRight = pointInsideQuad(quad, bounds.right, bounds.bottom)
+  const frontBottomLeft = pointInsideQuad(quad, bounds.left, bounds.bottom)
+  const frontTop = side === 'right' ? frontTopRight : frontTopLeft
+  const frontBottom = side === 'right' ? frontBottomRight : frontBottomLeft
+  const edgeHeightInSlotHeight = Math.hypot(
+    (frontBottom[0] - frontTop[0]) * aspectRatio,
+    frontBottom[1] - frontTop[1],
+  )
+  const projectedDepth = edgeHeightInSlotHeight * depthCm / frameHeightCm
+  const awayFromVanishingPoint = (point: NormalizedPoint, scale = 1): NormalizedPoint => {
+    const dx = point[0] - horizontalVanishing.x
+    const dy = point[1] - horizontalVanishing.y
+    const distanceInSlotHeight = Math.hypot(dx * aspectRatio, dy)
+    const amount = distanceInSlotHeight ? projectedDepth * scale / distanceInSlotHeight : 0
+    return [point[0] + dx * amount, point[1] + dy * amount]
+  }
+  const wallTop = awayFromVanishingPoint(frontTop)
+  const wallBottom = awayFromVanishingPoint(frontBottom)
+  const sidePoints = [frontTop, wallTop, wallBottom, frontBottom]
+    .map(([x, y]) => `${x * 100},${y * 100}`)
+    .join(' ')
+  const rearTopLeft = awayFromVanishingPoint(frontTopLeft)
+  const rearTopRight = awayFromVanishingPoint(frontTopRight)
+  const rearBottomRight = awayFromVanishingPoint(frontBottomRight)
+  const rearBottomLeft = awayFromVanishingPoint(frontBottomLeft)
+  const frameCenterY = (frontTopLeft[1] + frontBottomRight[1]) / 2
+  const capPoints = (frameCenterY >= horizontalVanishing.y
+    ? [frontTopLeft, frontTopRight, rearTopRight, rearTopLeft]
+    : [frontBottomLeft, frontBottomRight, rearBottomRight, rearBottomLeft])
+    .map(([x, y]) => `${x * 100},${y * 100}`)
+    .join(' ')
+  const shadowDrop = projectedDepth * .22
+  const shadowPoints = [frontTopLeft, frontTopRight, frontBottomRight, frontBottomLeft]
+    .map((point) => awayFromVanishingPoint(point, 1.35))
+    .map(([x, y]) => `${x * 100},${(y + shadowDrop) * 100}`)
+    .join(' ')
+  const colors = HOME_FRAME_DEPTH_COLORS[frameType]
+  const gradientId = `home-frame-depth-${slotId}`
+  const shadowId = `home-frame-shadow-${slotId}`
+  const frontX = side === 'right' ? '0%' : '100%'
+  const wallX = side === 'right' ? '100%' : '0%'
+
+  return <svg
+    aria-hidden="true"
+    className="home-frame-depth"
+    data-frame-type={frameType}
+    preserveAspectRatio="none"
+    viewBox="0 0 100 100"
+  >
+    <defs>
+      <linearGradient id={gradientId} x1={frontX} x2={wallX} y1="0%" y2="0%">
+        <stop offset="0%" stopColor={colors.front} stopOpacity={colors.opacity} />
+        <stop offset="100%" stopColor={colors.wall} stopOpacity={colors.opacity} />
+      </linearGradient>
+      <filter id={shadowId} x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="0.18" />
+      </filter>
+    </defs>
+    <polygon className="home-frame-depth__shadow" filter={`url(#${shadowId})`} points={shadowPoints} />
+    <polygon className="home-frame-depth__cap" fill={colors.front} fillOpacity={colors.opacity * .72} points={capPoints} />
+    <polygon className="home-frame-depth__side" fill={`url(#${gradientId})`} points={sidePoints} />
+  </svg>
+}
+
 function DebugPlaneOverlay({ horizontalVanishing, projection, lightX, lightY, slot, target }: {
   horizontalVanishing?: NormalizedCenter
   projection: DebugProjection | null
@@ -183,6 +289,7 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
   const slotRef = useRef<HTMLAnchorElement>(null)
   const planeRef = useRef<HTMLSpanElement>(null)
   const [debugProjection, setDebugProjection] = useState<DebugProjection | null>(null)
+  const [frameProjection, setFrameProjection] = useState<FrameProjection | null>(null)
   const placement = useMemo(() => normalizedQuadPlacement(geometry.target, geometry.mountCenter), [geometry])
   const canonicalSize = useMemo(() => sourcePlaneSize(slot), [slot])
   const framedSize = useMemo(() => framedMountDimensions(
@@ -219,7 +326,7 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
       const homography = rectangleToQuadHomography(width, height, placement.localCorners)
       const matrix = homographyToMatrix3d(homography)
       plane.style.setProperty('--slot-projection', matrix)
-      if (!debug || !homography) return
+      if (!homography) return
 
       cancelAnimationFrame(animationFrame)
       animationFrame = requestAnimationFrame(() => {
@@ -236,6 +343,10 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
         }
         const expectedPx = Object.fromEntries(CORNERS.map((corner) => [corner, projectHomographyPoint(homography, canonicalCorners[corner])])) as Record<CornerName, NormalizedPoint>
         const expected = normalizedQuad(expectedPx, width, height)
+        const nextFrameProjection = { aspectRatio: width / height, quad: expected }
+        setFrameProjection((current) => sameFrameProjection(current, nextFrameProjection) ? current : nextFrameProjection)
+        if (!debug) return
+
         const browserQuad = (mountedArtwork as QuadElement | null)?.getBoxQuads?.()[0]
         const quadPoints = browserQuad && {
           topLeft: browserQuad.p1,
@@ -350,6 +461,16 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
         />
       })}
     </span>
+    {frameProjection && (slot.id === 'leftWall' || slot.id === 'rightWall') && <HomeFrameDepth
+      aspectRatio={frameProjection.aspectRatio}
+      frameHeightCm={framedSize.height}
+      frameType={artwork.frameType}
+      horizontalVanishing={horizontalVanishing}
+      orientation={artwork.widthCm >= artwork.heightCm ? 'landscape' : 'portrait'}
+      quad={frameProjection.quad}
+      side={slot.id === 'leftWall' ? 'left' : 'right'}
+      slotId={slot.id}
+    />}
     {debug && <DebugPlaneOverlay horizontalVanishing={horizontalVanishing} projection={debugProjection} lightX={lightX} lightY={lightY} slot={slot} target={placement.localCorners} />}
   </Link>
 }
