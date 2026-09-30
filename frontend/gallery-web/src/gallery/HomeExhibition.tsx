@@ -4,7 +4,7 @@ import type { Artwork } from '../types'
 import { ArtworkFrame, framedMountDimensions } from './ArtworkFrame'
 import { HOME_LIGHT_PRESETS, HOME_SCENE, HOME_SHADOW_PRESETS, HOME_SLOTS, SCENE_REFERENCE_SIZE, type HomeSlot } from './sceneDefinitions'
 import {
-  fitArtworkInCanonicalPlane,
+  fitPhysicalArtworkInPlane,
   homographyToMatrix3d,
   normalizedQuadPlacement,
   projectHomographyPoint,
@@ -190,15 +190,16 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
     artwork.heightCm,
     artwork.frameType,
   ), [artwork.frameType, artwork.heightCm, artwork.widthCm])
-  const artworkRect = useMemo(() => fitArtworkInCanonicalPlane(
+  const artworkRect = useMemo(() => fitPhysicalArtworkInPlane(
     framedSize.width,
     framedSize.height,
     canonicalSize.width,
     canonicalSize.height,
-    'home',
-    slot.sizeClamp,
+    slot.wallSizeCm.width,
+    slot.wallSizeCm.height,
+    .4,
     slot.artworkCenter,
-  ), [canonicalSize, framedSize.height, framedSize.width, slot.artworkCenter, slot.sizeClamp])
+  ), [canonicalSize, framedSize.height, framedSize.width, slot.artworkCenter, slot.wallSizeCm])
   const horizontalVanishing = useMemo(() => geometry.horizontalVanishingPoint && ({
     x: (geometry.horizontalVanishingPoint.x - placement.left) / placement.width,
     y: (geometry.horizontalVanishingPoint.y - placement.top) / placement.height,
@@ -334,7 +335,6 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
         mountHeightPx={canonicalSize.height}
         variant="home"
         priority={index < 2}
-        homeFillRange={slot.sizeClamp}
         canonicalRect={artworkRect}
       />
       {debug && CORNERS.map((corner) => {

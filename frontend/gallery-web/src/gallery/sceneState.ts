@@ -161,17 +161,33 @@ export function artworkPhysicalMountPercent(
   wallWidthCm: number,
   wallHeightCm: number,
   maxFill = .4,
-  minimumEdgePx = 0,
 ) {
   const widthPercent = Math.max(.1, widthCm) / Math.max(.1, wallWidthCm) * 100
   const heightPercent = Math.max(.1, heightCm) / Math.max(.1, wallHeightCm) * 100
-  const naturalWidthPx = widthPercent / 100 * 1672
-  const naturalHeightPx = heightPercent / 100 * 941
-  const minimumScale = minimumEdgePx > 0
-    ? Math.max(1, minimumEdgePx / naturalWidthPx, minimumEdgePx / naturalHeightPx)
-    : 1
-  const fitScale = Math.min(minimumScale, maxFill * 100 / widthPercent, maxFill * 100 / heightPercent)
+  const fitScale = Math.min(1, maxFill * 100 / widthPercent, maxFill * 100 / heightPercent)
   return { width: widthPercent * fitScale, height: heightPercent * fitScale }
+}
+
+/** Places a physically-sized mount on a measured wall plane before perspective projection. */
+export function fitPhysicalArtworkInPlane(
+  widthCm: number,
+  heightCm: number,
+  planeWidthPx: number,
+  planeHeightPx: number,
+  wallWidthCm: number,
+  wallHeightCm: number,
+  maxFill = .4,
+  center: { x: number; y: number } = { x: .5, y: .5 },
+): PlaneRect {
+  const size = artworkPhysicalMountPercent(widthCm, heightCm, wallWidthCm, wallHeightCm, maxFill)
+  const width = planeWidthPx * size.width / 100
+  const height = planeHeightPx * size.height / 100
+  return {
+    left: planeWidthPx * center.x - width / 2,
+    top: planeHeightPx * center.y - height / 2,
+    width,
+    height,
+  }
 }
 
 /** Fits the mounted artwork in canonical wall-plane coordinates before projection. */

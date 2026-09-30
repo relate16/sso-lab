@@ -39,7 +39,7 @@ export type HomeSlot = {
   lightCenter: NormalizedCenter
   horizontalVanishingPointPx?: PixelPoint
   horizontalVanishingPoint?: NormalizedCenter
-  sizeClamp: { minFill: number; maxFill: number }
+  wallSizeCm: { width: number; height: number }
   artworkCenter?: { x: number; y: number }
   shadowPreset: 'leftWall' | 'backWall' | 'rightWall'
   lightPreset: 'leftWall' | 'backWall' | 'rightWall'
@@ -64,6 +64,10 @@ export const HOME_LIGHT_PRESETS = {
   backWall: 'radial-gradient(circle at var(--slot-light-x) var(--slot-light-y), rgba(255, 247, 224, .17), rgba(255, 247, 224, .045) 52%, rgba(90, 62, 41, .035) 100%)',
   rightWall: 'radial-gradient(circle at var(--slot-light-x) var(--slot-light-y), rgba(255, 244, 214, .2), rgba(255, 244, 214, .055) 48%, rgba(82, 57, 38, .045) 100%)',
 } as const
+
+// Each Home slot represents the same 5 m x 4.2 m viewing area. This keeps
+// physical artwork ratios comparable while leaving room for roughly 100-size works.
+const HOME_WALL_SIZE_CM = { width: 500, height: 420 } as const
 
 type HomeSlotSource = Omit<HomeSlot, 'corners' | 'mountCenter' | 'lightCenter' | 'horizontalVanishingPoint'>
 
@@ -98,7 +102,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     mountCenterPx: [237, 405.75],
     lightCenterPx: [247, 297],
     horizontalVanishingPointPx: [1379, 469],
-    sizeClamp: { minFill: .64, maxFill: .78 },
+    wallSizeCm: HOME_WALL_SIZE_CM,
     artworkCenter: { x: .5, y: .6 },
     shadowPreset: 'leftWall', lightPreset: 'leftWall',
   }),
@@ -107,7 +111,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     cornersPx: { topLeft: [638, 317], topRight: [910, 305], bottomRight: [907, 531], bottomLeft: [637, 527] },
     mountCenterPx: [773, 420],
     lightCenterPx: [762, 323],
-    sizeClamp: { minFill: .65, maxFill: .8 },
+    wallSizeCm: HOME_WALL_SIZE_CM,
     shadowPreset: 'backWall', lightPreset: 'backWall',
   }),
   homeSlot({
@@ -115,7 +119,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     cornersPx: { topLeft: [1032, 303], topRight: [1226, 292], bottomRight: [1223, 537], bottomLeft: [1036, 533] },
     mountCenterPx: [1129.25, 416.25],
     lightCenterPx: [1127, 309],
-    sizeClamp: { minFill: .65, maxFill: .8 },
+    wallSizeCm: HOME_WALL_SIZE_CM,
     shadowPreset: 'backWall', lightPreset: 'backWall',
   }),
   homeSlot({
@@ -124,7 +128,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     mountCenterPx: [1436.5, 388.25],
     lightCenterPx: [1431, 240],
     horizontalVanishingPointPx: [722, 468],
-    sizeClamp: { minFill: .8, maxFill: .86 },
+    wallSizeCm: HOME_WALL_SIZE_CM,
     artworkCenter: { x: .5, y: .62 },
     shadowPreset: 'rightWall', lightPreset: 'rightWall',
   }),

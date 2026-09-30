@@ -115,7 +115,8 @@ test('Home maps only the latest four artworks into configured image slots', () =
   assert.match(homeScene, /HOME_SLOTS\[index\]/)
   assert.match(definitions, /gallery-home-scene\.webp/)
   assert.match(homeScene, /offsetWidth/)
-  assert.match(homeScene, /fitArtworkInCanonicalPlane/)
+  assert.match(homeScene, /fitPhysicalArtworkInPlane/)
+  assert.match(homeScene, /slot\.wallSizeCm/)
   assert.match(homeScene, /framedMountDimensions/)
   assert.match(homeScene, /data-projection-corner/)
   assert.match(homeScene, /cropOffsetX/)
@@ -192,8 +193,8 @@ test('detail scenes size artwork against a physical wall width', () => {
   assert.match(scene, /physicalPlaneCm=\{physicalPlaneCm\}/)
   assert.match(scene, /const mountWidthPx = SCENE_REFERENCE_SIZE\.width/)
   assert.match(frame, /artworkPhysicalMountPercent/)
-  assert.match(frame, /artwork\.widthCm >= 5 && artwork\.heightCm >= 5/)
-  assert.match(frame, /DETAIL_MINIMUM_FRAME_EDGE_PX = 64/)
+  assert.doesNotMatch(frame, /minimumFrameEdgePx|DETAIL_MINIMUM_FRAME_EDGE_PX/)
+  assert.match(frame, /physicalPlaneCm\.height, \.4\)/)
 })
 
 test('cropped and zoomed detail scenes support drag panning with centered cropping and frame-anchored captions', () => {
