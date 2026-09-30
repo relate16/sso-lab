@@ -102,6 +102,13 @@ test('detail wall sizing preserves physical differences and caps oversized mount
   assert.ok(oversized.width <= 40.001 && oversized.height <= 40.001)
 })
 
+test('detail wall sizing gives eligible tiny frames a stable minimum rendered edge', () => {
+  const tiny = artworkPhysicalMountPercent(5, 5, 860, 860 * 941 / 1672, .4, 64)
+  assert.ok(tiny.width / 100 * 1672 >= 63.999)
+  assert.ok(tiny.height / 100 * 941 >= 63.999)
+  assert.ok(Math.abs((tiny.width * 1672) / (tiny.height * 941) - 1) < .001)
+})
+
 test('Home sizing keeps physical differences subtle enough for one exhibition wall', () => {
   const small = artworkMountPercent(30, 45, 300, 240, 'home')
   const large = artworkMountPercent(120, 180, 300, 240, 'home')

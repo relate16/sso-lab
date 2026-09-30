@@ -62,6 +62,15 @@ public class ArtworkEntity {
     @Column(nullable = false)
     private boolean featured;
 
+    @Column(name = "carousel_focal_x", nullable = false, precision = 5, scale = 4)
+    private BigDecimal carouselFocalX;
+
+    @Column(name = "carousel_focal_y", nullable = false, precision = 5, scale = 4)
+    private BigDecimal carouselFocalY;
+
+    @Column(name = "carousel_zoom", nullable = false, precision = 4, scale = 2)
+    private BigDecimal carouselZoom;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
@@ -84,6 +93,15 @@ public class ArtworkEntity {
     public ArtworkEntity(String title, String description, Integer year, String material,
         BigDecimal widthCm, BigDecimal heightCm, BigDecimal price, SaleStatus saleStatus,
         FrameType frameType, boolean featured, int displayOrder, Instant now) {
+        this(title, description, year, material, widthCm, heightCm, price, saleStatus,
+            frameType, featured, new BigDecimal("0.5"), new BigDecimal("0.5"), BigDecimal.ONE,
+            displayOrder, now);
+    }
+
+    public ArtworkEntity(String title, String description, Integer year, String material,
+        BigDecimal widthCm, BigDecimal heightCm, BigDecimal price, SaleStatus saleStatus,
+        FrameType frameType, boolean featured, BigDecimal carouselFocalX,
+        BigDecimal carouselFocalY, BigDecimal carouselZoom, int displayOrder, Instant now) {
         this.id = UUID.randomUUID();
         this.publicId = UUID.randomUUID();
         this.title = Objects.requireNonNull(title);
@@ -96,6 +114,9 @@ public class ArtworkEntity {
         this.saleStatus = Objects.requireNonNull(saleStatus);
         this.frameType = Objects.requireNonNull(frameType);
         this.featured = featured;
+        this.carouselFocalX = Objects.requireNonNull(carouselFocalX);
+        this.carouselFocalY = Objects.requireNonNull(carouselFocalY);
+        this.carouselZoom = Objects.requireNonNull(carouselZoom);
         this.displayOrder = displayOrder;
         this.createdAt = Objects.requireNonNull(now);
         this.updatedAt = now;
@@ -114,6 +135,9 @@ public class ArtworkEntity {
     public FrameType getFrameType() { return frameType; }
     public boolean isPublished() { return published; }
     public boolean isFeatured() { return featured; }
+    public BigDecimal getCarouselFocalX() { return carouselFocalX; }
+    public BigDecimal getCarouselFocalY() { return carouselFocalY; }
+    public BigDecimal getCarouselZoom() { return carouselZoom; }
     public int getDisplayOrder() { return displayOrder; }
     public Instant getPublishedAt() { return publishedAt; }
     public Instant getCreatedAt() { return createdAt; }
@@ -122,7 +146,8 @@ public class ArtworkEntity {
 
     public void update(String title, String description, Integer year, String material,
         BigDecimal widthCm, BigDecimal heightCm, BigDecimal price, SaleStatus saleStatus,
-        FrameType frameType, boolean featured, boolean publish, Instant now) {
+        FrameType frameType, boolean featured, BigDecimal carouselFocalX,
+        BigDecimal carouselFocalY, BigDecimal carouselZoom, boolean publish, Instant now) {
         this.title = Objects.requireNonNull(title);
         this.description = Objects.requireNonNull(description);
         this.year = year;
@@ -133,6 +158,9 @@ public class ArtworkEntity {
         this.saleStatus = Objects.requireNonNull(saleStatus);
         this.frameType = Objects.requireNonNull(frameType);
         this.featured = featured;
+        this.carouselFocalX = Objects.requireNonNull(carouselFocalX);
+        this.carouselFocalY = Objects.requireNonNull(carouselFocalY);
+        this.carouselZoom = Objects.requireNonNull(carouselZoom);
         if (publish && !published) this.publishedAt = now;
         if (!publish) this.publishedAt = null;
         this.published = publish;

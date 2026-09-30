@@ -12,7 +12,8 @@ const artworks = ids.map((id, index) => ({
   description: '차가운 계절의 공기와 늦은 오후의 빛이 천천히 포개지는 순간을 기록한 작품입니다. 화면의 고요한 층위를 따라 오래 머물러 보세요.',
   year: 2024 + index % 2, material: index >= 4 ? 'Pencil on paper' : 'Oil on canvas', widthCm: [48, 90, 120, 32, 100, 70, 100, 70, 100, 70][index], heightCm: [72, 60, 150, 32, 50, 99, 50, 99, 50, 99][index],
   price: 1200000 + index * 450000, saleStatus: index === 2 ? 'SOLD' : 'AVAILABLE', frameType: frames[index],
-  published: true, featured: index < 2, displayOrder: index, publishedAt: new Date(2026, 8, 20 - index).toISOString(),
+  published: true, featured: index < 2, carouselFocalX: .5, carouselFocalY: .5,
+  carouselZoom: 1, displayOrder: index, publishedAt: new Date(2026, 8, 20 - index).toISOString(),
   images: [{ id, storageKey: `preview-${index}`, originalUrl: `/api/v1/gallery/media/preview-${index}/original`, webUrl: `/api/v1/gallery/media/preview-${index}/web`, thumbnailUrl: `/api/v1/gallery/media/preview-${index}/thumbnail`, widthPx: imageSizes[index][0], heightPx: imageSizes[index][1], sortOrder: 0, primary: true }],
 }))
 const homeArtworks = [artworks[4], artworks[5], artworks[0], artworks[1]]

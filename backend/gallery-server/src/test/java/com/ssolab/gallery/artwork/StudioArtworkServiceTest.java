@@ -82,12 +82,14 @@ class StudioArtworkServiceTest {
     private ArtworkEntity artwork(String title, int order) {
         return new ArtworkEntity(title, "Description", 2026, "Oil", new BigDecimal("40"),
             new BigDecimal("60"), null, SaleStatus.AVAILABLE, FrameType.FLOATING_FRAME, false,
-            order, Instant.parse("2026-09-20T00:00:00Z"));
+            new BigDecimal("0.5"), new BigDecimal("0.5"), BigDecimal.ONE, order,
+            Instant.parse("2026-09-20T00:00:00Z"));
     }
 
     private GalleryDtos.ArtworkUpsert upsert(boolean published) {
         return new GalleryDtos.ArtworkUpsert("Winter", "Description", 2026, "Oil",
             new BigDecimal("40"), new BigDecimal("60"), null, SaleStatus.AVAILABLE,
-            FrameType.FLOATING_FRAME, published, false);
+            FrameType.FLOATING_FRAME, published, false, new BigDecimal("0.5"),
+            new BigDecimal("0.5"), BigDecimal.ONE);
     }
 }

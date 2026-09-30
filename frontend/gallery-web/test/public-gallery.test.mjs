@@ -135,6 +135,10 @@ test('Home exposes a width-matched horizontal artwork rail that opens the select
   assert.match(styles, /\.home-artwork-rail \{[\s\S]*max-width: 1500px;/)
   assert.match(styles, /\.home-artwork-rail-viewport \{[\s\S]*overflow-x: auto;[\s\S]*scroll-snap-type: x mandatory;/)
   assert.match(styles, /\.home-artwork-tile \{[\s\S]*aspect-ratio: 16 \/ 9;/)
+  assert.match(homeRail, /'--carousel-focal-x': `\$\{focalX \* 100\}%`/)
+  assert.match(homeRail, /'--carousel-focal-y': `\$\{focalY \* 100\}%`/)
+  assert.match(homeRail, /'--carousel-zoom': zoom/)
+  assert.match(styles, /\.home-artwork-tile img \{[\s\S]*object-fit: cover;[\s\S]*object-position: var\(--carousel-focal-x, 50%\) var\(--carousel-focal-y, 50%\);[\s\S]*transform: scale\(var\(--carousel-zoom, 1\)\);/)
   assert.match(styles, /\.home-artwork-rail-button \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/)
   assert.match(styles, /\.home-artwork-rail:hover \.home-artwork-rail-button:not\(:disabled\),[\s\S]*\.home-artwork-rail:focus-within[\s\S]*opacity: 1;/)
 })
@@ -186,6 +190,8 @@ test('detail scenes size artwork against a physical wall width', () => {
   assert.match(scene, /physicalPlaneCm=\{physicalPlaneCm\}/)
   assert.match(scene, /const mountWidthPx = SCENE_REFERENCE_SIZE\.width/)
   assert.match(frame, /artworkPhysicalMountPercent/)
+  assert.match(frame, /artwork\.widthCm >= 5 && artwork\.heightCm >= 5/)
+  assert.match(frame, /DETAIL_MINIMUM_FRAME_EDGE_PX = 64/)
 })
 
 test('cropped and zoomed detail scenes support drag panning with centered cropping and frame-anchored captions', () => {

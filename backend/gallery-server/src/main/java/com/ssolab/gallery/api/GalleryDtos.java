@@ -6,6 +6,7 @@ import com.ssolab.gallery.artwork.FrameType;
 import com.ssolab.gallery.artwork.SaleStatus;
 import com.ssolab.gallery.inquiry.InquiryEntity;
 import com.ssolab.gallery.inquiry.InquiryStatus;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -35,6 +36,7 @@ public final class GalleryDtos {
     public record Artwork(UUID id, String title, String description, Integer year,
         String material, BigDecimal widthCm, BigDecimal heightCm, BigDecimal price,
         SaleStatus saleStatus, FrameType frameType, boolean published, boolean featured,
+        BigDecimal carouselFocalX, BigDecimal carouselFocalY, BigDecimal carouselZoom,
         int displayOrder, Instant publishedAt, List<Image> images) {
         public static Artwork from(ArtworkEntity artwork) {
             List<Image> images = artwork.getImages().stream()
@@ -44,6 +46,7 @@ public final class GalleryDtos {
                 artwork.getYear(), artwork.getMaterial(), artwork.getWidthCm(),
                 artwork.getHeightCm(), artwork.getPrice(), artwork.getSaleStatus(),
                 artwork.getFrameType(), artwork.isPublished(), artwork.isFeatured(),
+                artwork.getCarouselFocalX(), artwork.getCarouselFocalY(), artwork.getCarouselZoom(),
                 artwork.getDisplayOrder(), artwork.getPublishedAt(), images);
         }
     }
@@ -62,8 +65,25 @@ public final class GalleryDtos {
         @NotNull SaleStatus saleStatus,
         @NotNull FrameType frameType,
         boolean published,
-        boolean featured
-    ) { }
+        boolean featured,
+        @NotNull @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal carouselFocalX,
+        @NotNull @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal carouselFocalY,
+        @NotNull @DecimalMin("1.0") @DecimalMax("3.0") BigDecimal carouselZoom
+    ) {
+        public ArtworkUpsert {
+            carouselFocalX = carouselFocalX == null ? new BigDecimal("0.5") : carouselFocalX;
+            carouselFocalY = carouselFocalY == null ? new BigDecimal("0.5") : carouselFocalY;
+            carouselZoom = carouselZoom == null ? BigDecimal.ONE : carouselZoom;
+        }
+
+        public ArtworkUpsert(String title, String description, Integer year, String material,
+            BigDecimal widthCm, BigDecimal heightCm, BigDecimal price, SaleStatus saleStatus,
+            FrameType frameType, boolean published, boolean featured) {
+            this(title, description, year, material, widthCm, heightCm, price, saleStatus,
+                frameType, published, featured, new BigDecimal("0.5"),
+                new BigDecimal("0.5"), BigDecimal.ONE);
+        }
+    }
 
     public record ReorderItem(@NotNull UUID id, int displayOrder) { }
     public record ReorderRequest(@NotEmpty @Size(max = 500) List<ReorderItem> items) { }

@@ -51,7 +51,8 @@ public class StudioArtworkService {
         int nextOrder = Math.toIntExact(Math.min(Integer.MAX_VALUE, artworks.count()));
         ArtworkEntity artwork = new ArtworkEntity(request.title().trim(), request.description(),
             request.year(), trimToNull(request.material()), request.widthCm(), request.heightCm(),
-            request.price(), request.saleStatus(), request.frameType(), request.featured(), nextOrder,
+            request.price(), request.saleStatus(), request.frameType(), request.featured(),
+            request.carouselFocalX(), request.carouselFocalY(), request.carouselZoom(), nextOrder,
             clock.instant());
         return GalleryDtos.Artwork.from(artworks.save(artwork));
     }
@@ -64,8 +65,8 @@ public class StudioArtworkService {
         }
         artwork.update(request.title().trim(), request.description(), request.year(),
             trimToNull(request.material()), request.widthCm(), request.heightCm(), request.price(),
-            request.saleStatus(), request.frameType(), request.featured(), request.published(),
-            clock.instant());
+            request.saleStatus(), request.frameType(), request.featured(), request.carouselFocalX(),
+            request.carouselFocalY(), request.carouselZoom(), request.published(), clock.instant());
         return GalleryDtos.Artwork.from(artwork);
     }
 

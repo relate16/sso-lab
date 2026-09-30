@@ -29,7 +29,8 @@ class InquiryServiceTest {
     @Test
     void validatesConsentAndPersistsPlainTextInquiryForPublishedArtwork() {
         var artwork = new ArtworkEntity("Winter", "Description", 2026, "Oil", new BigDecimal("40"),
-            new BigDecimal("60"), null, SaleStatus.AVAILABLE, FrameType.NONE, false, 0, Instant.now());
+            new BigDecimal("60"), null, SaleStatus.AVAILABLE, FrameType.NONE, false,
+            new BigDecimal("0.5"), new BigDecimal("0.5"), BigDecimal.ONE, 0, Instant.now());
         when(artworks.findByPublicIdAndPublishedTrue(artwork.getPublicId())).thenReturn(Optional.of(artwork));
         when(inquiries.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         var service = new InquiryService(inquiries, artworks);

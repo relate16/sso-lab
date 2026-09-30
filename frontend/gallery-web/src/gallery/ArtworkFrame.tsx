@@ -19,6 +19,7 @@ type ArtworkFrameProps = {
 }
 
 type FrameOpening = { width: number; height: number }
+const DETAIL_MINIMUM_FRAME_EDGE_PX = 64
 
 const FRAME_OPENINGS: Record<'landscape' | 'portrait', Partial<Record<FrameType, FrameOpening>>> = {
   landscape: {
@@ -54,8 +55,9 @@ export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = '
     return () => { active = false }
   }, [highResolutionImageId, image?.id, image?.originalUrl, variant, zoomLevel])
   const footprint = framedMountDimensions(artwork.widthCm, artwork.heightCm, artwork.frameType)
+  const minimumFrameEdgePx = artwork.widthCm >= 5 && artwork.heightCm >= 5 ? DETAIL_MINIMUM_FRAME_EDGE_PX : 0
   const size = physicalPlaneCm
-    ? artworkPhysicalMountPercent(footprint.width, footprint.height, physicalPlaneCm.width, physicalPlaneCm.height)
+    ? artworkPhysicalMountPercent(footprint.width, footprint.height, physicalPlaneCm.width, physicalPlaneCm.height, .4, minimumFrameEdgePx)
     : artworkMountPercent(footprint.width, footprint.height, mountWidthPx, mountHeightPx, variant === 'home' ? 'home' : 'relative', homeFillRange)
   const style = canonicalRect ? {
     '--mounted-left': `${canonicalRect.left / mountWidthPx * 100}%`,

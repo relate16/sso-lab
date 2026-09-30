@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studioApi } from '../api'
 import type { Artwork, Csrf, FrameType, SaleStatus } from '../types'
@@ -6,7 +6,7 @@ import type { Artwork, Csrf, FrameType, SaleStatus } from '../types'
 const empty = {
   title: '', description: '', year: '', material: '', widthCm: '', heightCm: '', price: '',
   saleStatus: 'NOT_FOR_SALE' as SaleStatus, frameType: 'NONE' as FrameType,
-  published: false, featured: false,
+  published: false, featured: false, carouselFocalX: '50', carouselFocalY: '50', carouselZoom: '1',
 }
 
 export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
@@ -15,6 +15,7 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
   const [form, setForm] = useState(empty)
   const [artwork, setArtwork] = useState<Artwork | null>(null)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState('')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -35,9 +36,23 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
         frameType: item.frameType,
         published: item.published,
         featured: item.featured,
+        carouselFocalX: String(Math.round((Number.isFinite(item.carouselFocalX) ? item.carouselFocalX : .5) * 100)),
+        carouselFocalY: String(Math.round((Number.isFinite(item.carouselFocalY) ? item.carouselFocalY : .5) * 100)),
+        carouselZoom: (Number.isFinite(item.carouselZoom) ? item.carouselZoom : 1).toString(),
       })
     }).catch(() => setMessage('작품을 불러오지 못했습니다.'))
   }, [id])
+
+  useEffect(() => {
+    const file = pendingFiles[0]
+    if (!file) {
+      setPendingPreviewUrl('')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPendingPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [pendingFiles])
 
   const set = (key: keyof typeof form, value: string | boolean) => {
     setForm(previous => ({ ...previous, [key]: value }))
@@ -50,9 +65,32 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
     widthCm: Number(form.widthCm),
     heightCm: Number(form.heightCm),
     price: form.price ? Number(form.price) : null,
+    carouselFocalX: Number(form.carouselFocalX) / 100,
+    carouselFocalY: Number(form.carouselFocalY) / 100,
+    carouselZoom: Number(form.carouselZoom),
   })
   const hasPrimaryImage = Boolean(artwork?.images.some(image => image.primary))
   const canPublish = hasPrimaryImage || pendingFiles.length > 0
+  const primary = artwork?.images.find(image => image.primary) ?? artwork?.images[0]
+  const carouselPreviewUrl = pendingPreviewUrl
+    || primary?.webUrl.replace('/media/', '/studio/media/')
+    || ''
+  const carouselCropStyle = {
+    '--carousel-focal-x': `${form.carouselFocalX}%`,
+    '--carousel-focal-y': `${form.carouselFocalY}%`,
+    '--carousel-zoom': form.carouselZoom,
+  } as CSSProperties
+
+  const moveCarouselFocus = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100))
+    const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100))
+    setForm(previous => ({
+      ...previous,
+      carouselFocalX: String(Math.round(x)),
+      carouselFocalY: String(Math.round(y)),
+    }))
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -130,6 +168,33 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
           <button type="button" onClick={() => void studioApi.removeImage(csrf, artwork.id, image.id).then(refresh)}>삭제</button>
         </article>)}
       </div>}
+
+      <fieldset className="full carousel-crop-editor">
+        <legend>홈 캐러셀 대표 영역</legend>
+        <p className="field-help">16:9 미리보기를 클릭하거나 드래그해 초점을 옮긴 뒤 확대 정도를 조정하세요.</p>
+        <div
+          className={`carousel-crop-preview${carouselPreviewUrl ? '' : ' empty'}`}
+          style={carouselCropStyle}
+          onPointerDown={event => {
+            if (!carouselPreviewUrl) return
+            event.currentTarget.setPointerCapture(event.pointerId)
+            moveCarouselFocus(event)
+          }}
+          onPointerMove={event => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) moveCarouselFocus(event)
+          }}
+        >
+          {carouselPreviewUrl
+            ? <><img src={carouselPreviewUrl} alt="캐러셀 잘림 영역 미리보기" /><span className="carousel-focus-marker" aria-hidden="true" /></>
+            : <span>작품 이미지를 선택하면 미리보기가 표시됩니다.</span>}
+        </div>
+        <div className="carousel-crop-controls">
+          <label>가로 초점 <output>{form.carouselFocalX}%</output><input type="range" min="0" max="100" step="1" value={form.carouselFocalX} onChange={event => set('carouselFocalX', event.target.value)} /></label>
+          <label>세로 초점 <output>{form.carouselFocalY}%</output><input type="range" min="0" max="100" step="1" value={form.carouselFocalY} onChange={event => set('carouselFocalY', event.target.value)} /></label>
+          <label>확대 <output>{Number(form.carouselZoom).toFixed(2)}×</output><input type="range" min="1" max="3" step="0.05" value={form.carouselZoom} onChange={event => set('carouselZoom', event.target.value)} /></label>
+        </div>
+        <button className="crop-reset-button" type="button" onClick={() => setForm(previous => ({ ...previous, carouselFocalX: '50', carouselFocalY: '50', carouselZoom: '1' }))}>가운데로 초기화</button>
+      </fieldset>
 
       <label className="check"><input type="checkbox" checked={form.featured} onChange={e => set('featured', e.target.checked)} /> 대표작</label>
       <label className="check"><input type="checkbox" checked={form.published} disabled={!canPublish} onChange={e => set('published', e.target.checked)} /> 공개 {!canPublish && <span className="check-help">(이미지 선택 후 가능)</span>}</label>
