@@ -55,7 +55,7 @@ export function ArtworkFrame({ artwork, mountWidthPx, mountHeightPx, variant = '
   }, [highResolutionImageId, image?.id, image?.originalUrl, variant, zoomLevel])
   const footprint = framedMountDimensions(artwork.widthCm, artwork.heightCm, artwork.frameType)
   const size = physicalPlaneCm
-    ? artworkPhysicalMountPercent(footprint.width, footprint.height, physicalPlaneCm.width, physicalPlaneCm.height, .4)
+    ? artworkPhysicalMountPercent(footprint.width, footprint.height, physicalPlaneCm.width, physicalPlaneCm.height, .9, mountWidthPx, mountHeightPx)
     : artworkMountPercent(footprint.width, footprint.height, mountWidthPx, mountHeightPx, variant === 'home' ? 'home' : 'relative', homeFillRange)
   const style = canonicalRect ? {
     '--mounted-left': `${canonicalRect.left / mountWidthPx * 100}%`,

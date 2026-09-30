@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { artworkDisplaySize, artworkMountPercent, artworkPhysicalMountPercent, fitPhysicalArtworkInPlane, isValidScene, nextScene, normalizedQuadPlacement, parseScene, projectHomographyPoint, rectangleToQuadHomography, rectangleToQuadMatrix } from '../src/gallery/sceneState.ts'
-import { HOME_SLOTS, SCENE_DEFINITIONS } from '../src/gallery/sceneDefinitions.ts'
+import { EXHIBITION_WALL_SIZE_CM, HOME_SLOTS, SCENE_DEFINITIONS } from '../src/gallery/sceneDefinitions.ts'
 
 test('scene selection cycles deterministically', () => {
   assert.equal(nextScene(1), 2)
@@ -50,7 +50,8 @@ test('Home exposes exactly four configured exhibition slots', () => {
   assert.equal(HOME_SLOTS[0].shadowPreset, 'leftWall')
   assert.equal(HOME_SLOTS[3].shadowPreset, 'rightWall')
   assert.deepEqual(HOME_SLOTS[0].artworkCenter, { x: .5, y: .6 })
-  assert.ok(HOME_SLOTS.every((slot) => slot.wallSizeCm.width === 500 && slot.wallSizeCm.height === 420))
+  assert.deepEqual(EXHIBITION_WALL_SIZE_CM, { width: 450, height: 300 })
+  assert.ok(HOME_SLOTS.every((slot) => slot.wallSizeCm === EXHIBITION_WALL_SIZE_CM))
   assert.deepEqual(HOME_SLOTS[3].artworkCenter, { x: .5, y: .62 })
   assert.deepEqual(HOME_SLOTS[0].horizontalVanishingPointPx, [1379, 469])
   assert.deepEqual(HOME_SLOTS[3].horizontalVanishingPointPx, [722, 468])
@@ -92,19 +93,19 @@ test('mounted sizing preserves aspect and clamps artwork to its guide', () => {
 })
 
 test('detail wall sizing preserves physical differences and caps oversized mounts', () => {
-  const small = artworkPhysicalMountPercent(48, 72, 420, 267)
-  const medium = artworkPhysicalMountPercent(70, 99, 420, 267)
-  const hundred = artworkPhysicalMountPercent(130.3, 162.2, 420, 267)
-  const oversized = artworkPhysicalMountPercent(300, 400, 420, 267)
+  const small = artworkPhysicalMountPercent(48, 72, 450, 300)
+  const medium = artworkPhysicalMountPercent(70, 99, 450, 300)
+  const hundred = artworkPhysicalMountPercent(130.3, 162.2, 450, 300)
+  const oversized = artworkPhysicalMountPercent(600, 800, 450, 300)
   assert.ok(small.width < medium.width && medium.width < hundred.width)
   assert.ok(small.height < medium.height && medium.height < hundred.height)
-  assert.ok(Math.abs(small.width / small.height - (48 / 420) / (72 / 267)) < .001)
-  assert.ok(oversized.width <= 40.001 && oversized.height <= 40.001)
+  assert.ok(Math.abs(small.width / small.height - (48 / 450) / (72 / 300)) < .001)
+  assert.ok(oversized.width <= 90.001 && oversized.height <= 90.001)
 })
 
 test('detail wall sizing preserves physical differences for tiny works without minimum enlargement', () => {
-  const five = artworkPhysicalMountPercent(5, 5, 860, 860 * 941 / 1672)
-  const ten = artworkPhysicalMountPercent(10, 10, 860, 860 * 941 / 1672)
+  const five = artworkPhysicalMountPercent(5, 5, 450, 300, .9, 1672, 941)
+  const ten = artworkPhysicalMountPercent(10, 10, 450, 300, .9, 1672, 941)
   assert.ok(five.width / 100 * 1672 < 64)
   assert.ok(Math.abs(ten.width / five.width - 2) < .001)
   assert.ok(Math.abs(ten.height / five.height - 2) < .001)
@@ -112,14 +113,14 @@ test('detail wall sizing preserves physical differences for tiny works without m
 })
 
 test('Home wall sizing preserves exact physical ratios through 100-size works', () => {
-  const small = fitPhysicalArtworkInPlane(30, 40, 300, 240, 500, 420)
-  const large = fitPhysicalArtworkInPlane(120, 160, 300, 240, 500, 420)
-  const hundred = fitPhysicalArtworkInPlane(130.3, 162.2, 300, 240, 500, 420)
+  const small = fitPhysicalArtworkInPlane(30, 40, 300, 240, 450, 300)
+  const large = fitPhysicalArtworkInPlane(120, 160, 300, 240, 450, 300)
+  const hundred = fitPhysicalArtworkInPlane(130.3, 162.2, 300, 240, 450, 300)
   assert.ok(Math.abs(large.width / small.width - 4) < .001)
   assert.ok(Math.abs(large.height / small.height - 4) < .001)
-  assert.ok(hundred.width / 300 < .4)
-  assert.ok(hundred.height / 240 < .4)
-  assert.ok(Math.abs((small.width / 300) / (small.height / 240) - (30 / 500) / (40 / 420)) < .001)
+  assert.ok(hundred.width / 300 < .9)
+  assert.ok(hundred.height / 240 < .9)
+  assert.ok(Math.abs(small.width / small.height - 30 / 40) < .001)
 })
 
 test('Home fits artwork before homography and preserves each wall plane vanishing point', () => {
@@ -141,7 +142,7 @@ test('Home fits artwork before homography and preserves each wall plane vanishin
     const homography = rectangleToQuadHomography(width, height, placement.localCorners)
     assert.ok(homography)
     const [artworkWidth, artworkHeight] = artworkSizes[index]
-    const rect = fitPhysicalArtworkInPlane(artworkWidth, artworkHeight, width, height, slot.wallSizeCm.width, slot.wallSizeCm.height, .4, slot.artworkCenter)
+    const rect = fitPhysicalArtworkInPlane(artworkWidth, artworkHeight, width, height, slot.wallSizeCm.width, slot.wallSizeCm.height, .9, slot.artworkCenter)
     const actual = {
       topLeft: projectHomographyPoint(homography, [rect.left, rect.top]),
       topRight: projectHomographyPoint(homography, [rect.left + rect.width, rect.top]),

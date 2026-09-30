@@ -187,14 +187,13 @@ test('scene zoom supports ten levels, reset, Escape and reduced-motion handling'
 })
 
 test('detail scenes size artwork against a physical wall width', () => {
-  assert.match(definitions, /wallWidthCm: 860/)
-  assert.match(definitions, /wallWidthCm: 800/)
-  assert.match(definitions, /wallWidthCm: 760/)
+  assert.match(definitions, /EXHIBITION_WALL_SIZE_CM = \{ width: 450, height: 300 \}/)
+  assert.match(scene, /const physicalPlaneCm = EXHIBITION_WALL_SIZE_CM/)
   assert.match(scene, /physicalPlaneCm=\{physicalPlaneCm\}/)
   assert.match(scene, /const mountWidthPx = SCENE_REFERENCE_SIZE\.width/)
   assert.match(frame, /artworkPhysicalMountPercent/)
   assert.doesNotMatch(frame, /minimumFrameEdgePx|DETAIL_MINIMUM_FRAME_EDGE_PX/)
-  assert.match(frame, /physicalPlaneCm\.height, \.4\)/)
+  assert.match(frame, /physicalPlaneCm\.height, \.9, mountWidthPx, mountHeightPx\)/)
 })
 
 test('cropped and zoomed detail scenes support drag panning with centered cropping and frame-anchored captions', () => {

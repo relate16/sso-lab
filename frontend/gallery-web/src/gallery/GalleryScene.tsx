@@ -6,7 +6,7 @@ import { ArtworkFrame } from './ArtworkFrame'
 import { InquiryDrawer } from './InquiryDrawer'
 import { ArtworkStoryDrawer } from './ArtworkStoryDrawer'
 import { isValidScene, parseScene } from './sceneState'
-import { SCENE_DEFINITIONS, SCENE_REFERENCE_SIZE } from './sceneDefinitions'
+import { EXHIBITION_WALL_SIZE_CM, SCENE_DEFINITIONS, SCENE_REFERENCE_SIZE } from './sceneDefinitions'
 
 const MAX_ZOOM_LEVEL = 10
 const WHEEL_ZOOM_THRESHOLD = 90
@@ -194,10 +194,7 @@ export function GalleryScene() {
   if (!artwork) return <section className="scene-status"><p>전시 공간을 준비하고 있습니다…</p></section>
   const mountWidthPx = SCENE_REFERENCE_SIZE.width
   const mountHeightPx = SCENE_REFERENCE_SIZE.height
-  const physicalPlaneCm = {
-    width: definition.wallWidthCm,
-    height: definition.wallWidthCm * mountHeightPx / mountWidthPx,
-  }
+  const physicalPlaneCm = EXHIBITION_WALL_SIZE_CM
   const sceneStyle = {
     '--detail-mount-center-x': `${definition.mount.centerX}%`,
     '--detail-mount-center-y': `${definition.mount.centerY}%`,

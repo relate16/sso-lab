@@ -8,7 +8,6 @@ export type SceneDefinition = {
   asset: string
   mobileAsset: string
   mount: ScenePlacement
-  wallWidthCm: number
   caption: { left: number; top: number }
   zoomControl: { left: number; top: number }
   focalPoint: { x: number; y: number }
@@ -46,6 +45,7 @@ export type HomeSlot = {
 }
 
 export const SCENE_REFERENCE_SIZE = { width: 1672, height: 941 } as const
+export const EXHIBITION_WALL_SIZE_CM = { width: 450, height: 300 } as const
 
 export const HOME_SCENE = {
   asset: '/images/gallery/gallery-home-scene.webp',
@@ -64,10 +64,6 @@ export const HOME_LIGHT_PRESETS = {
   backWall: 'radial-gradient(circle at var(--slot-light-x) var(--slot-light-y), rgba(255, 247, 224, .17), rgba(255, 247, 224, .045) 52%, rgba(90, 62, 41, .035) 100%)',
   rightWall: 'radial-gradient(circle at var(--slot-light-x) var(--slot-light-y), rgba(255, 244, 214, .2), rgba(255, 244, 214, .055) 48%, rgba(82, 57, 38, .045) 100%)',
 } as const
-
-// Each Home slot represents the same 5 m x 4.2 m viewing area. This keeps
-// physical artwork ratios comparable while leaving room for roughly 100-size works.
-const HOME_WALL_SIZE_CM = { width: 500, height: 420 } as const
 
 type HomeSlotSource = Omit<HomeSlot, 'corners' | 'mountCenter' | 'lightCenter' | 'horizontalVanishingPoint'>
 
@@ -102,7 +98,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     mountCenterPx: [237, 405.75],
     lightCenterPx: [247, 297],
     horizontalVanishingPointPx: [1379, 469],
-    wallSizeCm: HOME_WALL_SIZE_CM,
+    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
     artworkCenter: { x: .5, y: .6 },
     shadowPreset: 'leftWall', lightPreset: 'leftWall',
   }),
@@ -111,7 +107,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     cornersPx: { topLeft: [638, 317], topRight: [910, 305], bottomRight: [907, 531], bottomLeft: [637, 527] },
     mountCenterPx: [773, 420],
     lightCenterPx: [762, 323],
-    wallSizeCm: HOME_WALL_SIZE_CM,
+    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
     shadowPreset: 'backWall', lightPreset: 'backWall',
   }),
   homeSlot({
@@ -119,7 +115,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     cornersPx: { topLeft: [1032, 303], topRight: [1226, 292], bottomRight: [1223, 537], bottomLeft: [1036, 533] },
     mountCenterPx: [1129.25, 416.25],
     lightCenterPx: [1127, 309],
-    wallSizeCm: HOME_WALL_SIZE_CM,
+    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
     shadowPreset: 'backWall', lightPreset: 'backWall',
   }),
   homeSlot({
@@ -128,7 +124,7 @@ export const HOME_SLOTS: HomeSlot[] = [
     mountCenterPx: [1436.5, 388.25],
     lightCenterPx: [1431, 240],
     horizontalVanishingPointPx: [722, 468],
-    wallSizeCm: HOME_WALL_SIZE_CM,
+    wallSizeCm: EXHIBITION_WALL_SIZE_CM,
     artworkCenter: { x: .5, y: .62 },
     shadowPreset: 'rightWall', lightPreset: 'rightWall',
   }),
@@ -143,7 +139,6 @@ export const SCENE_DEFINITIONS: Record<SceneNumber, SceneDefinition> = {
     asset: '/images/gallery/gallery-detail-scene-1.webp',
     mobileAsset: '/images/gallery/gallery-detail-scene-1-mobile.webp',
     mount: { centerX: 49.95, centerY: 43.65, width: 31.5, height: 35.5 },
-    wallWidthCm: 860,
     caption: { left: 68.2, top: 43 },
     zoomControl: { left: 66.45, top: 43.7 },
     focalPoint: { x: 50, y: 43.5 },
@@ -157,7 +152,6 @@ export const SCENE_DEFINITIONS: Record<SceneNumber, SceneDefinition> = {
     asset: '/images/gallery/gallery-detail-scene-2.webp',
     mobileAsset: '/images/gallery/gallery-detail-scene-2-mobile.webp',
     mount: { centerX: 50, centerY: 42.95, width: 29.6, height: 32.9 },
-    wallWidthCm: 800,
     caption: { left: 67.3, top: 43 },
     zoomControl: { left: 65.55, top: 43.2 },
     focalPoint: { x: 50, y: 42.8 },
@@ -171,7 +165,6 @@ export const SCENE_DEFINITIONS: Record<SceneNumber, SceneDefinition> = {
     asset: '/images/gallery/gallery-detail-scene-3.webp',
     mobileAsset: '/images/gallery/gallery-detail-scene-3-mobile.webp',
     mount: { centerX: 49.9, centerY: 41.75, width: 31.4, height: 33.9 },
-    wallWidthCm: 760,
     caption: { left: 68.2, top: 42 },
     zoomControl: { left: 66.35, top: 42.4 },
     focalPoint: { x: 50, y: 42 },

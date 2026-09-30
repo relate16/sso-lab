@@ -160,10 +160,18 @@ export function artworkPhysicalMountPercent(
   heightCm: number,
   wallWidthCm: number,
   wallHeightCm: number,
-  maxFill = .4,
+  maxFill = .9,
+  planeWidthPx = wallWidthCm,
+  planeHeightPx = wallHeightCm,
 ) {
-  const widthPercent = Math.max(.1, widthCm) / Math.max(.1, wallWidthCm) * 100
-  const heightPercent = Math.max(.1, heightCm) / Math.max(.1, wallHeightCm) * 100
+  const safePlaneWidth = Math.max(.1, planeWidthPx)
+  const safePlaneHeight = Math.max(.1, planeHeightPx)
+  const pixelsPerCm = Math.min(
+    safePlaneWidth / Math.max(.1, wallWidthCm),
+    safePlaneHeight / Math.max(.1, wallHeightCm),
+  )
+  const widthPercent = Math.max(.1, widthCm) * pixelsPerCm / safePlaneWidth * 100
+  const heightPercent = Math.max(.1, heightCm) * pixelsPerCm / safePlaneHeight * 100
   const fitScale = Math.min(1, maxFill * 100 / widthPercent, maxFill * 100 / heightPercent)
   return { width: widthPercent * fitScale, height: heightPercent * fitScale }
 }
@@ -176,10 +184,10 @@ export function fitPhysicalArtworkInPlane(
   planeHeightPx: number,
   wallWidthCm: number,
   wallHeightCm: number,
-  maxFill = .4,
+  maxFill = .9,
   center: { x: number; y: number } = { x: .5, y: .5 },
 ): PlaneRect {
-  const size = artworkPhysicalMountPercent(widthCm, heightCm, wallWidthCm, wallHeightCm, maxFill)
+  const size = artworkPhysicalMountPercent(widthCm, heightCm, wallWidthCm, wallHeightCm, maxFill, planeWidthPx, planeHeightPx)
   const width = planeWidthPx * size.width / 100
   const height = planeHeightPx * size.height / 100
   return {

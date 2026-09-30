@@ -197,7 +197,7 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
     canonicalSize.height,
     slot.wallSizeCm.width,
     slot.wallSizeCm.height,
-    .4,
+    .9,
     slot.artworkCenter,
   ), [canonicalSize, framedSize.height, framedSize.width, slot.artworkCenter, slot.wallSizeCm])
   const horizontalVanishing = useMemo(() => geometry.horizontalVanishingPoint && ({
