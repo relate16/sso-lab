@@ -16,6 +16,7 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class ArtworkViewService {
     private final GalleryAnalyticsProperties properties;
     private final Clock clock;
 
+    @Autowired
     public ArtworkViewService(ArtworkRepository artworks, JdbcTemplate jdbc,
         GalleryAnalyticsProperties properties) {
         this(artworks, jdbc, properties, Clock.systemUTC());
@@ -64,7 +66,7 @@ public class ArtworkViewService {
     @Transactional
     public boolean record(UUID publicId, ArtworkAnalyticsDtos.ViewRequest request,
         String visitorToken, String referrer, String currentHost) {
-        var artwork = artworks.findByPublicIdAndPublishedTrueAndArchivedAtIsNull(publicId)
+        var artwork = artworks.findPublishedByPublicId(publicId)
             .orElse(null);
         if (artwork == null) return false;
 

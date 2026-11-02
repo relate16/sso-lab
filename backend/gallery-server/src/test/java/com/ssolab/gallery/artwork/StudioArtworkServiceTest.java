@@ -48,7 +48,7 @@ class StudioArtworkServiceTest {
     void bulkReorderUpdatesAllRequestedArtworksInOneTransaction() {
         ArtworkEntity first = artwork("First", 0);
         ArtworkEntity second = artwork("Second", 1);
-        when(artworks.findAll()).thenReturn(List.of(first, second));
+        when(artworks.findAllByPublicIds(any())).thenReturn(List.of(first, second));
         service().reorder(new GalleryDtos.ReorderRequest(List.of(
             new GalleryDtos.ReorderItem(first.getPublicId(), 1),
             new GalleryDtos.ReorderItem(second.getPublicId(), 0))));

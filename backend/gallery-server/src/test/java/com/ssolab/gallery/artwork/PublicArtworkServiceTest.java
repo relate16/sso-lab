@@ -14,7 +14,7 @@ class PublicArtworkServiceTest {
     void unpublishedArtworkCannotBeResolvedByPublicId() {
         ArtworkRepository repository = mock(ArtworkRepository.class);
         UUID publicId = UUID.randomUUID();
-        when(repository.findByPublicIdAndPublishedTrueAndArchivedAtIsNull(publicId)).thenReturn(Optional.empty());
+        when(repository.findPublishedByPublicId(publicId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> new PublicArtworkService(repository).detail(publicId))
             .isInstanceOf(GalleryNotFoundException.class);

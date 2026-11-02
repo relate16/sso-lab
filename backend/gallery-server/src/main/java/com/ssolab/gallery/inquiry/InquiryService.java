@@ -21,7 +21,7 @@ public class InquiryService {
     @Transactional
     public UUID create(GalleryDtos.InquiryCreate request) {
         if (!request.privacyAgreed()) throw new GalleryValidationException("privacy agreement is required");
-        var artwork = artworks.findByPublicIdAndPublishedTrueAndArchivedAtIsNull(request.artworkId())
+        var artwork = artworks.findPublishedByPublicId(request.artworkId())
             .orElseThrow(() -> new GalleryNotFoundException("artwork not found"));
         String phone = request.phone() == null || request.phone().isBlank() ? null : request.phone().trim();
         var inquiry = new InquiryEntity(artwork, request.name().trim(), request.email().trim(),
@@ -30,7 +30,8 @@ public class InquiryService {
     }
     @Transactional(readOnly = true)
     public GalleryDtos.Page<GalleryDtos.Inquiry> list(int page, int size) {
-        var result = inquiries.findAllByOrderByCreatedAtDesc(PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
+        var result = inquiries.findNewestFirst(
+            PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
         return new GalleryDtos.Page<>(result.stream().map(GalleryDtos.Inquiry::from).toList(),
             result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }

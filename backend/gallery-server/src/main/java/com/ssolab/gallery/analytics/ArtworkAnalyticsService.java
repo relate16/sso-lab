@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ public class ArtworkAnalyticsService {
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
+    @Autowired
     public ArtworkAnalyticsService(JdbcTemplate jdbc) {
         this(jdbc, Clock.systemUTC());
     }

@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -38,7 +37,7 @@ public class StudioArtworkService {
 
     @Transactional(readOnly = true)
     public List<GalleryDtos.Artwork> list() {
-        return artworks.findAll(Sort.by("displayOrder", "createdAt")).stream()
+        return artworks.findAllForStudio().stream()
             .map(GalleryDtos.Artwork::from).toList();
     }
 
@@ -90,7 +89,8 @@ public class StudioArtworkService {
     public void reorder(GalleryDtos.ReorderRequest request) {
         List<UUID> requested = request.items().stream().map(GalleryDtos.ReorderItem::id).toList();
         if (requested.stream().distinct().count() != requested.size()) throw new GalleryValidationException("duplicate artwork");
-        var found = artworks.findAll().stream().collect(java.util.stream.Collectors.toMap(ArtworkEntity::getPublicId, a -> a));
+        var found = artworks.findAllByPublicIds(requested).stream()
+            .collect(java.util.stream.Collectors.toMap(ArtworkEntity::getPublicId, a -> a));
         if (!found.keySet().containsAll(requested)) throw new GalleryNotFoundException("artwork not found");
         Instant now = clock.instant();
         request.items().forEach(item -> found.get(item.id()).reorder(item.displayOrder(), now));

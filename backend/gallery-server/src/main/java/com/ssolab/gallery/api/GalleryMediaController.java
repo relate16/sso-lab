@@ -26,7 +26,7 @@ public class GalleryMediaController {
     @GetMapping(GalleryRoutes.PUBLIC_API + "/media/{storageKey}/{variant}")
     ResponseEntity<FileSystemResource> image(@PathVariable String storageKey,
         @PathVariable String variant) throws IOException {
-        ArtworkImageEntity image = images.findByStorageKeyAndArtworkPublishedTrue(storageKey)
+        ArtworkImageEntity image = images.findPublishedByStorageKey(storageKey)
             .orElseThrow(() -> new GalleryNotFoundException("image not found"));
         String path = switch (variant) {
             case "original" -> image.getOriginalPath();

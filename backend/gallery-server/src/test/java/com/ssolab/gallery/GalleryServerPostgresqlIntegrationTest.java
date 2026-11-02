@@ -18,7 +18,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
-class GalleryServerPostgresqlIntegrationTest {
+class GalleryServerPostgresqlIntegrationTest extends GalleryQueryRepositoryContract {
 
     @Container
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17-alpine");
