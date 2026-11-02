@@ -83,6 +83,9 @@ public class ArtworkEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
     @OneToMany(mappedBy = "artwork", cascade = CascadeType.ALL, orphanRemoval = true,
         fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC")
@@ -142,6 +145,8 @@ public class ArtworkEntity {
     public Instant getPublishedAt() { return publishedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public Instant getArchivedAt() { return archivedAt; }
+    public boolean isArchived() { return archivedAt != null; }
     public List<ArtworkImageEntity> getImages() { return Collections.unmodifiableList(images); }
 
     public void update(String title, String description, Integer year, String material,
@@ -170,4 +175,14 @@ public class ArtworkEntity {
     public void addImage(ArtworkImageEntity image) { images.add(Objects.requireNonNull(image)); }
     public void removeImage(ArtworkImageEntity image) { images.remove(image); }
     public void reorder(int order, Instant now) { displayOrder = order; updatedAt = now; }
+    public void archive(Instant now) {
+        published = false;
+        publishedAt = null;
+        archivedAt = Objects.requireNonNull(now);
+        updatedAt = now;
+    }
+    public void restore(Instant now) {
+        archivedAt = null;
+        updatedAt = Objects.requireNonNull(now);
+    }
 }

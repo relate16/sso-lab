@@ -60,6 +60,9 @@ public class StudioArtworkService {
     @Transactional
     public GalleryDtos.Artwork update(UUID publicId, GalleryDtos.ArtworkUpsert request) {
         ArtworkEntity artwork = find(publicId);
+        if (artwork.isArchived() && request.published()) {
+            throw new GalleryValidationException("restore the artwork before publishing");
+        }
         if (request.published() && artwork.getImages().stream().noneMatch(ArtworkImageEntity::isPrimary)) {
             throw new GalleryValidationException("a primary image is required before publishing");
         }
@@ -71,12 +74,16 @@ public class StudioArtworkService {
     }
 
     @Transactional
-    public void delete(UUID publicId) {
+    public void archive(UUID publicId) {
         ArtworkEntity artwork = find(publicId);
-        List<StoredArtworkImage> stored = artwork.getImages().stream().map(this::stored).toList();
-        artworks.delete(artwork);
-        artworks.flush();
-        stored.forEach(image -> { try { storage.delete(image); } catch (IOException ignored) { } });
+        artwork.archive(clock.instant());
+    }
+
+    @Transactional
+    public GalleryDtos.Artwork restore(UUID publicId) {
+        ArtworkEntity artwork = find(publicId);
+        artwork.restore(clock.instant());
+        return GalleryDtos.Artwork.from(artwork);
     }
 
     @Transactional

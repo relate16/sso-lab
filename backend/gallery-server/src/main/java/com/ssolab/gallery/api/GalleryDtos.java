@@ -37,7 +37,7 @@ public final class GalleryDtos {
         String material, BigDecimal widthCm, BigDecimal heightCm, BigDecimal price,
         SaleStatus saleStatus, FrameType frameType, boolean published, boolean featured,
         BigDecimal carouselFocalX, BigDecimal carouselFocalY, BigDecimal carouselZoom,
-        int displayOrder, Instant publishedAt, List<Image> images) {
+        int displayOrder, Instant publishedAt, Instant archivedAt, List<Image> images) {
         public static Artwork from(ArtworkEntity artwork) {
             List<Image> images = artwork.getImages().stream()
                 .sorted(Comparator.comparingInt(ArtworkImageEntity::getSortOrder))
@@ -47,7 +47,7 @@ public final class GalleryDtos {
                 artwork.getHeightCm(), artwork.getPrice(), artwork.getSaleStatus(),
                 artwork.getFrameType(), artwork.isPublished(), artwork.isFeatured(),
                 artwork.getCarouselFocalX(), artwork.getCarouselFocalY(), artwork.getCarouselZoom(),
-                artwork.getDisplayOrder(), artwork.getPublishedAt(), images);
+                artwork.getDisplayOrder(), artwork.getPublishedAt(), artwork.getArchivedAt(), images);
         }
     }
 

@@ -21,7 +21,7 @@ public class InquiryService {
     @Transactional
     public UUID create(GalleryDtos.InquiryCreate request) {
         if (!request.privacyAgreed()) throw new GalleryValidationException("privacy agreement is required");
-        var artwork = artworks.findByPublicIdAndPublishedTrue(request.artworkId())
+        var artwork = artworks.findByPublicIdAndPublishedTrueAndArchivedAtIsNull(request.artworkId())
             .orElseThrow(() -> new GalleryNotFoundException("artwork not found"));
         String phone = request.phone() == null || request.phone().isBlank() ? null : request.phone().trim();
         var inquiry = new InquiryEntity(artwork, request.name().trim(), request.email().trim(),

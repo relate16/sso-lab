@@ -27,7 +27,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.security.web.savedrequest.NullRequestCache;
 
 @Configuration
-@EnableConfigurationProperties(GalleryOidcProperties.class)
+@EnableConfigurationProperties({GalleryOidcProperties.class, GalleryAnalyticsProperties.class})
 public class GallerySecurityConfig {
     @Bean
     ClientRegistrationRepository clientRegistrationRepository(GalleryOidcProperties p) {
@@ -62,6 +62,7 @@ public class GallerySecurityConfig {
                 .requestMatchers("/api/v1/csrf", "/api/v1/session").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/gallery/home", "/api/v1/gallery/artworks/**",
                     "/api/v1/gallery/media/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/gallery/artworks/*/views").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/gallery/inquiries").permitAll()
                 .requestMatchers("/api/v1/gallery/studio/**").hasRole("ADMIN")
                 .anyRequest().denyAll())
@@ -83,7 +84,8 @@ public class GallerySecurityConfig {
                 })))
             .logout(logout -> logout.logoutUrl("/api/v1/logout").logoutSuccessHandler(logoutSuccess))
             .csrf(csrf -> csrf.ignoringRequestMatchers(request -> "POST".equals(request.getMethod())
-                && "/internal/oidc/backchannel-logout".equals(request.getServletPath())))
+                && ("/internal/oidc/backchannel-logout".equals(request.getRequestURI())
+                    || request.getRequestURI().matches("/api/v1/gallery/artworks/[^/]+/views"))))
             .requestCache(cache -> cache.requestCache(new NullRequestCache()))
             .formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable);
         SecurityHeaders.apply(http);

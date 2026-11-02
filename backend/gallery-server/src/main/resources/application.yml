@@ -44,6 +44,9 @@ server:
         same-site: lax
 
 gallery:
+  analytics:
+    dedup-minutes: 30
+    cookie-max-age-days: 365
   storage:
     root: ${GALLERY_STORAGE_ROOT:./.tooling/gallery-storage}
     max-upload-bytes: ${GALLERY_MAX_UPLOAD_BYTES:12582912}

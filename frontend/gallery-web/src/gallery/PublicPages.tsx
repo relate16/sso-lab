@@ -1,12 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { publicApi } from '../api'
-import type { Artwork, Page } from '../types'
+import type { Artwork, ArtworkEntrySource, Page } from '../types'
 import { ArtworkCard } from './ArtworkCard'
 import { ArtworkLightbox } from './ArtworkLightbox'
 import { InquiryDrawer } from './InquiryDrawer'
 import { HomeArtworkRail } from './HomeArtworkRail'
 import { HomeExhibition } from './HomeExhibition'
+import { useArtworkView } from './useArtworkView'
+
+const ENTRY_SOURCES = new Set<ArtworkEntrySource>(['DIRECT', 'HOME_CAROUSEL', 'HOME_EXHIBITION', 'WORKS_GRID', 'WORKS_LIGHTBOX', 'INTERNAL', 'EXTERNAL', 'UNKNOWN'])
+
+function parseEntrySource(value: string | null): ArtworkEntrySource {
+  return value && ENTRY_SOURCES.has(value as ArtworkEntrySource) ? value as ArtworkEntrySource : 'DIRECT'
+}
+
+function TrackedArtworkCard({ artwork, enabled, onInquiry, onView }: {
+  artwork: Artwork
+  enabled: boolean
+  onInquiry: (artwork: Artwork) => void
+  onView: (artwork: Artwork) => void
+}) {
+  const viewRef = useArtworkView(artwork.id, 'WORKS_GRID', 'DIRECT', enabled)
+  return <div ref={viewRef}><ArtworkCard artwork={artwork} onInquiry={onInquiry} onView={onView} /></div>
+}
 
 function useHomeArtworks() {
   const [state, setState] = useState<{ loading: boolean; error: boolean; data: Artwork[] }>({ loading: true, error: false, data: [] })
@@ -64,8 +81,10 @@ export function WorksPage() {
   const artworkCards = useRef(new Map<string, HTMLDivElement>())
   const pendingRevealArtworkId = useRef<string | null>(null)
   const lightboxId = params.get('artwork')
+  const entrySource = parseEntrySource(params.get('source'))
   const apiParams = new URLSearchParams(params)
   apiParams.delete('artwork')
+  apiParams.delete('source')
   const queryKey = apiParams.toString()
   useEffect(() => { let active = true; setError(false); publicApi.artworks(new URLSearchParams(queryKey)).then((data) => active && setResult(data)).catch(() => active && setError(true)); return () => { active = false } }, [queryKey])
   useEffect(() => {
@@ -89,10 +108,10 @@ export function WorksPage() {
     }, 0)
     return () => window.clearTimeout(timer)
   }, [lightboxId])
-  function selectArtwork(artwork: Artwork) { const next = new URLSearchParams(params); next.set('artwork', artwork.id); setParams(next) }
+  function selectArtwork(artwork: Artwork) { const next = new URLSearchParams(params); next.set('artwork', artwork.id); next.set('source', 'WORKS_GRID'); setParams(next) }
   function closeLightbox() {
     if (selectedArtwork) pendingRevealArtworkId.current = selectedArtwork.id
-    const next = new URLSearchParams(params); next.delete('artwork'); setParams(next, { replace: true })
+    const next = new URLSearchParams(params); next.delete('artwork'); next.delete('source'); setParams(next, { replace: true })
   }
   function selectAdjacent(offset: number) { if (!result || listedIndex < 0) return; const next = result.content[listedIndex + offset]; if (next) selectArtwork(next) }
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const next = new URLSearchParams(); for (const [key, value] of form) if (String(value).trim()) next.set(key, String(value).trim()); setParams(next) }
@@ -110,10 +129,10 @@ export function WorksPage() {
     <div className="works-summary"><span>{result ? `${result.totalElements} works` : 'Loading'}</span></div>
     {error && <div className="public-status" role="alert"><p>작품을 불러오지 못했습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 시도</button></div>}
     {!error && result?.content.length === 0 && <p className="public-status">조건에 맞는 작품이 없습니다.</p>}
-    <div className="works-grid">{result?.content.map((artwork) => <div className="artwork-card-anchor" key={artwork.id} ref={(element) => { if (element) artworkCards.current.set(artwork.id, element); else artworkCards.current.delete(artwork.id) }}><ArtworkCard artwork={artwork} onInquiry={setInquiry} onView={selectArtwork} /></div>)}</div>
+    <div className="works-grid">{result?.content.map((artwork) => <div className="artwork-card-anchor" key={artwork.id} ref={(element) => { if (element) artworkCards.current.set(artwork.id, element); else artworkCards.current.delete(artwork.id) }}><TrackedArtworkCard artwork={artwork} enabled={!selectedArtwork} onInquiry={setInquiry} onView={selectArtwork} /></div>)}</div>
     {result && result.totalPages > 1 && <nav className="pagination" aria-label="작품 목록 페이지">{Array.from({ length: result.totalPages }, (_, page) => <button key={page} type="button" aria-current={result.page === page ? 'page' : undefined} onClick={() => { const next = new URLSearchParams(params); next.set('page', String(page)); setParams(next) }}>{page + 1}</button>)}</nav>}
     <InquiryDrawer artwork={inquiry} onClose={() => setInquiry(null)} />
-    {selectedArtwork && <ArtworkLightbox artwork={selectedArtwork} hasPrevious={listedIndex > 0} hasNext={Boolean(result && listedIndex >= 0 && listedIndex < result.content.length - 1)} onClose={closeLightbox} onPrevious={() => selectAdjacent(-1)} onNext={() => selectAdjacent(1)} onInquiry={(artwork) => { closeLightbox(); setInquiry(artwork) }} />}
+    {selectedArtwork && <ArtworkLightbox artwork={selectedArtwork} entrySource={entrySource} hasPrevious={listedIndex > 0} hasNext={Boolean(result && listedIndex >= 0 && listedIndex < result.content.length - 1)} onClose={closeLightbox} onPrevious={() => selectAdjacent(-1)} onNext={() => selectAdjacent(1)} onInquiry={(artwork) => { closeLightbox(); setInquiry(artwork) }} />}
   </section>
 }
 

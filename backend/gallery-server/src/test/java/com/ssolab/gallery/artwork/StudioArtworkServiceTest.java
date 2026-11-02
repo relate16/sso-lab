@@ -74,6 +74,18 @@ class StudioArtworkServiceTest {
         verify(images, never()).save(any());
     }
 
+    @Test
+    void deletingAnArtworkArchivesItWithoutDeletingImages() {
+        ArtworkEntity existing = artwork("Published work", 0);
+        when(artworks.findByPublicId(existing.getPublicId())).thenReturn(Optional.of(existing));
+
+        service().archive(existing.getPublicId());
+
+        assertThat(existing.isArchived()).isTrue();
+        assertThat(existing.isPublished()).isFalse();
+        verify(artworks, never()).delete(existing);
+    }
+
     private StudioArtworkService service() {
         return new StudioArtworkService(artworks, images, storage,
             Clock.fixed(Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC));

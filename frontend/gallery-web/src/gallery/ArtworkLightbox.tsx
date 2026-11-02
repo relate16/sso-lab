@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Artwork } from '../types'
+import type { Artwork, ArtworkEntrySource } from '../types'
 import { formatPrice, primaryImage, saleLabels } from './ArtworkCard'
+import { useArtworkView } from './useArtworkView'
 
 type Point = { x: number; y: number }
 
-export function ArtworkLightbox({ artwork, hasNext, hasPrevious, onClose, onInquiry, onNext, onPrevious }: {
+export function ArtworkLightbox({ artwork, entrySource, hasNext, hasPrevious, onClose, onInquiry, onNext, onPrevious }: {
   artwork: Artwork
+  entrySource: ArtworkEntrySource
   hasNext: boolean
   hasPrevious: boolean
   onClose: () => void
@@ -21,6 +23,7 @@ export function ArtworkLightbox({ artwork, hasNext, hasPrevious, onClose, onInqu
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const image = primaryImage(artwork)
+  const viewRef = useArtworkView(artwork.id, 'WORKS_LIGHTBOX', entrySource)
 
   useEffect(() => {
     setZoom(1)
@@ -77,7 +80,7 @@ export function ArtworkLightbox({ artwork, hasNext, hasPrevious, onClose, onInqu
     setDragging(false)
   }
 
-  return <div className="artwork-lightbox" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+  return <div ref={viewRef} className="artwork-lightbox" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div className="artwork-lightbox-dialog" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
       <header className="artwork-lightbox-header">
         <p className="eyebrow">Artwork view</p>
@@ -97,7 +100,7 @@ export function ArtworkLightbox({ artwork, hasNext, hasPrevious, onClose, onInqu
           {artwork.description && <p className="artwork-lightbox-description">{artwork.description}</p>}
           <p className="artwork-lightbox-price">{formatPrice(artwork.price)}</p>
           <div className="artwork-lightbox-actions">
-            <Link to={`/artworks/${artwork.id}?scene=1`}>전시장에서 보기</Link>
+            <Link to={`/artworks/${artwork.id}?scene=1&source=WORKS_LIGHTBOX`}>전시장에서 보기</Link>
             <button type="button" onClick={() => onInquiry(artwork)}>작품 문의</button>
           </div>
         </aside>

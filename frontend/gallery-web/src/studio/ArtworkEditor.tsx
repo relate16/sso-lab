@@ -178,6 +178,16 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
     if (id) setArtwork(await studioApi.artwork(id))
   }
 
+  const restore = async () => {
+    if (!id) return
+    try {
+      setArtwork(await studioApi.restore(csrf, id))
+      setMessage('작품을 비공개 상태로 복원했습니다.')
+    } catch {
+      setMessage('작품을 복원하지 못했습니다.')
+    }
+  }
+
   return <section className="studio-page editor-page">
     <header className="studio-page-header"><div><Link to="/studio/artworks">← 작품 목록</Link><h1>{id ? '작품 수정' : '새 작품'}</h1></div></header>
     {message && <p className="inline-notice" role="status">{message}</p>}
@@ -249,13 +259,14 @@ export function ArtworkEditor({ csrf }: { csrf: Csrf }) {
       </fieldset>
 
       <label className="check"><input type="checkbox" checked={form.featured} onChange={e => set('featured', e.target.checked)} /> 대표작</label>
-      <label className="check"><input type="checkbox" checked={form.published} disabled={!canPublish} onChange={e => set('published', e.target.checked)} /> 공개 {!canPublish && <span className="check-help">(이미지 선택 후 가능)</span>}</label>
+      <label className="check"><input type="checkbox" checked={form.published} disabled={!canPublish || Boolean(artwork?.archivedAt)} onChange={e => set('published', e.target.checked)} /> 공개 {!canPublish && <span className="check-help">(이미지 선택 후 가능)</span>}{artwork?.archivedAt && <span className="check-help">(복원 후 공개 가능)</span>}</label>
       <div className="full form-actions">
         <button className="primary-action" type="submit" disabled={saving}>{saving ? '저장 중…' : '저장'}</button>
-        {id && <button className="danger-action" type="button" onClick={() => setConfirmDelete(true)}>작품 삭제</button>}
+        {id && !artwork?.archivedAt && <button className="danger-action" type="button" onClick={() => setConfirmDelete(true)}>작품 보관</button>}
+        {id && artwork?.archivedAt && <button type="button" onClick={() => void restore()}>작품 복원</button>}
       </div>
     </form>
 
-    {confirmDelete && <div className="dialog-backdrop" role="presentation"><div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title"><h2 id="delete-title">작품을 삭제할까요?</h2><p>작품과 저장된 이미지가 함께 삭제됩니다.</p><div><button onClick={() => setConfirmDelete(false)}>취소</button><button className="danger-action" onClick={() => { if (id) void studioApi.remove(csrf, id).then(() => navigate('/studio/artworks')) }}>삭제</button></div></div></div>}
+    {confirmDelete && <div className="dialog-backdrop" role="presentation"><div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title"><h2 id="delete-title">작품을 보관할까요?</h2><p>공개 전시에서는 즉시 내려가지만 이미지, 문의와 조회 통계는 유지됩니다.</p><div><button onClick={() => setConfirmDelete(false)}>취소</button><button className="danger-action" onClick={() => { if (id) void studioApi.remove(csrf, id).then(() => navigate('/studio/artworks')) }}>보관</button></div></div></div>}
   </section>
 }

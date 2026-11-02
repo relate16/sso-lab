@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Artwork } from '../types'
+import { useArtworkView } from './useArtworkView'
 import { ArtworkFrame, framedMountDimensions } from './ArtworkFrame'
 import { frameDepthCm, frameVisibleBounds, type FrameOrientation } from './frameGeometry'
 import { EXHIBITION_WALL_SIZE_CM, HOME_LIGHT_PRESETS, HOME_SCENE, HOME_SHADOW_PRESETS, HOME_SLOTS, SCENE_REFERENCE_SIZE, type HomeSlot } from './sceneDefinitions'
@@ -287,6 +288,11 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
   slot: HomeSlot
 }) {
   const slotRef = useRef<HTMLAnchorElement>(null)
+  const viewRef = useArtworkView(artwork.id, 'HOME_EXHIBITION', 'DIRECT')
+  const setSlotRef = useCallback((element: HTMLAnchorElement | null) => {
+    slotRef.current = element
+    viewRef(element)
+  }, [viewRef])
   const planeRef = useRef<HTMLSpanElement>(null)
   const [debugProjection, setDebugProjection] = useState<DebugProjection | null>(null)
   const [frameProjection, setFrameProjection] = useState<FrameProjection | null>(null)
@@ -434,9 +440,9 @@ function HomeArtworkMount({ artwork, debug, geometry, index, onDiagnostics, slot
 
   return <Link
     className={`home-artwork-slot home-artwork-slot-${slot.id}`}
-    ref={slotRef}
+    ref={setSlotRef}
     style={style}
-    to={`/artworks/${artwork.id}?scene=1`}
+    to={`/artworks/${artwork.id}?scene=1&source=HOME_EXHIBITION`}
     aria-label={`${artwork.title} 작품 전시장 보기`}
     title={artwork.title}
   >

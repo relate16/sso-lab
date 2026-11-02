@@ -9,8 +9,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ssolab.gallery.api.InquiryController;
+import com.ssolab.gallery.api.ArtworkViewController;
 import com.ssolab.gallery.api.PublicGalleryController;
+import com.ssolab.gallery.api.StudioAnalyticsController;
 import com.ssolab.gallery.api.StudioGalleryController;
+import com.ssolab.gallery.analytics.ArtworkAnalyticsService;
+import com.ssolab.gallery.analytics.ArtworkViewService;
 import com.ssolab.gallery.artwork.PublicArtworkService;
 import com.ssolab.gallery.artwork.StudioArtworkService;
 import com.ssolab.gallery.config.GallerySecurityConfig;
@@ -30,7 +34,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = {PublicGalleryController.class, StudioGalleryController.class,
-    InquiryController.class})
+    InquiryController.class, ArtworkViewController.class, StudioAnalyticsController.class})
 @Import({GallerySecurityConfig.class, BffSessionRegistry.class,
     GallerySecurityApplicationTest.SecurityTestConfiguration.class})
 @TestPropertySource(properties = {
@@ -54,6 +58,8 @@ class GallerySecurityApplicationTest {
     @MockitoBean StudioArtworkService studioArtworks;
     @MockitoBean InquiryService inquiries;
     @MockitoBean InquiryRateLimiter rateLimiter;
+    @MockitoBean ArtworkViewService artworkViews;
+    @MockitoBean ArtworkAnalyticsService analytics;
 
     @Test
     void publicBrowsingIsAnonymousButStudioRequiresAdmin(@Autowired MockMvc mvc) throws Exception {
@@ -81,5 +87,23 @@ class GallerySecurityApplicationTest {
         mvc.perform(post("/api/v1/gallery/inquiries").with(csrf())
                 .contentType("application/json").content(request))
             .andExpect(status().isCreated());
+    }
+
+    @Test
+    void anonymousViewTrackingDoesNotRequireCsrfButAnalyticsRequiresAdmin(
+        @Autowired MockMvc mvc) throws Exception {
+        String request = """
+            {"surface":"DETAIL_SCENE","entrySource":"DIRECT"}
+            """;
+        mvc.perform(post("/api/v1/gallery/artworks/{id}/views",
+                "11111111-1111-4111-8111-111111111111")
+                .header("User-Agent", "Mozilla/5.0")
+                .contentType("application/json").content(request))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/gallery/studio/analytics"))
+            .andExpect(status().is3xxRedirection());
+        mvc.perform(get("/api/v1/gallery/studio/analytics").with(oidcLogin()
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+            .andExpect(status().isOk());
     }
 }

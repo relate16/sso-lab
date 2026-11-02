@@ -20,20 +20,21 @@ public class PublicArtworkService {
 
     @Transactional(readOnly = true)
     public List<GalleryDtos.Artwork> home() {
-        return artworks.findTop4ByPublishedTrueOrderByPublishedAtDesc().stream()
+        return artworks.findTop4ByPublishedTrueAndArchivedAtIsNullOrderByPublishedAtDesc().stream()
             .map(GalleryDtos.Artwork::from).toList();
     }
 
     @Transactional(readOnly = true)
     public GalleryDtos.Artwork detail(UUID publicId) {
-        return GalleryDtos.Artwork.from(artworks.findByPublicIdAndPublishedTrue(publicId)
+        return GalleryDtos.Artwork.from(artworks.findByPublicIdAndPublishedTrueAndArchivedAtIsNull(publicId)
             .orElseThrow(() -> new GalleryNotFoundException("artwork not found")));
     }
 
     @Transactional(readOnly = true)
     public GalleryDtos.Page<GalleryDtos.Artwork> search(String query, SaleStatus saleStatus,
         BigDecimal minPrice, BigDecimal maxPrice, String sizeBand, String sort, int page, int size) {
-        Specification<ArtworkEntity> spec = (root, ignored, cb) -> cb.isTrue(root.get("published"));
+        Specification<ArtworkEntity> spec = (root, ignored, cb) -> cb.and(
+            cb.isTrue(root.get("published")), cb.isNull(root.get("archivedAt")));
         if (query != null && !query.isBlank()) {
             String term = "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
             spec = spec.and((root, ignored, cb) -> cb.or(

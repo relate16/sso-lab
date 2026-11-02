@@ -254,7 +254,7 @@ test('Scene rail preserves context when changing artworks and exposes accurate n
   assert.doesNotMatch(scene, /activeRailItem\.current\?\.scrollIntoView/)
   assert.match(scene, /const itemLeft = element\.scrollLeft \+ itemRect\.left - railRect\.left/)
   assert.match(scene, /itemRight > visibleRight[\s\S]*element\.scrollLeft = Math\.min/)
-  assert.match(scene, /navigate\(`\/artworks\/\$\{selectedId\}\?scene=\$\{scene\}`\)/)
+  assert.match(scene, /navigate\(`\/artworks\/\$\{selectedId\}\?scene=\$\{scene\}&source=INTERNAL`\)/)
   assert.match(scene, /disabled=\{!railBounds\.canScrollLeft\}/)
   assert.match(scene, /disabled=\{!railBounds\.canScrollRight\}/)
   assert.match(scene, /aria-current=\{active \? 'true' : undefined\}/)

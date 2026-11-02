@@ -1,4 +1,4 @@
-import type { Artwork, Csrf, Inquiry, InquiryCreate, InquiryStatus, Page, Session } from './types'
+import type { AnalyticsOverview, Artwork, ArtworkEntrySource, ArtworkViewSurface, Csrf, Inquiry, InquiryCreate, InquiryStatus, Page, Session } from './types'
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 async function responseJson<T>(response: Response): Promise<T> {
@@ -21,6 +21,7 @@ export const studioApi = {
   create: (csrf: Csrf, body: unknown) => mutation<Artwork>(csrf, '/api/v1/gallery/studio/artworks', 'POST', body),
   update: (csrf: Csrf, id: string, body: unknown) => mutation<Artwork>(csrf, `/api/v1/gallery/studio/artworks/${id}`, 'PATCH', body),
   remove: (csrf: Csrf, id: string) => mutation<void>(csrf, `/api/v1/gallery/studio/artworks/${id}`, 'DELETE'),
+  restore: (csrf: Csrf, id: string) => mutation<Artwork>(csrf, `/api/v1/gallery/studio/artworks/${id}/restore`, 'POST'),
   reorder: (csrf: Csrf, artworks: Artwork[]) => mutation<void>(csrf, '/api/v1/gallery/studio/artworks/order', 'PATCH', { items: artworks.map((artwork, displayOrder) => ({ id: artwork.id, displayOrder })) }),
   upload: async (csrf: Csrf, id: string, file: File) => {
     const body = new FormData(); body.append('file', file)
@@ -30,12 +31,22 @@ export const studioApi = {
   removeImage: (csrf: Csrf, id: string, imageId: string) => mutation<void>(csrf, `/api/v1/gallery/studio/artworks/${id}/images/${imageId}`, 'DELETE'),
   inquiries: async () => responseJson<{ content: Inquiry[] }>(await fetch('/api/v1/gallery/studio/inquiries', { credentials: 'include', cache: 'no-store' })),
   inquiryStatus: (csrf: Csrf, id: string, status: InquiryStatus) => mutation<void>(csrf, `/api/v1/gallery/studio/inquiries/${id}`, 'PATCH', { status }),
+  analytics: async () => responseJson<AnalyticsOverview>(await fetch('/api/v1/gallery/studio/analytics', { credentials: 'include', cache: 'no-store' })),
 }
 
 export const publicApi = {
   home: async () => responseJson<Artwork[]>(await fetch('/api/v1/gallery/home', { cache: 'no-store' })),
   artworks: async (params: URLSearchParams) => responseJson<Page<Artwork>>(await fetch(`/api/v1/gallery/artworks?${params}`, { cache: 'no-store' })),
   artwork: async (id: string) => responseJson<Artwork>(await fetch(`/api/v1/gallery/artworks/${id}`, { cache: 'no-store' })),
+  view: async (id: string, surface: ArtworkViewSurface, entrySource: ArtworkEntrySource) => {
+    await fetch(`/api/v1/gallery/artworks/${id}/views`, {
+      method: 'POST',
+      credentials: 'include',
+      keepalive: true,
+      headers: jsonHeaders,
+      body: JSON.stringify({ surface, entrySource }),
+    })
+  },
   inquire: async (body: InquiryCreate) => {
     const csrf = await responseJson<Csrf>(await fetch('/api/v1/csrf', { credentials: 'include', cache: 'no-store' }))
     return mutation<{ id: string }>(csrf, '/api/v1/gallery/inquiries', 'POST', body)

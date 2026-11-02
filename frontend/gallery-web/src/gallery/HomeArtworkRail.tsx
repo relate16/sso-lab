@@ -3,8 +3,33 @@ import { Link } from 'react-router-dom'
 import type { Artwork } from '../types'
 import { primaryImage } from './ArtworkCard'
 import { carouselCropStyle, createCarouselCropLayout } from './carouselCrop'
+import { useArtworkView } from './useArtworkView'
 
 const WORKS_PAGE_SIZE = 24
+
+function HomeArtworkTile({ artwork, index }: { artwork: Artwork; index: number }) {
+  const viewRef = useArtworkView(artwork.id, 'HOME_CAROUSEL', 'DIRECT')
+  const image = primaryImage(artwork)
+  const targetParams = new URLSearchParams({ artwork: artwork.id, source: 'HOME_CAROUSEL' })
+  const page = Math.floor(index / WORKS_PAGE_SIZE)
+  if (page > 0) targetParams.set('page', String(page))
+  const focalX = Number.isFinite(artwork.carouselFocalX) ? artwork.carouselFocalX : .5
+  const focalY = Number.isFinite(artwork.carouselFocalY) ? artwork.carouselFocalY : .5
+  const zoom = Number.isFinite(artwork.carouselZoom) ? artwork.carouselZoom : 1
+  const cropStyle = carouselCropStyle(createCarouselCropLayout(
+    image?.widthPx ?? 16,
+    image?.heightPx ?? 9,
+    focalX,
+    focalY,
+    zoom,
+  ))
+  return <Link ref={viewRef} className="home-artwork-tile" style={cropStyle} to={`/works?${targetParams}`} aria-label={`${artwork.title} 작품 메뉴에서 보기`}>
+    <span className="home-artwork-tile-media">
+      {image ? <img src={image.thumbnailUrl} alt="" loading="lazy" width={image.widthPx} height={image.heightPx} /> : <span className="home-artwork-tile-empty">이미지 준비 중</span>}
+    </span>
+    <strong>{artwork.title}</strong>
+  </Link>
+}
 
 export function HomeArtworkRail({ artworks }: { artworks: Artwork[] }) {
   const viewport = useRef<HTMLDivElement>(null)
@@ -43,26 +68,7 @@ export function HomeArtworkRail({ artworks }: { artworks: Artwork[] }) {
     <button className="home-artwork-rail-button previous" type="button" aria-label="이전 작품 보기" disabled={!bounds.canScrollLeft} onClick={() => scroll(-1)}>‹</button>
     <div className="home-artwork-rail-viewport" ref={viewport} onScroll={updateBounds}>
       {artworks.map((artwork, index) => {
-        const image = primaryImage(artwork)
-        const targetParams = new URLSearchParams({ artwork: artwork.id })
-        const page = Math.floor(index / WORKS_PAGE_SIZE)
-        if (page > 0) targetParams.set('page', String(page))
-        const focalX = Number.isFinite(artwork.carouselFocalX) ? artwork.carouselFocalX : .5
-        const focalY = Number.isFinite(artwork.carouselFocalY) ? artwork.carouselFocalY : .5
-        const zoom = Number.isFinite(artwork.carouselZoom) ? artwork.carouselZoom : 1
-        const cropStyle = carouselCropStyle(createCarouselCropLayout(
-          image?.widthPx ?? 16,
-          image?.heightPx ?? 9,
-          focalX,
-          focalY,
-          zoom,
-        ))
-        return <Link className="home-artwork-tile" style={cropStyle} to={`/works?${targetParams}`} key={artwork.id} aria-label={`${artwork.title} 작품 메뉴에서 보기`}>
-          <span className="home-artwork-tile-media">
-            {image ? <img src={image.thumbnailUrl} alt="" loading="lazy" width={image.widthPx} height={image.heightPx} /> : <span className="home-artwork-tile-empty">이미지 준비 중</span>}
-          </span>
-          <strong>{artwork.title}</strong>
-        </Link>
+        return <HomeArtworkTile artwork={artwork} index={index} key={artwork.id} />
       })}
     </div>
     <button className="home-artwork-rail-button next" type="button" aria-label="다음 작품 보기" disabled={!bounds.canScrollRight} onClick={() => scroll(1)}>›</button>

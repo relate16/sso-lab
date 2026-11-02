@@ -34,7 +34,9 @@ public class StudioGalleryController {
     GalleryDtos.Artwork update(@PathVariable UUID id,
         @Valid @RequestBody GalleryDtos.ArtworkUpsert request) { return service.update(id, request); }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
-    void delete(@PathVariable UUID id) { service.delete(id); }
+    void archive(@PathVariable UUID id) { service.archive(id); }
+    @PostMapping("/{id}/restore")
+    GalleryDtos.Artwork restore(@PathVariable UUID id) { return service.restore(id); }
     @PatchMapping("/order") @ResponseStatus(HttpStatus.NO_CONTENT)
     void reorder(@Valid @RequestBody GalleryDtos.ReorderRequest request) { service.reorder(request); }
     @PostMapping(path = "/{id}/images", consumes = "multipart/form-data")

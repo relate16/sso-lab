@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { publicApi } from '../api'
-import type { Artwork, Page } from '../types'
+import type { Artwork, ArtworkEntrySource, Page } from '../types'
 import { ArtworkFrame } from './ArtworkFrame'
 import { InquiryDrawer } from './InquiryDrawer'
 import { ArtworkStoryDrawer } from './ArtworkStoryDrawer'
 import { isValidScene, parseScene } from './sceneState'
 import { EXHIBITION_WALL_SIZE_CM, SCENE_DEFINITIONS, SCENE_REFERENCE_SIZE } from './sceneDefinitions'
+import { useArtworkView } from './useArtworkView'
 
 const MAX_ZOOM_LEVEL = 10
 const WHEEL_ZOOM_THRESHOLD = 90
@@ -36,9 +37,21 @@ export function GalleryScene() {
   const wheelZoom = useRef({ accumulatedDelta: 0, direction: 0, lastAt: 0, streak: 0 })
   const zoomLevelRef = useRef(zoomLevel)
   const definition = SCENE_DEFINITIONS[scene]
+  const requestedSource = search.get('source')
+  const entrySource: ArtworkEntrySource = requestedSource && ['DIRECT', 'HOME_CAROUSEL', 'HOME_EXHIBITION', 'WORKS_GRID', 'WORKS_LIGHTBOX', 'INTERNAL', 'EXTERNAL', 'UNKNOWN'].includes(requestedSource)
+    ? requestedSource as ArtworkEntrySource : 'DIRECT'
+  const sceneViewRef = useArtworkView(artwork?.id, 'DETAIL_SCENE', entrySource)
+  const setSceneSpaceRef = useCallback((element: HTMLDivElement | null) => {
+    sceneSpace.current = element
+    sceneViewRef(element)
+  }, [sceneViewRef])
   const visibleCollection = useMemo(() => collection.filter((item) => item.title.toLocaleLowerCase().includes(railQuery.trim().toLocaleLowerCase())), [collection, railQuery])
   useEffect(() => {
-    if (!isValidScene(search.get('scene'))) setSearch({ scene: '1' }, { replace: true })
+    if (!isValidScene(search.get('scene'))) {
+      const next = new URLSearchParams(search)
+      next.set('scene', '1')
+      setSearch(next, { replace: true })
+    }
   }, [search, setSearch])
   useEffect(() => {
     let active = true; setError(false); setArtwork(null)
@@ -168,7 +181,7 @@ export function GalleryScene() {
   }, [updateRailBounds])
   const selectArtwork = useCallback((selectedId: string) => {
     pendingRailScrollLeft.current = rail.current?.scrollLeft ?? null
-    navigate(`/artworks/${selectedId}?scene=${scene}`)
+    navigate(`/artworks/${selectedId}?scene=${scene}&source=INTERNAL`)
   }, [navigate, scene])
   const scrollRail = (left: number) => rail.current?.scrollBy({
     left,
@@ -231,7 +244,7 @@ export function GalleryScene() {
       onPointerDown={startPan}
       onPointerMove={movePan}
       onPointerUp={stopPan}
-      ref={sceneSpace}
+      ref={setSceneSpaceRef}
       style={sceneStyle}
     >
       <div className="scene-camera" ref={sceneCamera}>

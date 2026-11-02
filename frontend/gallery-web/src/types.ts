@@ -1,10 +1,25 @@
 export type SaleStatus = 'NOT_FOR_SALE' | 'AVAILABLE' | 'RESERVED' | 'SOLD'
 export type FrameType = 'NONE' | 'MAT_BOARD' | 'ACRYLIC_BOX' | 'FLOATING_FRAME'
 export type InquiryStatus = 'NEW' | 'READ' | 'CLOSED'
+export type ArtworkViewSurface = 'HOME_CAROUSEL' | 'HOME_EXHIBITION' | 'WORKS_GRID' | 'WORKS_LIGHTBOX' | 'DETAIL_SCENE'
+export type ArtworkEntrySource = 'DIRECT' | 'HOME_CAROUSEL' | 'HOME_EXHIBITION' | 'WORKS_GRID' | 'WORKS_LIGHTBOX' | 'INTERNAL' | 'EXTERNAL' | 'UNKNOWN'
 export type Csrf = { headerName: string; parameterName: string; token: string }
 export type Session = { authenticated: boolean; name?: string; preferred_username?: string; roles?: string[] }
 export type ArtworkImage = { id: string; storageKey: string; originalUrl: string; webUrl: string; thumbnailUrl: string; widthPx: number; heightPx: number; sortOrder: number; primary: boolean }
-export type Artwork = { id: string; title: string; description: string; year: number | null; material: string | null; widthCm: number; heightCm: number; price: number | null; saleStatus: SaleStatus; frameType: FrameType; published: boolean; featured: boolean; carouselFocalX: number; carouselFocalY: number; carouselZoom: number; displayOrder: number; publishedAt: string | null; images: ArtworkImage[] }
+export type Artwork = { id: string; title: string; description: string; year: number | null; material: string | null; widthCm: number; heightCm: number; price: number | null; saleStatus: SaleStatus; frameType: FrameType; published: boolean; featured: boolean; carouselFocalX: number; carouselFocalY: number; carouselZoom: number; displayOrder: number; publishedAt: string | null; archivedAt: string | null; images: ArtworkImage[] }
 export type Inquiry = { id: string; artworkId: string; artworkTitle: string; name: string; email: string; phone: string | null; message: string; status: InquiryStatus; createdAt: string }
 export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number }
 export type InquiryCreate = { artworkId: string; name: string; email: string; phone: string; message: string; privacyAgreed: boolean }
+export type AnalyticsMetric = { views: number; visitors: number }
+export type AnalyticsBreakdown = { key: string; views: number; visitors: number }
+export type AnalyticsOverview = {
+  lifetime: AnalyticsMetric
+  today: AnalyticsMetric
+  last7Days: AnalyticsMetric
+  last30Days: AnalyticsMetric
+  daily: { date: string; views: number; visitors: number }[]
+  topArtworks: { id: string; title: string; archived: boolean; views: number; visitors: number }[]
+  surfaces: AnalyticsBreakdown[]
+  sources: AnalyticsBreakdown[]
+  referrers: AnalyticsBreakdown[]
+}
