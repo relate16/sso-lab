@@ -16,6 +16,10 @@ async function mutation<T>(csrf: Csrf, path: string, method: string, body?: unkn
   return responseJson(await fetch(path, { method, credentials: 'include', headers: { ...jsonHeaders, [csrf.headerName]: csrf.token }, body: body === undefined ? undefined : JSON.stringify(body) }))
 }
 export const studioApi = {
+  logout: async (csrf: Csrf) => responseJson<{ logoutUrl: string }>(await fetch('/api/v1/logout', {
+    method: 'POST', credentials: 'include', redirect: 'error', cache: 'no-store',
+    headers: { ...jsonHeaders, [csrf.headerName]: csrf.token },
+  })),
   artworks: async () => responseJson<Artwork[]>(await fetch('/api/v1/gallery/studio/artworks', { credentials: 'include', cache: 'no-store' })),
   artwork: async (id: string) => responseJson<Artwork>(await fetch(`/api/v1/gallery/studio/artworks/${id}`, { credentials: 'include', cache: 'no-store' })),
   create: (csrf: Csrf, body: unknown) => mutation<Artwork>(csrf, '/api/v1/gallery/studio/artworks', 'POST', body),

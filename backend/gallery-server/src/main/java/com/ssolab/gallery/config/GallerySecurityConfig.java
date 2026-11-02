@@ -25,6 +25,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.savedrequest.NullRequestCache;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableConfigurationProperties({GalleryOidcProperties.class, GalleryAnalyticsProperties.class})
@@ -49,11 +50,21 @@ public class GallerySecurityConfig {
     @Bean
     SecurityFilterChain gallerySecurityFilterChain(HttpSecurity http,
         ClientRegistrationRepository registrations, GalleryOidcProperties properties,
-        BffSessionRegistry sessions) throws Exception {
+        BffSessionRegistry sessions, ObjectMapper objectMapper) throws Exception {
         var resolver = new DefaultOAuth2AuthorizationRequestResolver(registrations);
         resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
         var logoutSuccess = new OidcClientInitiatedLogoutSuccessHandler(registrations);
         logoutSuccess.setPostLogoutRedirectUri(properties.postLogoutRedirectUri().toString());
+        logoutSuccess.setDefaultTargetUrl("/");
+        // Keep Spring's OIDC URL generation, but let the SPA navigate after the
+        // local session is invalidated instead of redirecting a form submission.
+        logoutSuccess.setRedirectStrategy((request, response, url) -> {
+            response.setStatus(200);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.setHeader("Cache-Control", "no-store");
+            objectMapper.writeValue(response.getOutputStream(), Map.of("logoutUrl", url));
+        });
         var loginSuccess = new SimpleUrlAuthenticationSuccessHandler("/studio");
 
         http.authorizeHttpRequests(authorize -> authorize

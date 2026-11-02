@@ -1,5 +1,6 @@
 package com.ssolab.gallery;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -7,6 +8,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import com.ssolab.gallery.api.InquiryController;
 import com.ssolab.gallery.api.ArtworkViewController;
@@ -23,15 +27,21 @@ import com.ssolab.gallery.inquiry.InquiryService;
 import com.ssolab.gallery.logout.BffSessionRegistry;
 import java.util.List;
 import java.util.UUID;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.util.UriComponentsBuilder;
+import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(controllers = {PublicGalleryController.class, StudioGalleryController.class,
     InquiryController.class, ArtworkViewController.class, StudioAnalyticsController.class})
@@ -105,5 +115,52 @@ class GallerySecurityApplicationTest {
         mvc.perform(get("/api/v1/gallery/studio/analytics").with(oidcLogin()
                 .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void logoutInvalidatesSessionAndReturnsOidcUrlWithoutRedirect(
+        @Autowired MockMvc mvc, @Autowired ClientRegistrationRepository registrations,
+        @Autowired ObjectMapper mapper) throws Exception {
+        var session = new MockHttpSession();
+        var result = mvc.perform(post("/api/v1/logout").session(session).with(csrf())
+                .with(oidcLogin().clientRegistration(registrations.findByRegistrationId("gallery-client"))
+                    .idToken(token -> token.tokenValue("logout-test-id-token"))
+                    .authorities(new SimpleGrantedAuthority("ROLE_USER")))
+                .param("post_logout_redirect_uri", "https://untrusted.example/"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith("application/json"))
+            .andExpect(header().doesNotExist("Location"))
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andReturn();
+
+        assertThat(session.isInvalid()).isTrue();
+        String url = mapper.readTree(result.getResponse().getContentAsString()).get("logoutUrl").asText();
+        var target = UriComponentsBuilder.fromUriString(url).build();
+        assertThat(target.getScheme()).isEqualTo("http");
+        assertThat(target.getHost()).isEqualTo("localhost");
+        assertThat(target.getPort()).isEqualTo(8080);
+        assertThat(target.getPath()).isEqualTo("/connect/logout");
+        assertThat(target.getQueryParams().getFirst("id_token_hint")).isEqualTo("logout-test-id-token");
+        assertThat(URLDecoder.decode(target.getQueryParams().getFirst("post_logout_redirect_uri"),
+            StandardCharsets.UTF_8)).isEqualTo("http://localhost/");
+    }
+
+    @Test
+    void logoutRequiresCsrfAndDoesNotRunOnGet(@Autowired MockMvc mvc) throws Exception {
+        var session = new MockHttpSession();
+        mvc.perform(post("/api/v1/logout").session(session).with(oidcLogin()))
+            .andExpect(status().isForbidden());
+        assertThat(session.isInvalid()).isFalse();
+        mvc.perform(get("/api/v1/logout").session(session).with(oidcLogin()))
+            .andExpect(status().isForbidden());
+        assertThat(session.isInvalid()).isFalse();
+    }
+
+    @Test
+    void logoutWithoutOidcSessionReturnsLocalFallback(@Autowired MockMvc mvc) throws Exception {
+        mvc.perform(post("/api/v1/logout").with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(header().doesNotExist("Location"))
+            .andExpect(jsonPath("$.logoutUrl").value("/"));
     }
 }

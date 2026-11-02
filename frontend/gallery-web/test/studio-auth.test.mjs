@@ -11,7 +11,8 @@ test('Artist Studio starts SSO automatically and returns to /studio after login'
 })
 
 test('authenticated non-admin users can log out from the access denied screen', () => {
-  assert.match(studio, /!state\.session\.roles\?\.includes\('ADMIN'\)[\s\S]*<LogoutForm csrf=\{state\.csrf\} prominent \/>/)
-  assert.match(studio, /method="post" action="\/api\/v1\/logout"/)
-  assert.match(studio, /name=\{csrf\.parameterName\} value=\{csrf\.token\}/)
+  assert.match(studio, /!state\.session\.roles\?\.includes\('ADMIN'\)[\s\S]*<LogoutButton csrf=\{state\.csrf\} prominent \/>/)
+  assert.match(studio, /await studioApi\.logout\(csrf\)/)
+  assert.match(studio, /window\.location\.replace\(logoutUrl\)/)
+  assert.doesNotMatch(studio, /action="\/api\/v1\/logout"/)
 })
