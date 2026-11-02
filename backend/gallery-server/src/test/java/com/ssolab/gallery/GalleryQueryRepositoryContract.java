@@ -15,6 +15,7 @@ import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.hibernate.Hibernate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,7 @@ abstract class GalleryQueryRepositoryContract {
     @Test
     void publicQueriesExcludeDraftsAndArchivedWorksAndLoadImages() {
         var visible = artwork("Visible", 40, 60, "100", true, 0);
-        image(visible, "public-image");
+        image(visible);
         var draft = artwork("Draft", 40, 60, "100", false, 1);
         var archived = artwork("Archived", 40, 60, "100", true, 2);
         archived.archive(NOW);
@@ -88,8 +89,8 @@ abstract class GalleryQueryRepositoryContract {
     @Test
     void pricePaginationKeepsNullsLastAndDoesNotMultiplyRowsForImages() {
         var cheap = artwork("Cheap", 30, 40, "100", true, 0);
-        image(cheap, "cheap-1");
-        image(cheap, "cheap-2");
+        image(cheap);
+        image(cheap);
         var expensive = artwork("Expensive", 30, 40, "200", true, 1);
         var noPrice = artwork("No price", 30, 40, null, true, 2);
         flushAndClear();
@@ -128,15 +129,15 @@ abstract class GalleryQueryRepositoryContract {
         var draft = artwork("Draft", 30, 40, null, false, 1);
         var archived = artwork("Archived", 30, 40, null, true, 2);
         archived.archive(NOW);
-        image(visible, "visible");
-        image(draft, "draft");
-        image(archived, "archived");
+        var visibleImage = image(visible);
+        var draftImage = image(draft);
+        var archivedImage = image(archived);
         flushAndClear();
-        assertThat(images.findPublishedByStorageKey("visible")).isPresent();
-        assertThat(images.findPublishedByStorageKey("draft")).isEmpty();
-        assertThat(images.findPublishedByStorageKey("archived")).isEmpty();
-        assertThat(images.findByStorageKey("archived")).isPresent();
-        assertThat(images.findByStorageKey("missing")).isEmpty();
+        assertThat(images.findPublishedByStorageKey(visibleImage.getStorageKey())).isPresent();
+        assertThat(images.findPublishedByStorageKey(draftImage.getStorageKey())).isEmpty();
+        assertThat(images.findPublishedByStorageKey(archivedImage.getStorageKey())).isEmpty();
+        assertThat(images.findByStorageKey(archivedImage.getStorageKey())).isPresent();
+        assertThat(images.findByStorageKey(UUID.randomUUID().toString())).isEmpty();
     }
 
     @Test
@@ -168,10 +169,13 @@ abstract class GalleryQueryRepositoryContract {
         return artworks.save(artwork);
     }
 
-    private void image(ArtworkEntity artwork, String key) {
-        artwork.addImage(new ArtworkImageEntity(artwork, key, "original.jpg", "web.jpg", "thumb.jpg",
+    private ArtworkImageEntity image(ArtworkEntity artwork) {
+        var image = new ArtworkImageEntity(artwork, UUID.randomUUID().toString(),
+            "original.jpg", "web.jpg", "thumb.jpg",
             "image.jpg", "image/jpeg", 100, 100, artwork.getImages().size(),
-            artwork.getImages().isEmpty(), NOW));
+            artwork.getImages().isEmpty(), NOW);
+        artwork.addImage(image);
+        return image;
     }
 
     private void flushAndClear() {

@@ -29,6 +29,8 @@ QueryDSL Gradle plugin or separate generation task is required.
 ```
 
 `GalleryQueryRepositoryIntegrationTest` runs the query contract against H2.
+It also applies the image storage-key format CHECK from Flyway, using H2's regex
+syntax, so fixtures with invalid keys fail locally as well as on PostgreSQL.
 `GalleryServerPostgresqlIntegrationTest` runs the same contract plus Flyway checks
 against PostgreSQL 17 using Testcontainers when Docker is available. H2 tests do
 not validate PostgreSQL migrations or PostgreSQL-specific analytics SQL.
