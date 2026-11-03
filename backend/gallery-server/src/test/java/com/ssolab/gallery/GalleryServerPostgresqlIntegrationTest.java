@@ -2,7 +2,18 @@ package com.ssolab.gallery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ssolab.gallery.analytics.ArtworkAnalyticsDtos;
+import com.ssolab.gallery.analytics.ArtworkAnalyticsService;
+import com.ssolab.gallery.analytics.ArtworkEntrySource;
+import com.ssolab.gallery.analytics.ArtworkViewService;
+import com.ssolab.gallery.analytics.ArtworkViewSurface;
+import com.ssolab.gallery.artwork.ArtworkEntity;
+import com.ssolab.gallery.artwork.FrameType;
+import com.ssolab.gallery.artwork.SaleStatus;
+import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +61,84 @@ class GalleryServerPostgresqlIntegrationTest extends GalleryQueryRepositoryContr
 
     @Autowired
     HealthEndpoint healthEndpoint;
+
+    @Autowired ArtworkViewService views;
+    @Autowired ArtworkAnalyticsService analytics;
+
+    @Test
+    void persistsViewsAndCountsUniqueVisitorsAcrossSurfacesAndArtworks() {
+        ArtworkEntity first = publishedArtwork("First");
+        ArtworkEntity second = publishedArtwork("Second");
+        var grid = new ArtworkAnalyticsDtos.ViewRequest(
+            ArtworkViewSurface.WORKS_GRID, ArtworkEntrySource.DIRECT);
+        var lightbox = new ArtworkAnalyticsDtos.ViewRequest(
+            ArtworkViewSurface.WORKS_LIGHTBOX, ArtworkEntrySource.WORKS_GRID);
+        String visitor = "A".repeat(43);
+
+        assertThat(views.record(first.getPublicId(), grid, visitor, null, "gallery.example.test")).isTrue();
+        assertThat(views.record(first.getPublicId(), grid, visitor, null, "gallery.example.test")).isFalse();
+        assertThat(views.record(first.getPublicId(), lightbox, visitor, null, "gallery.example.test")).isTrue();
+        assertThat(views.record(first.getPublicId(), grid, "B".repeat(43), null, "gallery.example.test")).isTrue();
+        assertThat(views.record(second.getPublicId(), grid, visitor, null, "gallery.example.test")).isTrue();
+
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gallery.artwork_view_events", Long.class)).isEqualTo(4L);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gallery.artwork_view_dedup", Long.class)).isEqualTo(4L);
+        var overview = analytics.overview();
+        assertThat(overview.lifetime().views()).isEqualTo(4);
+        assertThat(overview.lifetime().visitors()).isEqualTo(2);
+        assertThat(overview.topArtworks()).hasSize(2);
+    }
+
+    @Test
+    void countsAgainOnlyWhenTheDedupWindowHasElapsed() {
+        ArtworkEntity artwork = publishedArtwork("Window test");
+        var request = new ArtworkAnalyticsDtos.ViewRequest(
+            ArtworkViewSurface.DETAIL_SCENE, ArtworkEntrySource.DIRECT);
+        String visitor = "C".repeat(43);
+        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test")).isTrue();
+        OffsetDateTime firstCountedAt = jdbcTemplate.queryForObject(
+            "SELECT last_counted_at FROM gallery.artwork_view_dedup WHERE artwork_id = ?",
+            (row, index) -> row.getObject("last_counted_at", OffsetDateTime.class), artwork.getId());
+
+        jdbcTemplate.update("UPDATE gallery.artwork_view_dedup SET last_counted_at = ? WHERE artwork_id = ?",
+            firstCountedAt.minusMinutes(29), artwork.getId());
+        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test")).isFalse();
+        jdbcTemplate.update("UPDATE gallery.artwork_view_dedup SET last_counted_at = ? WHERE artwork_id = ?",
+            firstCountedAt.minusMinutes(31), artwork.getId());
+        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test")).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gallery.artwork_view_events WHERE artwork_id = ?",
+            Long.class, artwork.getId())).isEqualTo(2L);
+    }
+
+    @Test
+    void doesNotPersistViewsForUnpublishedOrArchivedWorks() {
+        ArtworkEntity draft = publishedArtwork("Draft");
+        draft.update("Draft", "Description", 2026, "Oil", BigDecimal.TEN, BigDecimal.TEN,
+            null, SaleStatus.NOT_FOR_SALE, FrameType.NONE, false, new BigDecimal("0.5"),
+            new BigDecimal("0.5"), BigDecimal.ONE, false, Instant.now());
+        ArtworkEntity archived = publishedArtwork("Archived");
+        archived.archive(Instant.now());
+        var request = new ArtworkAnalyticsDtos.ViewRequest(
+            ArtworkViewSurface.WORKS_GRID, ArtworkEntrySource.DIRECT);
+        assertThat(views.record(draft.getPublicId(), request, "D".repeat(43), null, "gallery.example.test")).isFalse();
+        assertThat(views.record(archived.getPublicId(), request, "D".repeat(43), null, "gallery.example.test")).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gallery.artwork_view_events", Long.class)).isZero();
+    }
+
+    private ArtworkEntity publishedArtwork(String title) {
+        Instant now = Instant.now();
+        var artwork = new ArtworkEntity(title, "Description", 2026, "Oil",
+            BigDecimal.TEN, BigDecimal.TEN, null, SaleStatus.NOT_FOR_SALE,
+            FrameType.NONE, false, 0, now);
+        artwork.update(title, "Description", 2026, "Oil", BigDecimal.TEN, BigDecimal.TEN,
+            null, SaleStatus.NOT_FOR_SALE, FrameType.NONE, false, new BigDecimal("0.5"),
+            new BigDecimal("0.5"), BigDecimal.ONE, true, now);
+        return artworks.saveAndFlush(artwork);
+    }
 
     @Test
     void appliesGalleryMigrationBeforeHibernateValidation() {

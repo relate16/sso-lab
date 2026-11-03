@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
@@ -71,6 +72,8 @@ public class ArtworkViewService {
         if (artwork == null) return false;
 
         Instant now = clock.instant();
+        // PostgreSQL JDBC supports OffsetDateTime for TIMESTAMPTZ, not Instant.
+        var timestamp = now.atOffset(ZoneOffset.UTC);
         LocalDate viewedDate = now.atZone(SEOUL).toLocalDate();
         String visitorHash = hash(visitorToken);
         String referrerHost = referrerHost(referrer);
@@ -94,9 +97,9 @@ public class ArtworkViewService {
             SELECT ?, artwork_id, ?, ?, ?, ?, ?, ?
             FROM accepted
             """;
-        return jdbc.update(sql, artwork.getId(), visitorHash, request.surface().name(), now,
+        return jdbc.update(sql, artwork.getId(), visitorHash, request.surface().name(), timestamp,
             properties.dedupMinutes(), eventId, visitorHash, request.surface().name(),
-            entrySource.name(), referrerHost, now, viewedDate) == 1;
+            entrySource.name(), referrerHost, timestamp, viewedDate) == 1;
     }
 
     private String hash(String visitorToken) {
