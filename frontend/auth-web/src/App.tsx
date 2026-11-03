@@ -31,6 +31,7 @@ function App() {
   const [code, setCode] = useState('')
   const [message, setMessage] = useState('Passwordless 인증 후 요청한 OIDC Client로 돌아갑니다.')
   const [busy, setBusy] = useState(false)
+  const loginRequestPending = useRef(false)
   const [sessions, setSessions] = useState<ManagedSession[]>([])
   const [authenticationState, setAuthenticationState] = useState<AuthenticationState>('CHECKING')
   const [turnstileToken, setTurnstileToken] = useState('')
@@ -44,6 +45,12 @@ function App() {
   const [signupTurnstileToken, setSignupTurnstileToken] = useState('')
   const [signupTurnstileReset, setSignupTurnstileReset] = useState(0)
   const [now, setNow] = useState(Date.now())
+
+  const emailOtpSendDisabled = busy || emailOtpInitialPending || !userId.trim()
+    || (turnstileEnabled && !turnstileToken)
+  const loginDisabled = busy || emailOtpInitialPending || !userId.trim() || !/^[0-9]{6}$/.test(code)
+    || (method === 'EMAIL_OTP' && (!emailOtpRequested || !challengeId))
+    || (method === 'TOTP' && turnstileEnabled && !turnstileToken)
 
   const loadSessions = () => fetch('/api/v1/me/sessions', { credentials: 'include', cache: 'no-store' })
     .then(async response => {
@@ -79,7 +86,8 @@ function App() {
   }
 
   async function sendEmailOtp() {
-    if (emailOtpInitialPending) return
+    if (loginRequestPending.current || emailOtpSendDisabled) return
+    loginRequestPending.current = true
     const requestSequence = ++emailOtpRequestSequence.current
     const requestTurnstileToken = turnstileToken
     setEmailOtpRequested(true)
@@ -101,6 +109,7 @@ function App() {
       setMessage(error instanceof Error ? error.message : '요청에 실패했습니다.')
     }
     finally {
+      loginRequestPending.current = false
       if (requestSequence === emailOtpRequestSequence.current) setEmailOtpInitialPending(false)
     }
   }
@@ -133,8 +142,19 @@ function App() {
     })
   }
 
-  async function verify(event: FormEvent) {
-    event.preventDefault(); setBusy(true)
+  async function submitLogin(event: FormEvent) {
+    event.preventDefault()
+    if (method === 'EMAIL_OTP' && !emailOtpRequested) {
+      await sendEmailOtp()
+      return
+    }
+    await verify()
+  }
+
+  async function verify() {
+    if (loginRequestPending.current || loginDisabled) return
+    loginRequestPending.current = true
+    setBusy(true)
     try {
       const path = method === 'EMAIL_OTP' ? '/api/v1/login/email/verify' : '/api/v1/login/totp/verify'
       const body = method === 'EMAIL_OTP' ? { challengeId, code } : { userId, code }
@@ -143,6 +163,7 @@ function App() {
       if (result.authenticated) window.location.assign(result.continuationPath || '/')
     } catch (error) { setMessage(error instanceof Error ? error.message : '인증에 실패했습니다.') }
     finally {
+      loginRequestPending.current = false
       setCode('')
       if (method === 'TOTP') {
         setTurnstileToken('')
@@ -301,17 +322,17 @@ function App() {
         <button type="button" className={method === 'EMAIL_OTP' ? 'selected' : ''} onClick={() => setMethod('EMAIL_OTP')}>Email OTP</button>
         <button type="button" className={method === 'TOTP' ? 'selected' : ''} onClick={() => setMethod('TOTP')}>TOTP</button>
       </div>
-      <form onSubmit={verify}>
+      <form onSubmit={submitLogin}>
         <div className="step-label">{method === 'EMAIL_OTP' ? (emailOtpRequested ? '2단계 · 인증 코드 확인' : '1단계 · 로그인 ID 확인') : '인증 앱으로 로그인'}</div>
         <label>User ID<input autoComplete="username" value={userId} onChange={event => setUserId(event.target.value)}
           disabled={method === 'EMAIL_OTP' && emailOtpRequested} required /></label>
         {(method === 'TOTP' || method === 'EMAIL_OTP') && <Turnstile onToken={setTurnstileToken} resetKey={loginTurnstileReset} />}
-        {method === 'EMAIL_OTP' && !emailOtpRequested && <button type="button" onClick={sendEmailOtp}
-          disabled={emailOtpInitialPending || !userId || (turnstileEnabled && !turnstileToken)}>OTP 보내기</button>}
+        {method === 'EMAIL_OTP' && !emailOtpRequested && <button type="submit"
+          disabled={emailOtpSendDisabled}>OTP 보내기</button>}
         {(method === 'TOTP' || emailOtpRequested) && <>
           <label>인증 코드<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
             value={code} onChange={event => setCode(event.target.value)} required /></label>
-          <button type="submit" disabled={busy || (method === 'EMAIL_OTP' && emailOtpInitialPending) || !code || (method === 'EMAIL_OTP' && !challengeId) || (method === 'TOTP' && turnstileEnabled && !turnstileToken)}>로그인</button>
+          <button type="submit" disabled={loginDisabled}>로그인</button>
         </>}
         {method === 'EMAIL_OTP' && emailOtpRequested && <div className="form-actions">
           <button type="button" className="text-button" onClick={() => void resendEmailOtp()}
