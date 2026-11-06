@@ -15,6 +15,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.Immutable;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** Read mapping only. Event recording remains an atomic PostgreSQL operation. */
 @Entity
@@ -28,7 +30,8 @@ public class ArtworkViewEventEntity {
     @JoinColumn(name = "artwork_id", nullable = false)
     private ArtworkEntity artwork;
 
-    @Column(name = "visitor_hash", nullable = false, length = 64, columnDefinition = "char(64)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "visitor_hash", nullable = false, length = 64)
     private String visitorHash;
 
     @Enumerated(EnumType.STRING)

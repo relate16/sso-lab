@@ -39,6 +39,9 @@ QueryDSL Gradle plugin or separate generation task is required.
 `GalleryQueryRepositoryIntegrationTest` runs the query and analytics contracts against H2.
 It also applies the image storage-key format CHECK from Flyway, using H2's regex
 syntax, so fixtures with invalid keys fail locally as well as on PostgreSQL.
+The analytics contract also compares Hibernate's visitor-hash JDBC mapping with
+the physical column metadata. This catches CHAR/VARCHAR mismatches locally even
+when Hibernate-generated H2 DDL happens to use the intended column type.
 `GalleryServerPostgresqlIntegrationTest` runs the same contract plus Flyway checks
 against PostgreSQL 17 using Testcontainers when Docker is available. H2 tests do
 not validate PostgreSQL migrations, native INET mapping or the atomic analytics

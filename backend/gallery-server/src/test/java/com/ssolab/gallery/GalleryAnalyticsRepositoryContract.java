@@ -12,6 +12,7 @@ import com.ssolab.gallery.artwork.FrameType;
 import com.ssolab.gallery.artwork.SaleStatus;
 import java.math.BigDecimal;
 import java.net.InetAddress;
+import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -20,11 +21,39 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.hibernate.Session;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 
 /** Same QueryDSL analytics assertions on H2 locally and migrated PostgreSQL in CI. */
 abstract class GalleryAnalyticsRepositoryContract extends GalleryQueryRepositoryContract {
     private static final LocalDate TODAY = LocalDate.of(2026, 11, 5);
     @Autowired ArtworkAnalyticsQueryRepository analyticsQueries;
+
+    @Test
+    void visitorHashJdbcMappingMatchesThePhysicalCharColumn() {
+        var factory = entityManager.getEntityManagerFactory().unwrap(SessionFactoryImplementor.class);
+        var entity = factory.getRuntimeMetamodels().getMappingMetamodel()
+            .getEntityDescriptor(ArtworkViewEventEntity.class);
+        var attribute = (BasicValuedModelPart) entity.findAttributeMapping("visitorHash");
+        int mappedType = attribute.getJdbcMapping().getJdbcType().getJdbcTypeCode();
+
+        int databaseType = entityManager.unwrap(Session.class).doReturningWork(connection -> {
+            try (var columns = connection.getMetaData().getColumns(null, null, "%", "%")) {
+                while (columns.next()) {
+                    if ("gallery".equalsIgnoreCase(columns.getString("TABLE_SCHEM"))
+                        && "artwork_view_events".equalsIgnoreCase(columns.getString("TABLE_NAME"))
+                        && "visitor_hash".equalsIgnoreCase(columns.getString("COLUMN_NAME"))) {
+                        return columns.getInt("DATA_TYPE");
+                    }
+                }
+            }
+            throw new AssertionError("visitor_hash column not found");
+        });
+        assertThat(databaseType).isEqualTo(Types.CHAR);
+        assertThat(mappedType).as("visitor_hash Hibernate JDBC type must match the DB column")
+            .isEqualTo(databaseType);
+    }
 
     @Test
     void emptyAnalyticsReturnsZeroCountsAndEmptyLists() {
