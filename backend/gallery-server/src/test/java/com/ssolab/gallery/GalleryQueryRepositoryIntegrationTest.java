@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
     "sso.oidc-client.client-secret=gallery-query-test-secret",
     "gallery.storage.root=build/tmp/gallery-query-integration"
 })
-class GalleryQueryRepositoryIntegrationTest extends GalleryQueryRepositoryContract {
+class GalleryQueryRepositoryIntegrationTest extends GalleryAnalyticsRepositoryContract {
     @Autowired JdbcTemplate jdbc;
 
     @BeforeEach

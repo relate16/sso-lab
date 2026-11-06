@@ -43,7 +43,7 @@ public class ArtworkViewController {
         String token = created ? views.newVisitorToken() : visitor;
         try {
             views.record(publicId, body, token, request.getHeader("Referer"),
-                request.getServerName());
+                request.getServerName(), request.getRemoteAddr());
         } catch (RuntimeException exception) {
             log.warn("Artwork view recording failed for {}", publicId, exception);
         }

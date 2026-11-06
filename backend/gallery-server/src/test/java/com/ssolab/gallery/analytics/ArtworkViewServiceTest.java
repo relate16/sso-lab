@@ -35,7 +35,7 @@ class ArtworkViewServiceTest {
 
         service.record(publicId, new ArtworkAnalyticsDtos.ViewRequest(
             ArtworkViewSurface.WORKS_GRID, ArtworkEntrySource.DIRECT), "A".repeat(43),
-            null, "gallery.example.test");
+            null, "gallery.example.test", "203.0.113.10");
 
         var parameters = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).update(anyString(), parameters.capture());
@@ -44,6 +44,19 @@ class ArtworkViewServiceTest {
         assertThat(bound[3]).isEqualTo(now.atOffset(ZoneOffset.UTC));
         assertThat(bound[10]).isEqualTo(now.atOffset(ZoneOffset.UTC));
         assertThat(bound[11]).isEqualTo(LocalDate.of(2026, 11, 4));
+        assertThat(bound[12]).isEqualTo("203.0.113.10");
         assertThat(bound).noneMatch(Instant.class::isInstance);
+    }
+
+    @Test
+    void acceptsIpv4AndIpv6LiteralsButTreatsMissingOrInvalidAddressesAsUnknown() {
+        assertThat(ArtworkViewService.normalizeIp("203.0.113.10")).isEqualTo("203.0.113.10");
+        assertThat(ArtworkViewService.normalizeIp("2001:db8::1"))
+            .isEqualTo("2001:db8:0:0:0:0:0:1");
+        for (String value : new String[] { "", "localhost", "gallery.example.test",
+            "999.1.2.3", "127.1", "2001:::1", "203.0.113.1, 198.51.100.1", "fe80::1%eth0" }) {
+            assertThat(ArtworkViewService.normalizeIp(value)).as(value).isNull();
+        }
+        assertThat(ArtworkViewService.normalizeIp(null)).isNull();
     }
 }

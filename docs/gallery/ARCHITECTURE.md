@@ -48,6 +48,8 @@ Studio routes:
 - `PATCH /api/v1/gallery/studio/artworks/{id}/images/primary`
 - `DELETE /api/v1/gallery/studio/artworks/{id}/images/{imageId}`
 - `GET|PATCH /api/v1/gallery/studio/inquiries[/{id}]`
+- `GET /api/v1/gallery/studio/analytics` — 조회수·순 방문자 집계
+- `GET /api/v1/gallery/studio/analytics/views?page=0&size=20` — 관리자 전용 최근 조회 기록
 
 공개 목록과 상세는 `published=true`만 조회한다. Studio는 내부 UUID를 사용하고 공개 route는
 별도의 public UUID를 사용한다.
@@ -79,6 +81,27 @@ SVG는 허용하지 않는다. Production named volume은 one-shot init containe
 Gallery runtime UID/GID에 맞춰 준비하며, DB와 image volume은 함께 백업해야 한다.
 
 ## 보안과 개인정보
+
+조회가 인정된 이벤트의 원본 IP는 `gallery.artwork_view_events.visitor_ip` (`INET`, nullable)에
+저장한다. 별도의 만료·자동 삭제 정책은 없으며 기존 이벤트의 IP는 소급 수집하지 않는다.
+IP가 없거나 유효한 주소가 아니면 `NULL`로 저장하고 조회 집계는 계속한다. IP는 중복 제거나
+순 방문자 식별에 사용하지 않는다. 관리자·봇 제외 및 쿠키 기반 30분 중복 제거는 그대로다.
+
+방문자 IP는 `HttpServletRequest.getRemoteAddr()`를 사용한다. 운영 환경에서는 기존
+`SERVER_FORWARD_HEADERS_STRATEGY=native`와 Caddy만 신뢰하는 `TRUSTED_PROXY_CIDR` 설정을
+유지해야 한다. Caddy는 외부에서 들어온 위조 전달 헤더를 신뢰하지 않고 `X-Forwarded-For`를
+구성하며, 애플리케이션에서는 이 헤더를 직접 파싱하지 않는다. 직접 로컬 실행에서는 접속한
+상대방 주소(예: `127.0.0.1`)가 기록된다.
+
+Studio 최근 조회 목록은 한국 시간·작품명·조회 화면·IP를 최신순으로 보여주며 IP가 `NULL`이면
+‘미수집’으로 표시한다. 기본 20건, 최대 100건의 페이지 조회이며 동일 시각에는 이벤트 UUID로
+순서를 고정한다. 조회 시각·UUID 인덱스로 최신 목록을 조회한다. 공개 API에는 IP를 노출하지 않는다.
+
+통계 조회와 집계는 `ArtworkAnalyticsQueryRepository`의 QueryDSL 구현에서 수행한다.
+`ArtworkAnalyticsService`는 한국 시간 기준의 날짜 범위를 계산하고 조회 결과를 조합한다.
+조회 이벤트는 `@Immutable`인 `ArtworkViewEventEntity`로 읽기 매핑하며, `InetAddress`를 통해
+PostgreSQL `INET`을 읽는다. IPv6 응답은 Java의 확장된 주소 문자열로 표현한다. 이벤트 저장과
+30분 중복 판정은 `ArtworkViewService`의 기존 원자적 JDBC SQL을 유지한다.
 
 - Studio authorization은 UI가 아니라 Spring Security의 서버 측 `ROLE_ADMIN`으로 강제한다.
 - Cookie 기반 API는 기존 CSRF 정책을 유지하고 공개 문의 POST도 CSRF token을 요구한다.

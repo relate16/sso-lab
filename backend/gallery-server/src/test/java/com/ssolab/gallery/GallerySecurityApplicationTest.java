@@ -2,6 +2,10 @@ package com.ssolab.gallery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
@@ -18,6 +22,9 @@ import com.ssolab.gallery.api.PublicGalleryController;
 import com.ssolab.gallery.api.StudioAnalyticsController;
 import com.ssolab.gallery.api.StudioGalleryController;
 import com.ssolab.gallery.analytics.ArtworkAnalyticsService;
+import com.ssolab.gallery.analytics.ArtworkAnalyticsDtos;
+import com.ssolab.gallery.analytics.ArtworkViewSurface;
+import com.ssolab.gallery.api.GalleryDtos;
 import com.ssolab.gallery.analytics.ArtworkViewService;
 import com.ssolab.gallery.artwork.PublicArtworkService;
 import com.ssolab.gallery.artwork.StudioArtworkService;
@@ -29,6 +36,8 @@ import java.util.List;
 import java.util.UUID;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -115,6 +124,54 @@ class GallerySecurityApplicationTest {
         mvc.perform(get("/api/v1/gallery/studio/analytics").with(oidcLogin()
                 .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void recordsServerResolvedAddressInsteadOfReadingUntrustedHeaders(@Autowired MockMvc mvc)
+        throws Exception {
+        UUID id = UUID.randomUUID();
+        mvc.perform(post("/api/v1/gallery/artworks/{id}/views", id)
+                .cookie(new Cookie("qwg_visitor", "A".repeat(43)))
+                .header("User-Agent", "Mozilla/5.0")
+                .header("X-Forwarded-For", "198.51.100.99")
+                .header("X-Real-IP", "198.51.100.98")
+                .with(request -> { request.setRemoteAddr("203.0.113.10"); return request; })
+                .contentType("application/json")
+                .content("{\"surface\":\"WORKS_GRID\",\"entrySource\":\"DIRECT\"}"))
+            .andExpect(status().isNoContent());
+        verify(artworkViews).record(eq(id), any(), eq("A".repeat(43)), isNull(),
+            eq("localhost"), eq("203.0.113.10"));
+    }
+
+    @Test
+    void recentViewIpsAreOnlyAvailableToAdministrators(@Autowired MockMvc mvc) throws Exception {
+        UUID id = UUID.randomUUID();
+        when(analytics.recentViews(0, 20)).thenReturn(new GalleryDtos.Page<>(List.of(
+            new ArtworkAnalyticsDtos.RecentView(id, UUID.randomUUID(), "Work", false,
+                ArtworkViewSurface.WORKS_GRID, Instant.parse("2026-11-05T01:00:00Z"),
+                "2001:db8::1")), 0, 20, 1, 1));
+        mvc.perform(get("/api/v1/gallery/studio/analytics/views"))
+            .andExpect(status().is3xxRedirection());
+        mvc.perform(get("/api/v1/gallery/studio/analytics/views").with(oidcLogin()
+                .authorities(new SimpleGrantedAuthority("ROLE_USER"))))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/gallery/studio/analytics/views").with(oidcLogin()
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].visitorIp").value("2001:db8::1"))
+            .andExpect(jsonPath("$.content[0].artworkTitle").value("Work"))
+            .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    void administratorViewDoesNotRecordIp(@Autowired MockMvc mvc) throws Exception {
+        mvc.perform(post("/api/v1/gallery/artworks/{id}/views", UUID.randomUUID())
+                .with(oidcLogin().authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                .header("User-Agent", "Mozilla/5.0")
+                .contentType("application/json")
+                .content("{\"surface\":\"WORKS_GRID\",\"entrySource\":\"DIRECT\"}"))
+            .andExpect(status().isNoContent());
+        verifyNoInteractions(artworkViews);
     }
 
     @Test

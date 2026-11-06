@@ -1,4 +1,4 @@
-import type { AnalyticsOverview, Artwork, ArtworkEntrySource, ArtworkViewSurface, Csrf, Inquiry, InquiryCreate, InquiryStatus, Page, Session } from './types'
+import type { AnalyticsOverview, AnalyticsRecentView, Artwork, ArtworkEntrySource, ArtworkViewSurface, Csrf, Inquiry, InquiryCreate, InquiryStatus, Page, Session } from './types'
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 async function responseJson<T>(response: Response): Promise<T> {
@@ -36,6 +36,7 @@ export const studioApi = {
   inquiries: async () => responseJson<{ content: Inquiry[] }>(await fetch('/api/v1/gallery/studio/inquiries', { credentials: 'include', cache: 'no-store' })),
   inquiryStatus: (csrf: Csrf, id: string, status: InquiryStatus) => mutation<void>(csrf, `/api/v1/gallery/studio/inquiries/${id}`, 'PATCH', { status }),
   analytics: async () => responseJson<AnalyticsOverview>(await fetch('/api/v1/gallery/studio/analytics', { credentials: 'include', cache: 'no-store' })),
+  analyticsViews: async (page = 0) => responseJson<Page<AnalyticsRecentView>>(await fetch(`/api/v1/gallery/studio/analytics/views?page=${page}&size=20`, { credentials: 'include', cache: 'no-store' })),
 }
 
 export const publicApi = {

@@ -8,8 +8,16 @@ do not receive QueryDSL dependencies or annotation processors.
   are Spring Data repository fragments. Their `Impl` classes contain QueryDSL queries.
 - Keep ordinary persistence operations (`save`, `delete`, `flush`, `findById`, `count`)
   on `JpaRepository`.
-- Keep the PostgreSQL atomic analytics upsert/insert and analytics aggregates on
-  `JdbcTemplate`. QueryDSL JPA does not replace these SQL operations.
+- `ArtworkAnalyticsQueryRepository` contains all analytics reads and aggregates
+  using QueryDSL. `ArtworkAnalyticsService` calculates reporting windows and
+  composes the response without JDBC or query implementation code.
+- `ArtworkViewEventEntity` is an immutable read mapping of the existing event
+  table; no persistence repository or write API is exposed for it. Hibernate maps
+  its `InetAddress` field to PostgreSQL `INET`. IPs remain strings in API responses
+  (IPv6 uses Java's expanded textual representation).
+- Keep only the atomic analytics dedup upsert/event insert in `ArtworkViewService`
+  on `JdbcTemplate`. Its PostgreSQL CTE and conditional `ON CONFLICT` enforce the
+  rolling dedup window atomically; ordinary reads do not need this exception.
 - Paginated artwork queries select ordered IDs first, then fetch their image
   collections without a limit, and restore ID order. Do not paginate a collection
   fetch join: that can produce in-memory pagination or incorrect page sizes.
@@ -28,9 +36,11 @@ QueryDSL Gradle plugin or separate generation task is required.
 .\gradlew.bat :backend:gallery-server:test
 ```
 
-`GalleryQueryRepositoryIntegrationTest` runs the query contract against H2.
+`GalleryQueryRepositoryIntegrationTest` runs the query and analytics contracts against H2.
 It also applies the image storage-key format CHECK from Flyway, using H2's regex
 syntax, so fixtures with invalid keys fail locally as well as on PostgreSQL.
 `GalleryServerPostgresqlIntegrationTest` runs the same contract plus Flyway checks
 against PostgreSQL 17 using Testcontainers when Docker is available. H2 tests do
-not validate PostgreSQL migrations or PostgreSQL-specific analytics SQL.
+not validate PostgreSQL migrations, native INET mapping or the atomic analytics
+write SQL. The analytics contract verifies empty results, distinct visitor counts,
+date boundaries, archived works, breakdowns, and stable recent-view pagination.

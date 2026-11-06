@@ -12,6 +12,7 @@ export type Page<T> = { content: T[]; page: number; size: number; totalElements:
 export type InquiryCreate = { artworkId: string; name: string; email: string; phone: string; message: string; privacyAgreed: boolean }
 export type AnalyticsMetric = { views: number; visitors: number }
 export type AnalyticsBreakdown = { key: string; views: number; visitors: number }
+export type AnalyticsRecentView = { id: string; artworkId: string; artworkTitle: string; archived: boolean; surface: ArtworkViewSurface; viewedAt: string; visitorIp: string | null }
 export type AnalyticsOverview = {
   lifetime: AnalyticsMetric
   today: AnalyticsMetric

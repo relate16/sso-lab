@@ -29,7 +29,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
-class GalleryServerPostgresqlIntegrationTest extends GalleryQueryRepositoryContract {
+class GalleryServerPostgresqlIntegrationTest extends GalleryAnalyticsRepositoryContract {
 
     @Container
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17-alpine");
@@ -75,11 +75,11 @@ class GalleryServerPostgresqlIntegrationTest extends GalleryQueryRepositoryContr
             ArtworkViewSurface.WORKS_LIGHTBOX, ArtworkEntrySource.WORKS_GRID);
         String visitor = "A".repeat(43);
 
-        assertThat(views.record(first.getPublicId(), grid, visitor, null, "gallery.example.test")).isTrue();
-        assertThat(views.record(first.getPublicId(), grid, visitor, null, "gallery.example.test")).isFalse();
-        assertThat(views.record(first.getPublicId(), lightbox, visitor, null, "gallery.example.test")).isTrue();
-        assertThat(views.record(first.getPublicId(), grid, "B".repeat(43), null, "gallery.example.test")).isTrue();
-        assertThat(views.record(second.getPublicId(), grid, visitor, null, "gallery.example.test")).isTrue();
+        assertThat(views.record(first.getPublicId(), grid, visitor, null, "gallery.example.test", "203.0.113.1")).isTrue();
+        assertThat(views.record(first.getPublicId(), grid, visitor, null, "gallery.example.test", "203.0.113.2")).isFalse();
+        assertThat(views.record(first.getPublicId(), lightbox, visitor, null, "gallery.example.test", null)).isTrue();
+        assertThat(views.record(first.getPublicId(), grid, "B".repeat(43), null, "gallery.example.test", null)).isTrue();
+        assertThat(views.record(second.getPublicId(), grid, visitor, null, "gallery.example.test", null)).isTrue();
 
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM gallery.artwork_view_events", Long.class)).isEqualTo(4L);
@@ -97,17 +97,17 @@ class GalleryServerPostgresqlIntegrationTest extends GalleryQueryRepositoryContr
         var request = new ArtworkAnalyticsDtos.ViewRequest(
             ArtworkViewSurface.DETAIL_SCENE, ArtworkEntrySource.DIRECT);
         String visitor = "C".repeat(43);
-        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test")).isTrue();
+        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test", null)).isTrue();
         OffsetDateTime firstCountedAt = jdbcTemplate.queryForObject(
             "SELECT last_counted_at FROM gallery.artwork_view_dedup WHERE artwork_id = ?",
             (row, index) -> row.getObject("last_counted_at", OffsetDateTime.class), artwork.getId());
 
         jdbcTemplate.update("UPDATE gallery.artwork_view_dedup SET last_counted_at = ? WHERE artwork_id = ?",
             firstCountedAt.minusMinutes(29), artwork.getId());
-        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test")).isFalse();
+        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test", null)).isFalse();
         jdbcTemplate.update("UPDATE gallery.artwork_view_dedup SET last_counted_at = ? WHERE artwork_id = ?",
             firstCountedAt.minusMinutes(31), artwork.getId());
-        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test")).isTrue();
+        assertThat(views.record(artwork.getPublicId(), request, visitor, null, "gallery.example.test", null)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM gallery.artwork_view_events WHERE artwork_id = ?",
             Long.class, artwork.getId())).isEqualTo(2L);
@@ -123,10 +123,62 @@ class GalleryServerPostgresqlIntegrationTest extends GalleryQueryRepositoryContr
         archived.archive(Instant.now());
         var request = new ArtworkAnalyticsDtos.ViewRequest(
             ArtworkViewSurface.WORKS_GRID, ArtworkEntrySource.DIRECT);
-        assertThat(views.record(draft.getPublicId(), request, "D".repeat(43), null, "gallery.example.test")).isFalse();
-        assertThat(views.record(archived.getPublicId(), request, "D".repeat(43), null, "gallery.example.test")).isFalse();
+        assertThat(views.record(draft.getPublicId(), request, "D".repeat(43), null, "gallery.example.test", null)).isFalse();
+        assertThat(views.record(archived.getPublicId(), request, "D".repeat(43), null, "gallery.example.test", null)).isFalse();
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM gallery.artwork_view_events", Long.class)).isZero();
+    }
+
+    @Test
+    void storesRawIpAndPagesRecentViewsIncludingUnknownIpAndArchivedWorks() {
+        ArtworkEntity artwork = publishedArtwork("IP history");
+        var request = new ArtworkAnalyticsDtos.ViewRequest(
+            ArtworkViewSurface.WORKS_GRID, ArtworkEntrySource.DIRECT);
+        assertThat(views.record(artwork.getPublicId(), request, "E".repeat(43), null,
+            "gallery.example.test", "203.0.113.10")).isTrue();
+        assertThat(views.record(artwork.getPublicId(), request, "F".repeat(43), null,
+            "gallery.example.test", "2001:db8::1")).isTrue();
+        assertThat(views.record(artwork.getPublicId(), request, "G".repeat(43), null,
+            "gallery.example.test", "not-an-ip")).isTrue();
+        assertThat(jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM gallery.artwork_view_events WHERE visitor_ip = '203.0.113.10'::inet
+            """, Long.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM gallery.artwork_view_events WHERE visitor_ip = '2001:db8::1'::inet
+            """, Long.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM gallery.artwork_view_events WHERE visitor_ip IS NULL
+            """, Long.class)).isEqualTo(1);
+
+        // A tie in viewed_at still needs a deterministic order across page boundaries.
+        jdbcTemplate.update("UPDATE gallery.artwork_view_events SET viewed_at = ?",
+            OffsetDateTime.parse("2026-11-05T01:00:00Z"));
+        var expectedIds = jdbcTemplate.queryForList(
+            "SELECT id FROM gallery.artwork_view_events ORDER BY viewed_at DESC, id DESC",
+            java.util.UUID.class);
+        artwork.archive(Instant.now());
+        artworks.flush();
+
+        var first = analytics.recentViews(0, 2);
+        var second = analytics.recentViews(1, 2);
+        assertThat(first.totalElements()).isEqualTo(3);
+        assertThat(first.totalPages()).isEqualTo(2);
+        assertThat(first.content()).extracting(ArtworkAnalyticsDtos.RecentView::id)
+            .containsExactlyElementsOf(expectedIds.subList(0, 2));
+        assertThat(second.content()).extracting(ArtworkAnalyticsDtos.RecentView::id)
+            .containsExactly(expectedIds.get(2));
+        assertThat(analytics.recentViews(0, 20).content())
+            .allSatisfy(item -> {
+                assertThat(item.artworkId()).isEqualTo(artwork.getPublicId());
+                assertThat(item.artworkTitle()).isEqualTo("IP history");
+                assertThat(item.archived()).isTrue();
+            }).extracting(ArtworkAnalyticsDtos.RecentView::visitorIp)
+            .containsExactlyInAnyOrder("203.0.113.10", "2001:db8:0:0:0:0:0:1", null);
+        assertThat(analytics.recentViews(10, 2).content()).isEmpty();
+        assertThat(analytics.recentViews(-1, 0).page()).isZero();
+        assertThat(analytics.recentViews(-1, 0).size()).isEqualTo(1);
+        assertThat(analytics.recentViews(0, 101).size()).isEqualTo(100);
+        assertThat(analytics.overview().lifetime().views()).isEqualTo(3);
     }
 
     private ArtworkEntity publishedArtwork(String title) {

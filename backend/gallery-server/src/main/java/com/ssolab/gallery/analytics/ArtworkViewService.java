@@ -2,7 +2,9 @@ package com.ssolab.gallery.analytics;
 
 import com.ssolab.gallery.artwork.ArtworkRepository;
 import com.ssolab.gallery.config.GalleryAnalyticsProperties;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -66,7 +68,7 @@ public class ArtworkViewService {
 
     @Transactional
     public boolean record(UUID publicId, ArtworkAnalyticsDtos.ViewRequest request,
-        String visitorToken, String referrer, String currentHost) {
+        String visitorToken, String referrer, String currentHost, String visitorIp) {
         var artwork = artworks.findPublishedByPublicId(publicId)
             .orElse(null);
         if (artwork == null) return false;
@@ -93,13 +95,26 @@ public class ArtworkViewService {
             )
             INSERT INTO gallery.artwork_view_events
                 (id, artwork_id, visitor_hash, surface, entry_source, referrer_host,
-                 viewed_at, viewed_date)
-            SELECT ?, artwork_id, ?, ?, ?, ?, ?, ?
+                 viewed_at, viewed_date, visitor_ip)
+            SELECT ?, artwork_id, ?, ?, ?, ?, ?, ?, CAST(? AS inet)
             FROM accepted
             """;
         return jdbc.update(sql, artwork.getId(), visitorHash, request.surface().name(), timestamp,
             properties.dedupMinutes(), eventId, visitorHash, request.surface().name(),
-            entrySource.name(), referrerHost, timestamp, viewedDate) == 1;
+            entrySource.name(), referrerHost, timestamp, viewedDate, normalizeIp(visitorIp)) == 1;
+    }
+
+    static String normalizeIp(String value) {
+        if (value == null) return null;
+        // Accept address literals only: never resolve a hostname supplied by a client.
+        boolean ipv4 = value.matches("[0-9]{1,3}(\\.[0-9]{1,3}){3}");
+        boolean ipv6 = value.contains(":") && value.matches("[0-9a-fA-F:.]+");
+        if (!ipv4 && !ipv6) return null;
+        try {
+            return InetAddress.getByName(value).getHostAddress();
+        } catch (UnknownHostException ignored) {
+            return null;
+        }
     }
 
     private String hash(String visitorToken) {
