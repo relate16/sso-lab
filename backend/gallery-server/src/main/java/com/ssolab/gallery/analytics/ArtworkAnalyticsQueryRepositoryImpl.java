@@ -74,10 +74,15 @@ public class ArtworkAnalyticsQueryRepositoryImpl implements ArtworkAnalyticsQuer
     @Override
     public List<ArtworkAnalyticsDtos.Breakdown> referrers() {
         var event = artworkViewEventEntity;
-        var referrer = event.referrerHost.coalesce("직접 접속");
-        return queries.select(Projections.constructor(ArtworkAnalyticsDtos.Breakdown.class,
-                referrer, event.count(), event.visitorHash.countDistinct()))
-            .from(event).groupBy(referrer).orderBy(event.count().desc()).limit(20).fetch();
+        var views = event.count();
+        var visitors = event.visitorHash.countDistinct();
+        // Group the stored column, not a parameterized display label. PostgreSQL
+        // treats independently bound COALESCE parameters as different expressions.
+        return queries.select(event.referrerHost, views, visitors)
+            .from(event).groupBy(event.referrerHost).orderBy(views.desc()).limit(20).fetch()
+            .stream().map(row -> new ArtworkAnalyticsDtos.Breakdown(
+                row.get(event.referrerHost) == null ? "직접 접속" : row.get(event.referrerHost),
+                row.get(views), row.get(visitors))).toList();
     }
 
     @Override

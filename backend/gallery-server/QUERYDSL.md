@@ -18,6 +18,10 @@ do not receive QueryDSL dependencies or annotation processors.
 - Keep only the atomic analytics dedup upsert/event insert in `ArtworkViewService`
   on `JdbcTemplate`. Its PostgreSQL CTE and conditional `ON CONFLICT` enforce the
   rolling dedup window atomically; ordinary reads do not need this exception.
+- Group referrer analytics by the stored column and apply the missing-referrer
+  display label after fetching. Repeating a parameterized COALESCE in SELECT and
+  GROUP BY can produce distinct bind parameters that PostgreSQL does not consider
+  the same grouping expression.
 - Paginated artwork queries select ordered IDs first, then fetch their image
   collections without a limit, and restore ID order. Do not paginate a collection
   fetch join: that can produce in-memory pagination or incorrect page sizes.
